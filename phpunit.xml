@@ -32,5 +32,11 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+
+        <!-- テストは .env に依存せず単体で完結させる。
+             clone 直後、APIキーもデータベースも用意せずにテストが通る状態を保つ。 -->
+        <env name="BLIND_INDEX_KEY" value="test-only-key-do-not-use-in-production"/>
+        <env name="LLM_DRIVER" value="fake"/>
+        <env name="ANTHROPIC_API_KEY" value=""/>
     </php>
 </phpunit>

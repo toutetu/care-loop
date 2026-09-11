@@ -49,8 +49,8 @@ return new class extends Migration
             $table->text('handover_note')->nullable()->comment('申し送り用');
             $table->boolean('record_text_edited_by_human')->default(false);
             $table->boolean('family_text_edited_by_human')->default(false);
-            $table->foreignId('llm_job_id')->nullable()->constrained()->nullOnDelete()
-                ->comment('どのAI実行で生成したか');
+            $table->foreignId('llm_job_id')->nullable()->comment('どのAI実行で生成したか')
+                ->constrained()->nullOnDelete();
 
             $table->timestamp('confirmed_at')->nullable()->comment('職員が内容を確認して確定した時刻');
 
