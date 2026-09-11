@@ -1,0 +1,750 @@
+<title>CareLoop スマートフォン画面</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#F1F4F2;
+  --surface:#FFFFFF;
+  --surface-2:#F7F9F8;
+  --border:#DCE4E0;
+  --border-strong:#C3CFC9;
+  --ink:#1A2724;
+  --ink-2:#3C4B46;
+  --muted:#61706A;
+  --primary:#1F6F5C;
+  --primary-ink:#175348;
+  --primary-soft:#E2EEE9;
+  --ai:#3B4A85;
+  --ai-soft:#E6E9F5;
+  --sev-high:#AF4230;
+  --sev-high-soft:#F7E6E2;
+  --sev-med:#9C7017;
+  --sev-med-soft:#F7EEDC;
+  --bezel:#202925;
+  --page:#E9EEEB;
+  --shadow:0 1px 2px rgba(26,39,36,.06),0 4px 14px rgba(26,39,36,.05);
+  --font:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#111614; --surface:#191F1D; --surface-2:#141A18;
+    --border:#2A3431; --border-strong:#3B4742;
+    --ink:#E6EDEA; --ink-2:#C3CFC9; --muted:#8C9A94;
+    --primary:#57AE94; --primary-ink:#7FC6AF; --primary-soft:#1B2E29;
+    --ai:#93A0DD; --ai-soft:#1E2440;
+    --sev-high:#E58A74; --sev-high-soft:#33201B;
+    --sev-med:#D6AA57; --sev-med-soft:#2F2716;
+    --bezel:#39443F; --page:#0C100E;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#111614; --surface:#191F1D; --surface-2:#141A18;
+  --border:#2A3431; --border-strong:#3B4742;
+  --ink:#E6EDEA; --ink-2:#C3CFC9; --muted:#8C9A94;
+  --primary:#57AE94; --primary-ink:#7FC6AF; --primary-soft:#1B2E29;
+  --ai:#93A0DD; --ai-soft:#1E2440;
+  --sev-high:#E58A74; --sev-high-soft:#33201B;
+  --sev-med:#D6AA57; --sev-med-soft:#2F2716;
+  --bezel:#39443F; --page:#0C100E;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+}
+
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.75;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{margin:0;line-height:1.4;text-wrap:balance}
+p{margin:0}
+ul,ol{margin:0;padding:0;list-style:none}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;text-align:left}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- prototype strip ---------- */
+.proto{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 24px;background:var(--ink);color:var(--ground);font-size:12px;letter-spacing:.04em}
+.proto b{font-weight:700}
+.proto span{color:#9FB0AA}
+.proto .spacer{flex:1}
+.proto button{border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:2px 12px;font-size:12px}
+.proto button:hover{background:rgba(255,255,255,.1)}
+
+/* ---------- page ---------- */
+.wrap{max-width:1180px;margin:0 auto;padding:34px 24px 80px}
+.intro{max-width:66ch;margin-bottom:30px}
+.intro .eyebrow{font-size:11px;letter-spacing:.16em;color:var(--primary);font-weight:700;margin-bottom:8px}
+.intro h1{font-size:27px;font-weight:700;margin-bottom:12px}
+.intro p{color:var(--ink-2);font-size:14.5px}
+
+.split{display:grid;grid-template-columns:415px 1fr;gap:40px;align-items:start}
+@media (max-width:940px){.split{grid-template-columns:1fr;gap:28px}}
+
+/* ---------- phone ---------- */
+.stage{position:sticky;top:24px}
+@media (max-width:940px){.stage{position:static}}
+.phone{
+  width:395px;margin:0 auto;background:var(--bezel);border-radius:46px;padding:10px;
+  box-shadow:0 18px 44px rgba(0,0,0,.22),0 0 0 1px rgba(255,255,255,.06) inset;
+}
+.viewport{
+  width:375px;height:744px;background:var(--ground);border-radius:37px;overflow:hidden;
+  display:flex;flex-direction:column;position:relative;
+}
+.statusbar{
+  height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px 0 30px;font-size:13px;font-weight:700;position:relative;background:var(--surface);
+  font-family:var(--mono);
+}
+.island{
+  position:absolute;left:50%;top:9px;transform:translateX(-50%);
+  width:104px;height:26px;border-radius:14px;background:var(--bezel);
+}
+.statusbar .sig{display:flex;align-items:center;gap:4px;font-size:11px}
+.bat{width:22px;height:11px;border:1.3px solid currentColor;border-radius:3px;position:relative;display:inline-block}
+.bat::after{content:"";position:absolute;left:1.5px;top:1.5px;bottom:1.5px;width:13px;background:currentColor;border-radius:1px}
+
+.appbar{
+  flex:none;background:var(--surface);border-bottom:1px solid var(--border);
+  padding:6px 16px 12px;display:flex;align-items:center;gap:10px;
+}
+.appbar .back{font-size:20px;color:var(--primary);line-height:1;padding:4px 6px;margin-left:-6px}
+.appbar .t{font-size:17px;font-weight:700;flex:1;min-width:0}
+.appbar .t small{display:block;font-size:11.5px;font-weight:400;color:var(--muted);font-family:var(--mono)}
+
+.body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:14px 16px 16px}
+.screen[hidden]{display:none}
+
+.tabbar{
+  flex:none;background:var(--surface);border-top:1px solid var(--border);
+  display:grid;grid-template-columns:repeat(4,1fr);padding:7px 0 20px;position:relative;
+}
+.tabbar button{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:var(--muted);padding:3px 0}
+.tabbar button .ic{font-size:18px;line-height:1}
+.tabbar button[aria-current="true"]{color:var(--primary);font-weight:700}
+.homebar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--border-strong)}
+
+/* ---------- in-phone components ---------- */
+.m-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px}
+.m-sec{font-size:11.5px;letter-spacing:.08em;color:var(--muted);font-weight:500;margin:2px 0 8px}
+.m-stack{display:flex;flex-direction:column;gap:11px}
+
+.prog{display:flex;align-items:center;gap:10px;background:var(--primary-soft);border-radius:12px;padding:10px 13px}
+.prog .n{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--primary-ink);line-height:1}
+.prog .l{font-size:12px;color:var(--primary-ink);flex:1}
+.bar{height:5px;border-radius:3px;background:rgba(0,0,0,.08);overflow:hidden;margin-top:5px}
+.bar i{display:block;height:100%;background:var(--primary);border-radius:3px}
+
+.person{
+  display:flex;align-items:center;gap:11px;width:100%;
+  background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:12px 13px;min-height:64px;
+}
+.person:active{background:var(--surface-2)}
+.person .av{width:40px;height:40px;border-radius:50%;background:var(--primary-soft);color:var(--primary-ink);display:grid;place-items:center;font-size:14px;font-weight:700;flex:none}
+.person .nm{flex:1;min-width:0}
+.person .nm b{display:block;font-size:15.5px;font-weight:700}
+.person .nm small{font-size:11.5px;color:var(--muted)}
+.person .rt{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex:none}
+
+.chip{display:inline-flex;align-items:center;gap:4px;padding:1px 9px;border-radius:999px;font-size:11px;font-weight:500;white-space:nowrap}
+.chip.done{background:var(--primary-soft);color:var(--primary-ink)}
+.chip.todo{background:var(--sev-med-soft);color:var(--sev-med)}
+.chip.high{background:var(--sev-high-soft);color:var(--sev-high)}
+.chip.ai{background:var(--ai-soft);color:var(--ai)}
+.chip.plain{background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+
+.m-btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+  min-height:52px;border-radius:14px;font-size:16px;font-weight:700;
+}
+.m-btn.primary{background:var(--primary);color:#fff}
+.m-btn.primary:active{background:var(--primary-ink)}
+.m-btn.ghost{background:var(--surface);border:1.5px solid var(--border-strong);color:var(--ink-2)}
+.m-btn.ai{background:var(--ai);color:#fff}
+.sticky-cta{
+  position:sticky;bottom:0;margin:14px -16px -16px;padding:12px 16px 14px;
+  background:linear-gradient(to top,var(--ground) 72%,transparent);
+}
+
+/* voice */
+.voicebox{background:var(--surface);border:1.5px solid var(--border-strong);border-radius:14px;padding:13px;min-height:168px;display:flex;flex-direction:column}
+.voicebox.live{border-color:var(--primary);border-style:solid}
+.voicebox .ph{color:var(--muted);font-size:14px}
+.voicebox .txt{font-size:15px;line-height:1.9;white-space:pre-wrap}
+.hint{display:flex;gap:9px;background:var(--ai-soft);border-radius:12px;padding:11px 12px;font-size:12.5px;color:var(--ai);line-height:1.7}
+.hint .k{font-size:16px;line-height:1.2;flex:none}
+.wave{display:flex;align-items:flex-end;justify-content:center;gap:4px;height:34px;margin-top:auto;padding-top:10px}
+.wave i{width:4px;border-radius:2px;background:var(--primary);height:8px;animation:w .9s ease-in-out infinite}
+.wave i:nth-child(2){animation-delay:.1s}.wave i:nth-child(3){animation-delay:.2s}
+.wave i:nth-child(4){animation-delay:.3s}.wave i:nth-child(5){animation-delay:.15s}
+.wave i:nth-child(6){animation-delay:.25s}.wave i:nth-child(7){animation-delay:.05s}
+.wave i:nth-child(8){animation-delay:.35s}.wave i:nth-child(9){animation-delay:.2s}
+@keyframes w{0%,100%{height:7px}50%{height:30px}}
+.listening{display:flex;align-items:center;justify-content:center;gap:7px;font-size:12.5px;color:var(--primary);font-weight:700;margin-top:8px}
+.rec-dot{width:8px;height:8px;border-radius:50%;background:var(--sev-high);animation:pulse 1.1s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* result tabs */
+.segtab{display:grid;grid-template-columns:repeat(3,1fr);background:var(--surface-2);border:1px solid var(--border);border-radius:11px;padding:3px;gap:3px}
+.segtab button{text-align:center;padding:7px 2px;border-radius:8px;font-size:12.5px;font-weight:500;color:var(--muted)}
+.segtab button[aria-pressed="true"]{background:var(--surface);color:var(--ink);font-weight:700;box-shadow:var(--shadow)}
+.out{border:1px dashed var(--ai);border-left:3px solid var(--ai);border-radius:12px;background:var(--surface);padding:13px}
+.out .o-h{display:flex;align-items:center;gap:7px;margin-bottom:8px;flex-wrap:wrap}
+.out .o-t{font-size:14.5px;line-height:1.95}
+.excl{background:var(--sev-med-soft);border:1px solid var(--sev-med);border-radius:12px;padding:11px 12px;font-size:12.5px;color:var(--sev-med);line-height:1.75}
+.raw{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:11px 12px;font-size:12.5px;color:var(--muted);line-height:1.8}
+.picked{display:flex;flex-wrap:wrap;gap:6px}
+.picked span{background:var(--primary-soft);color:var(--primary-ink);border-radius:8px;padding:3px 10px;font-size:12px;font-weight:500}
+
+/* vitals */
+.vgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.vcell{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:11px 13px;min-height:78px;display:flex;flex-direction:column;justify-content:center}
+.vcell .k{font-size:11.5px;color:var(--muted)}
+.vcell .v{font-family:var(--mono);font-size:23px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.25}
+.vcell .v em{font-style:normal;font-size:12px;color:var(--muted);font-weight:400;margin-left:2px}
+.vcell.warn{border-color:var(--sev-med);background:var(--sev-med-soft)}
+.vcell.warn .v,.vcell.warn .k{color:var(--sev-med)}
+.stepper{display:flex;gap:7px;margin-top:7px}
+.stepper button{flex:1;min-height:40px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border);display:grid;place-items:center;font-size:18px;font-weight:700;color:var(--ink-2)}
+.stepper button:active{background:var(--primary-soft)}
+
+/* handover */
+.ho{border-left:3px solid var(--border);padding:2px 0 2px 11px}
+.ho.high{border-left-color:var(--sev-high)}
+.ho h4{font-size:14px;font-weight:700;margin-bottom:2px}
+.ho p{font-size:13px;color:var(--ink-2);line-height:1.8}
+
+/* ---------- right panel ---------- */
+.notes{display:flex;flex-direction:column;gap:14px}
+.note-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  box-shadow:var(--shadow);overflow:hidden;
+}
+.note-card > button{
+  display:flex;align-items:center;gap:11px;width:100%;padding:13px 16px;
+}
+.note-card > button:hover{background:var(--surface-2)}
+.note-card[data-active="true"]{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-soft),var(--shadow)}
+.note-card .idx{
+  width:24px;height:24px;border-radius:7px;background:var(--surface-2);border:1px solid var(--border);
+  display:grid;place-items:center;font-family:var(--mono);font-size:11px;color:var(--muted);flex:none;
+}
+.note-card[data-active="true"] .idx{background:var(--primary);border-color:var(--primary);color:#fff}
+.note-card .h{flex:1;min-width:0}
+.note-card .h b{display:block;font-size:15px;font-weight:700}
+.note-card .h small{font-size:12px;color:var(--muted)}
+.note-card .go{font-size:12px;color:var(--primary);font-weight:500;flex:none}
+.note-card .d{padding:0 16px 16px;border-top:1px solid var(--border);padding-top:13px}
+.note-card .d p{font-size:13.5px;color:var(--ink-2);margin-bottom:10px}
+.note-card .d p:last-child{margin-bottom:0}
+.note-card .d ul{display:flex;flex-direction:column;gap:6px}
+.note-card .d li{font-size:13px;color:var(--ink-2);padding-left:16px;position:relative}
+.note-card .d li::before{content:"—";position:absolute;left:0;color:var(--primary)}
+.note-card .d b{color:var(--ink)}
+
+.principles{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;box-shadow:var(--shadow)}
+.principles h2{font-size:15px;font-weight:700;margin-bottom:4px}
+.principles .sub{font-size:12.5px;color:var(--muted);margin-bottom:14px}
+.ptable{width:100%;border-collapse:collapse;font-size:13px}
+.ptable th,.ptable td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+.ptable th{font-size:11px;letter-spacing:.05em;color:var(--muted);font-weight:500;background:var(--surface-2);white-space:nowrap}
+.ptable tr:last-child td{border-bottom:0}
+.tbl-wrap{overflow-x:auto}
+
+.callout{border-radius:12px;padding:14px 16px;font-size:13.5px;line-height:1.85}
+.callout.ai{background:var(--ai-soft);border:1px solid var(--ai);color:var(--ai)}
+.callout.ai b{color:inherit}
+.mono{font-family:var(--mono)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+
+<div class="proto">
+  <b>CareLoop</b>
+  <span>介護職員向け スマートフォン画面モック v0.1</span><span>—</span>
+  <span>iPhone Safari 想定（375pt）。データはすべて架空です。</span>
+  <div class="spacer"></div>
+  <button type="button" id="themeBtn">表示テーマ切替</button>
+</div>
+
+<div class="wrap">
+  <div class="intro">
+    <div class="eyebrow">F-18 ／ 介護職員の主端末</div>
+    <h1>話しかけるだけで、記録も、お便りも、申し送りも終わる</h1>
+    <p>介護職員は日中ずっと現場を動いており、PCの前に座る時間がありません。記録は<b>その場で、片手で、数十秒で</b>終わる必要があります。この画面は音声入力を起点に、1つの入力から3つの文体をAIが作り分ける流れを実際に操作できます。右の項目をタップすると、その画面に切り替わります。</p>
+  </div>
+
+  <div class="split">
+    <!-- ================= PHONE ================= -->
+    <div class="stage">
+      <div class="phone">
+        <div class="viewport">
+          <div class="statusbar">
+            <div class="island" aria-hidden="true"></div>
+            <span>10:24</span>
+            <span class="sig">●●●○ Wi-Fi <span class="bat" aria-label="バッテリー"></span></span>
+          </div>
+
+          <div class="appbar">
+            <button type="button" class="back" id="backBtn" hidden aria-label="戻る">‹</button>
+            <div class="t" id="barTitle">本日の担当<small id="barSub">2026年9月11日（金）・さくら苑</small></div>
+            <span class="chip plain" id="barChip">山口</span>
+          </div>
+
+          <div class="body" id="phoneBody">
+
+            <!-- ---- 1 ホーム ---- -->
+            <section class="screen" id="p-home">
+              <div class="m-stack">
+                <div class="prog">
+                  <div class="n">11<span style="font-size:13px;color:var(--muted)">/17</span></div>
+                  <div class="l">記録の入力が終わった方<div class="bar"><i style="width:65%"></i></div></div>
+                </div>
+
+                <div>
+                  <div class="m-sec">お迎え時に口頭でお伝えすること　2件</div>
+                  <div class="m-stack">
+                    <div class="m-card verbal" style="border-color:var(--sev-med);background:var(--sev-med-soft)">
+                      <div style="display:flex;align-items:flex-start;gap:9px">
+                        <div style="flex:1;min-width:0">
+                          <b style="font-size:14.5px;color:var(--sev-med)">佐藤 ハナ 様のご家族へ</b>
+                          <p style="font-size:13px;color:var(--sev-med);line-height:1.75">食事中のむせ込みについて。連絡帳にも記載済みですが、状況をご説明ください。</p>
+                        </div>
+                      </div>
+                      <button type="button" class="m-btn ghost done-btn" style="min-height:42px;font-size:14px;margin-top:9px">お伝えしました</button>
+                    </div>
+                    <div class="m-card verbal" style="border-color:var(--sev-med);background:var(--sev-med-soft)">
+                      <div style="flex:1;min-width:0">
+                        <b style="font-size:14.5px;color:var(--sev-med)">中村 みつ 様のご家族へ</b>
+                        <p style="font-size:13px;color:var(--sev-med);line-height:1.75">午後の微熱（37.4℃）について。ご自宅での様子を確認してください。</p>
+                      </div>
+                      <button type="button" class="m-btn ghost done-btn" style="min-height:42px;font-size:14px;margin-top:9px">お伝えしました</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="m-sec">未記録　6名</div>
+                  <div class="m-stack">
+                    <button type="button" class="person" data-go="record">
+                      <span class="av">ハナ</span>
+                      <span class="nm"><b>佐藤 ハナ</b><small>88歳・要介護2</small></span>
+                      <span class="rt"><span class="chip todo">未記録</span><span class="chip high">リスク 高</span></span>
+                    </button>
+                    <button type="button" class="person" data-go="record">
+                      <span class="av">みつ</span>
+                      <span class="nm"><b>中村 みつ</b><small>85歳・要介護2</small></span>
+                      <span class="rt"><span class="chip todo">未記録</span></span>
+                    </button>
+                    <button type="button" class="person" data-go="record">
+                      <span class="av">正一</span>
+                      <span class="nm"><b>高木 正一</b><small>79歳・要支援2</small></span>
+                      <span class="rt"><span class="chip todo">未記録</span></span>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="m-sec">記録済み　11名</div>
+                  <div class="m-stack">
+                    <button type="button" class="person" data-go="result">
+                      <span class="av">太郎</span>
+                      <span class="nm"><b>鈴木 太郎</b><small>82歳・要介護1</small></span>
+                      <span class="rt"><span class="chip done">✓ 記録済</span></span>
+                    </button>
+                    <button type="button" class="person" data-go="result">
+                      <span class="av">フミ</span>
+                      <span class="nm"><b>小林 フミ</b><small>87歳・要介護2</small></span>
+                      <span class="rt"><span class="chip done">✓ 記録済</span></span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- ---- 2 記録入力（音声） ---- -->
+            <section class="screen" id="p-record" hidden>
+              <div class="m-stack">
+                <div class="hint">
+                  <span class="k" aria-hidden="true">🎤</span>
+                  <span>キーボード左下の<b>マイクボタン</b>を押して、今日の様子をそのまま話してください。言い直しても大丈夫です。</span>
+                </div>
+
+                <div class="voicebox" id="vbox">
+                  <div class="ph" id="vph">例：「今日は入浴のとき浴槽またぐの右足あがり悪くて…」</div>
+                  <div class="txt" id="vtxt" hidden></div>
+                  <div id="vlive" hidden>
+                    <div class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                    <div class="listening"><span class="rec-dot"></span>聞き取り中…</div>
+                  </div>
+                </div>
+
+                <button type="button" class="m-btn ghost" id="demoBtn">▶ 音声入力を再現する（デモ）</button>
+
+                <div class="raw">
+                  入力された文章は<b>原文のまま保存</b>されます。AIが整えた文章と、いつでも見比べられます。
+                </div>
+
+                <div class="sticky-cta">
+                  <button type="button" class="m-btn ai" id="toResult" disabled>AIで整えて確認する</button>
+                </div>
+              </div>
+            </section>
+
+            <!-- ---- 3 AI整形結果 ---- -->
+            <section class="screen" id="p-result" hidden>
+              <div class="m-stack">
+                <div class="segtab" id="outTabs" role="group" aria-label="出力の切り替え">
+                  <button type="button" aria-pressed="true" data-t="record">記録用</button>
+                  <button type="button" aria-pressed="false" data-t="family">ご家族向け</button>
+                  <button type="button" aria-pressed="false" data-t="handover">申し送り</button>
+                </div>
+
+                <div class="out">
+                  <div class="o-h">
+                    <span class="chip ai">AI生成（未確認）</span>
+                    <span class="chip plain mono" id="outLen">104字</span>
+                  </div>
+                  <p class="o-t" id="outText">入浴時、浴槽をまたぐ際に右足の挙上が不十分であり、腰部を支持して介助を実施。昼食は主食5割程度の摂取。食事中に1回のむせ込みあり。レクリエーション（塗り絵）に参加されたが、約20分で疲労感の訴えがあり休憩された。</p>
+                </div>
+
+                <div class="excl" id="outExcl" hidden>
+                  <b>口頭でも必ずお伝えください</b><br>
+                  <b>食事中のむせ込み</b> ／ 上の文書にも記載しています。頻度や食形態との関係で意味が変わるため、ご家族が質問できる形でお伝えする必要があります。
+                  <div style="margin-top:9px;display:flex;align-items:center;gap:7px">
+                    <span class="chip done">✓ 送迎担当のタスクに追加しました</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="m-sec">音声から自動で入力された項目</div>
+                  <div class="picked">
+                    <span>昼食 主食 5割</span><span>入浴 実施</span><span>ヒヤリハットの可能性</span>
+                  </div>
+                </div>
+
+                <div class="raw">
+                  <b>あなたが話した内容（原文）</b><br>
+                  えーっと今日は入浴のとき浴槽またぐの右足あがり悪くて腰支えた あと昼ごはん半分くらい むせこみ一回あり レクは塗り絵で20分くらいで疲れたって言って休んでた
+                </div>
+
+                <div class="raw" style="color:var(--sev-med);border-color:var(--sev-med)">
+                  <b>AIが補わなかったこと</b><br>
+                  副菜の摂取量は話に出ていなかったため、空欄のままにしています。
+                </div>
+
+                <div class="sticky-cta">
+                  <button type="button" class="m-btn primary" data-go="home">この内容で保存する</button>
+                </div>
+              </div>
+            </section>
+
+            <!-- ---- 4 バイタル ---- -->
+            <section class="screen" id="p-vitals" hidden>
+              <div class="m-stack">
+                <div class="vgrid">
+                  <div class="vcell"><div class="k">体温</div><div class="v">36.4<em>℃</em></div></div>
+                  <div class="vcell"><div class="k">脈拍</div><div class="v">72<em>回/分</em></div></div>
+                  <div class="vcell warn"><div class="k">血圧（収縮期）</div><div class="v">142<em>mmHg</em></div></div>
+                  <div class="vcell"><div class="k">SpO2</div><div class="v">97<em>%</em></div></div>
+                </div>
+
+                <div class="m-card">
+                  <div class="k" style="font-size:11.5px;color:var(--muted)">水分摂取量（合計）</div>
+                  <div style="font-family:var(--mono);font-size:28px;font-weight:700">960<span style="font-size:13px;color:var(--muted)"> ml</span></div>
+                  <div class="stepper">
+                    <button type="button" aria-label="100ml減らす">−100</button>
+                    <button type="button" aria-label="100ml増やす">＋100</button>
+                    <button type="button" aria-label="200ml増やす">＋200</button>
+                  </div>
+                </div>
+
+                <div class="excl">
+                  目標の 1,200ml に届いていません。<b>4日連続</b>で未達です。おやつの時間に一度お声がけをお願いします。
+                </div>
+
+                <div class="m-sec">昼食の摂取</div>
+                <div class="vgrid">
+                  <div class="vcell"><div class="k">主食</div><div class="v">5<em>割</em></div></div>
+                  <div class="vcell"><div class="k">副菜</div><div class="v">—</div></div>
+                </div>
+
+                <div class="sticky-cta">
+                  <button type="button" class="m-btn primary" data-go="record">つづけて記録を入力する</button>
+                </div>
+              </div>
+            </section>
+
+            <!-- ---- 5 申し送り ---- -->
+            <section class="screen" id="p-handover" hidden>
+              <div class="m-stack">
+                <div class="out">
+                  <div class="o-h"><span class="chip ai">AI生成（未確認）</span><span class="chip plain mono">16:32</span></div>
+                  <div class="m-stack">
+                    <div class="ho high">
+                      <h4>佐藤 ハナ 様</h4>
+                      <p>食事中にむせ込み1回あり。次回の食事時は形態と姿勢を要確認。水分960mlで4日連続の未達。</p>
+                    </div>
+                    <div class="ho high">
+                      <h4>中村 みつ 様</h4>
+                      <p>午後に37.4℃の微熱。自覚症状なし。翌利用日に再検温をお願いします。</p>
+                    </div>
+                    <div class="ho">
+                      <h4>高木 正一 様</h4>
+                      <p>初回の個別機能訓練を実施。「思ったより動ける」と前向きな発言あり。次回も同メニューで継続。</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="raw">
+                  各職員が音声で入力した記録の <span class="mono">handover_note</span> を集約して生成しています。
+                </div>
+                <div class="sticky-cta">
+                  <button type="button" class="m-btn primary">確認しました</button>
+                </div>
+              </div>
+            </section>
+
+          </div>
+
+          <nav class="tabbar" id="tabbar">
+            <button type="button" data-go="home" aria-current="true"><span class="ic" aria-hidden="true">☗</span>ホーム</button>
+            <button type="button" data-go="record"><span class="ic" aria-hidden="true">🎤</span>記録</button>
+            <button type="button" data-go="vitals"><span class="ic" aria-hidden="true">✚</span>バイタル</button>
+            <button type="button" data-go="handover"><span class="ic" aria-hidden="true">☰</span>申し送り</button>
+            <div class="homebar" aria-hidden="true"></div>
+          </nav>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= NOTES ================= -->
+    <div class="notes">
+
+      <div class="note-card" data-screen="home" data-active="true">
+        <button type="button" data-go="home">
+          <span class="idx">1</span>
+          <span class="h"><b>ホーム｜本日の担当</b><small>アプリを開いて最初に見る画面</small></span>
+          <span class="go">表示 →</span>
+        </button>
+        <div class="d">
+          <p><b>未記録の方を先頭に置きます。</b>職員が知りたいのは「誰がまだ終わっていないか」だけです。記録済みの一覧は下にたたみます。</p>
+          <ul>
+            <li>1タップで記録画面へ。間に確認画面を挟みません</li>
+            <li>各行の高さは 64px。手袋をしたままでも押し間違えません</li>
+            <li>リスクの高い方には赤いバッジを出し、記録時に注意が向くようにします</li>
+          </ul>
+          <p style="margin-top:12px"><b>「お迎え時に口頭でお伝えすること」（F-20）を最上部に置きます。</b>AIが <span class="mono">requires_verbal_contact</span> を立てた事項が、送迎担当者のタスクとして自動で並びます。「お伝えしました」を押すと<b>誰が・いつ・どなたに・何を伝えたか</b>が記録されます。未完了のまま日をまたぐと管理者へ通知されます。</p>
+          <p><b>連絡帳に書いてあるから伝えた、にはしません。</b>文書にも記載したうえで、口頭連絡の実行までをシステムで追跡します。介護保険制度上、事故・ヒヤリハットにはご家族への報告義務があります。</p>
+        </div>
+      </div>
+
+      <div class="note-card" data-screen="record">
+        <button type="button" data-go="record">
+          <span class="idx">2</span>
+          <span class="h"><b>記録入力｜音声</b><small>この画面が本システムの入口です</small></span>
+          <span class="go">表示 →</span>
+        </button>
+        <div class="d">
+          <p><b>iOS標準キーボードの音声入力を使います。</b>アプリ側で音声認識を実装しません。職員が普段LINEで使っているのと同じ操作なので、教える必要がありません。</p>
+          <ul>
+            <li><b>アプリが受け取るのは文字列だけです。</b>音声データは自社サーバーにも外部APIにも送りません</li>
+            <li>Web Speech API は iOS Safari で連続認識が止まるため採用しません。対応ブラウザでは補助的に提供します</li>
+            <li>音声入力は句読点が入らず口語になります。<b>だからAI整形がセットで必要</b>になります</li>
+            <li>入力された生テキストは原文のまま保存し、整形結果と突き合わせられるようにします</li>
+          </ul>
+          <p>「▶ 音声入力を再現する」を押すと、実際に話した内容が流し込まれる様子を確認できます。</p>
+        </div>
+      </div>
+
+      <div class="note-card" data-screen="result">
+        <button type="button" data-go="result">
+          <span class="idx">3</span>
+          <span class="h"><b>AI整形結果｜1入力・3出力</b><small>F-LLM-05 音声入力の三面変換</small></span>
+          <span class="go">表示 →</span>
+        </button>
+        <div class="d">
+          <p><b>同じ出来事でも、読む相手によって適切な書き方は違います。</b>職員が3回書き分けるのは現実的ではありません。ここをAIが引き受けます。タブを切り替えて見比べてください。</p>
+          <ul>
+            <li><b>1回のAPI呼び出しで3文体を生成します。</b>3回に分けると同じ入力トークンを3回払うことになります</li>
+            <li><b>身体状況の事実は必ず文書にも書きます。</b>そのうえで、説明が必要な事項には「お迎えの際に詳しくご説明します」という約束を添え、<b>口頭連絡を送迎担当のタスクとして発行し、完了を記録します</b>。「伝えたつもり」を仕組みで潰します<br><span style="font-size:12px;color:var(--muted)">※当初は不安を与える事項を文書から外す設計でしたが、口頭連絡が漏れると何も伝わらないため、レビューを経て変更しました</span></li>
+            <li>文書から外すのは<b>他のご利用者の情報・未確定の推測・診断に類する記述</b>の3つだけです</li>
+            <li><b>「AIが補わなかったこと」も返させます。</b>話に出ていない数値を勝手に埋めさせない仕組みです</li>
+            <li>「昼ごはん半分」から主食5割が自動で選ばれます。非構造の話し言葉から構造化データを取り出す部分です</li>
+            <li>保存前に必ず職員が確認します。AIの出力がそのまま確定することはありません</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="note-card" data-screen="vitals">
+        <button type="button" data-go="vitals">
+          <span class="idx">4</span>
+          <span class="h"><b>バイタル・食事</b><small>数値だけを素早く入れる画面</small></span>
+          <span class="go">表示 →</span>
+        </button>
+        <div class="d">
+          <p><b>数値入力にキーボードを使わせません。</b>水分量は ＋100 / ＋200 のボタンで加算します。手が濡れている状態で小さな数字キーを押すのは現実的ではありません。</p>
+          <ul>
+            <li>基準を外れた値は入力直後にその場で色が変わります（血圧142が該当）</li>
+            <li>目標未達が続いている項目は、理由を添えて次の行動を促します</li>
+            <li>未入力の項目は「0」ではなく「—」と表示します。<b>測っていないことと、ゼロだったことは違います</b></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="note-card" data-screen="handover">
+        <button type="button" data-go="handover">
+          <span class="idx">5</span>
+          <span class="h"><b>申し送り</b><small>読むだけの画面</small></span>
+          <span class="go">表示 →</span>
+        </button>
+        <div class="d">
+          <p>各職員が音声で入力した記録から生成された <span class="mono">handover_note</span> を集約します。要注意の方を先頭に並べ替えます。</p>
+          <ul>
+            <li>入力を求めません。シフトに入る前に30秒で読み終わることだけを目指します</li>
+            <li>ここでもAI生成であることを明示し、確認した職員の記録を残します</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="principles">
+        <h2>片手操作のための設計原則</h2>
+        <p class="sub">介護現場の制約から逆算した、この画面のルールです。</p>
+        <div class="tbl-wrap">
+          <table class="ptable">
+            <thead><tr><th>現場の制約</th><th>画面設計での対応</th></tr></thead>
+            <tbody>
+              <tr><td>片手しか空いていない<br><span style="font-size:11.5px;color:var(--muted)">もう片方で利用者を支えている</span></td><td>主要操作をすべて画面下部3分の1に配置。上部は情報表示のみ</td></tr>
+              <tr><td>手袋・手が濡れている</td><td>タップ領域は最小 44×44px。隣接要素との間隔を8px以上確保</td></tr>
+              <tr><td>立ったまま・移動中</td><td>1つの記録を1画面で完結させ、画面遷移を挟まない</td></tr>
+              <tr><td>書く時間がない</td><td>音声入力を起点にし、文章化はAIに任せる</td></tr>
+              <tr><td>屋外（送迎中）の明るい場所</td><td>本文と背景のコントラスト比 4.5:1 以上を確保</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="callout ai">
+        <b>この画面で説明したいこと。</b>介護記録アプリの失敗は、たいてい「現場が入力してくれない」ことで起きます。入力項目を増やせば記録は詳しくなりますが、現場は使わなくなります。<b>入力の負荷を下げたまま、出力の価値を上げる</b>——音声入力とLLMの組み合わせは、そのトレードオフを崩せる数少ない手段です。だからこのアプリは、機能一覧ではなくこの1画面から設計しました。
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var root = document.documentElement;
+  document.getElementById('themeBtn').addEventListener('click', function(){
+    var cur = root.getAttribute('data-theme');
+    if(!cur){ cur = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
+    root.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+  });
+
+  var TITLES = {
+    home:     ['本日の担当', '2026年9月11日（金）・さくら苑', '山口', false],
+    record:   ['佐藤 ハナ 様', '9月11日（金）の記録', '未記録', true],
+    result:   ['AIが整えました', '佐藤 ハナ 様 ／ 9月11日', '確認', true],
+    vitals:   ['バイタル・食事', '佐藤 ハナ 様 ／ 9月11日', '入力中', true],
+    handover: ['申し送り', '2026年9月11日（金）', '17名', false]
+  };
+
+  var body = document.getElementById('phoneBody');
+  var barT = document.getElementById('barTitle');
+  var barS = document.getElementById('barSub');
+  var barC = document.getElementById('barChip');
+  var back = document.getElementById('backBtn');
+  var tabbar = document.getElementById('tabbar');
+
+  function show(name){
+    document.querySelectorAll('.screen').forEach(function(s){ s.hidden = (s.id !== 'p-' + name); });
+    var t = TITLES[name];
+    barT.childNodes[0].nodeValue = t[0];
+    barS.textContent = t[1];
+    barC.textContent = t[2];
+    back.hidden = !t[3];
+    tabbar.querySelectorAll('button').forEach(function(b){
+      b.setAttribute('aria-current', b.dataset.go === name ? 'true' : 'false');
+    });
+    document.querySelectorAll('.note-card').forEach(function(c){
+      c.setAttribute('data-active', c.dataset.screen === name ? 'true' : 'false');
+    });
+    body.scrollTop = 0;
+  }
+  document.querySelectorAll('[data-go]').forEach(function(b){
+    b.addEventListener('click', function(){ show(b.dataset.go); });
+  });
+  back.addEventListener('click', function(){ show('home'); });
+
+  // ---- verbal contact tasks (F-20) ----
+  document.querySelectorAll('.done-btn').forEach(function(b){
+    b.addEventListener('click', function(){
+      var card = b.closest('.verbal');
+      if(card.dataset.done === 'true') return;
+      card.dataset.done = 'true';
+      card.style.borderColor = 'var(--primary)';
+      card.style.background = 'var(--primary-soft)';
+      card.querySelectorAll('b,p').forEach(function(e){ e.style.color = 'var(--primary-ink)'; });
+      var now = new Date();
+      var hh = String(now.getHours()).padStart(2,'0'), mm = String(now.getMinutes()).padStart(2,'0');
+      b.textContent = '✓ ' + hh + ':' + mm + '　山口 が記録しました';
+      b.style.color = 'var(--primary-ink)';
+      b.style.borderColor = 'var(--primary)';
+      b.disabled = true;
+      b.style.cursor = 'default';
+    });
+  });
+
+  // ---- voice input demo ----
+  var SPOKEN = 'えーっと今日は入浴のとき浴槽またぐの右足あがり悪くて腰支えた あと昼ごはん半分くらい むせこみ一回あり レクは塗り絵で20分くらいで疲れたって言って休んでた';
+  var vbox = document.getElementById('vbox'), vph = document.getElementById('vph');
+  var vtxt = document.getElementById('vtxt'), vlive = document.getElementById('vlive');
+  var demoBtn = document.getElementById('demoBtn'), toResult = document.getElementById('toResult');
+  var timer = null;
+
+  demoBtn.addEventListener('click', function(){
+    if(timer){ clearInterval(timer); }
+    vph.hidden = true; vtxt.hidden = false; vlive.hidden = false;
+    vbox.classList.add('live'); vtxt.textContent = ''; toResult.disabled = true;
+    demoBtn.textContent = '■ 停止';
+    var i = 0;
+    timer = setInterval(function(){
+      i += 2;
+      vtxt.textContent = SPOKEN.slice(0, i);
+      if(i >= SPOKEN.length){
+        clearInterval(timer); timer = null;
+        vlive.hidden = true; vbox.classList.remove('live');
+        toResult.disabled = false;
+        demoBtn.textContent = '↺ もう一度再現する';
+      }
+    }, 55);
+  });
+  toResult.addEventListener('click', function(){ show('result'); });
+
+  // ---- output tabs ----
+  var OUT = {
+    record: {
+      text:'入浴時、浴槽をまたぐ際に右足の挙上が不十分であり、腰部を支持して介助を実施。昼食は主食5割程度の摂取。食事中に1回のむせ込みあり。レクリエーション（塗り絵）に参加されたが、約20分で疲労感の訴えがあり休憩された。',
+      excl:false
+    },
+    family: {
+      text:'本日もお元気にお過ごしでした。入浴では手すりを使いながら、職員がお手伝いして湯船に浸かっていただきました。塗り絵では色を丁寧に塗っておられました。お食事の際に一度むせ込みがございましたので、お迎えの際に職員より詳しくご説明させていただきます。',
+      excl:true
+    },
+    handover: {
+      text:'食事中にむせ込み1回あり。次回の食事時は形態と姿勢を要確認。入浴は腰部支持での介助を継続。水分960mlで目標未達。',
+      excl:false
+    }
+  };
+  var outTabs = document.getElementById('outTabs');
+  var outText = document.getElementById('outText');
+  var outExcl = document.getElementById('outExcl');
+  var outLen  = document.getElementById('outLen');
+  outTabs.addEventListener('click', function(e){
+    var b = e.target.closest('button'); if(!b) return;
+    outTabs.querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed','false'); });
+    b.setAttribute('aria-pressed','true');
+    var d = OUT[b.dataset.t];
+    outText.textContent = d.text;
+    outLen.textContent = d.text.length + '字';
+    outExcl.hidden = !d.excl;
+  });
+  outLen.textContent = OUT.record.text.length + '字';
+})();
+</script>
