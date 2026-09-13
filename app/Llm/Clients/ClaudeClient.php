@@ -14,6 +14,7 @@ use App\Llm\Data\LlmRequest;
 use App\Llm\Data\LlmResponse;
 use App\Llm\Data\TokenUsage;
 use App\Llm\Exceptions\LlmException;
+use App\Llm\Support\JsonSchema;
 
 /**
  * Anthropic の Claude API を呼び出す実装。
@@ -85,6 +86,9 @@ final class ClaudeClient implements LlmClient
      * 受け取った値は上位で必ず検証する。スキーマに合っていても、
      * 根拠のない内容が入っていることはあるため（多層の検証）。
      *
+     * JsonSchema::forApi() を通すのは、object ノードへの
+     * additionalProperties: false の付与を書き忘れても 400 にならないようにするため。
+     *
      * @return array<string, mixed>|null
      */
     private function outputConfig(LlmRequest $request): ?array
@@ -96,7 +100,7 @@ final class ClaudeClient implements LlmClient
         return [
             'format' => [
                 'type' => 'json_schema',
-                'schema' => $request->jsonSchema,
+                'schema' => JsonSchema::forApi($request->jsonSchema),
             ],
         ];
     }

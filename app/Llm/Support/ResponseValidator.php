@@ -4,6 +4,7 @@ namespace App\Llm\Support;
 
 use App\Llm\Data\LlmResponse;
 use App\Llm\Exceptions\LlmException;
+use JsonException;
 
 /**
  * LLMの応答を JSON として取り出し、期待するスキーマに合っているかを検証する。
@@ -12,6 +13,12 @@ use App\Llm\Exceptions\LlmException;
  * JSONのパース失敗もスキーマ不一致も、HTTP としては 200 で返ってくる。
  * 通信は成功しているため、通常のHTTPエラーハンドリングでは捕捉できない。
  * 「APIは呼べたのに中身が使えない」という失敗を独立して扱う必要がある。
+ *
+ * 【構造化出力を指定していても検証する】
+ * 実機で確認したところ、SDK の TextBlock::$parsed は populate されず、
+ * JSONは本文として返ってきた。つまり構造化出力を指定していても、
+ * 本文からのパースと検証は必要になる。
+ * またスキーマに合っていても、根拠のない内容が入っていることはある。
  *
  * 【検証器を自前で書いている理由】
  * 汎用の JSON Schema ライブラリを入れる選択肢もあったが、採用しなかった。
@@ -70,7 +77,7 @@ final class ResponseValidator
 
         try {
             $decoded = json_decode($trimmed, true, 512, JSON_THROW_ON_ERROR);
-        } catch (\JsonException $e) {
+        } catch (JsonException $e) {
             throw LlmException::jsonParseFailed(
                 'JSONとして解析できませんでした：'.$e->getMessage()
             );
@@ -97,20 +104,44 @@ final class ResponseValidator
     {
         $violations = [];
         $label = $path === '' ? 'ルート' : $path;
+        $types = $this->typesOf($schema);
 
-        $type = $schema['type'] ?? null;
+        if ($types !== []) {
+            if ($data === null) {
+                // null が許されているなら、それ以上は検証しない。
+                // 「わからないものは埋めない」ことを許すための扱い。
+                if (in_array('null', $types, true)) {
+                    return [];
+                }
 
-        if (is_string($type) && ! $this->matchesType($data, $type)) {
-            return [sprintf('%s は %s である必要がありますが、%s でした。', $label, $type, get_debug_type($data))];
+                return [sprintf('%s は null にできません。', $label)];
+            }
+
+            if (! $this->matchesAnyType($data, $types)) {
+                return [sprintf(
+                    '%s は %s である必要がありますが、%s でした。',
+                    $label,
+                    implode(' または ', $types),
+                    get_debug_type($data),
+                )];
+            }
         }
 
         if (isset($schema['enum']) && is_array($schema['enum']) && ! in_array($data, $schema['enum'], true)) {
-            $allowed = implode(' / ', array_map(static fn (mixed $v): string => (string) json_encode($v, JSON_UNESCAPED_UNICODE), $schema['enum']));
+            $allowed = implode(' / ', array_map(
+                static fn (mixed $v): string => (string) json_encode($v, JSON_UNESCAPED_UNICODE),
+                $schema['enum'],
+            ));
 
-            return [sprintf('%s に使える値は %s のいずれかですが、%s でした。', $label, $allowed, (string) json_encode($data, JSON_UNESCAPED_UNICODE))];
+            return [sprintf(
+                '%s に使える値は %s のいずれかですが、%s でした。',
+                $label,
+                $allowed,
+                (string) json_encode($data, JSON_UNESCAPED_UNICODE),
+            )];
         }
 
-        if ($type === 'object' && is_array($data)) {
+        if (in_array('object', $types, true) && is_array($data)) {
             $required = $schema['required'] ?? [];
 
             if (is_array($required)) {
@@ -133,12 +164,6 @@ final class ResponseValidator
                         continue;
                     }
 
-                    // null 許容の項目は、値が null なら中身の検証をしない。
-                    // 「わからないものは埋めない」ことを許すための扱い。
-                    if ($data[$key] === null && ($childSchema['nullable'] ?? false) === true) {
-                        continue;
-                    }
-
                     $violations = [
                         ...$violations,
                         ...$this->check($data[$key], $childSchema, $path === '' ? $key : "{$path}.{$key}"),
@@ -147,16 +172,55 @@ final class ResponseValidator
             }
         }
 
-        if ($type === 'array' && is_array($data) && isset($schema['items']) && is_array($schema['items'])) {
+        if (in_array('array', $types, true) && is_array($data) && isset($schema['items']) && is_array($schema['items'])) {
+            /** @var array<string, mixed> $itemSchema */
+            $itemSchema = $schema['items'];
+
             foreach (array_values($data) as $index => $item) {
                 $violations = [
                     ...$violations,
-                    ...$this->check($item, $schema['items'], "{$label}[{$index}]"),
+                    ...$this->check($item, $itemSchema, "{$label}[{$index}]"),
                 ];
             }
         }
 
         return $violations;
+    }
+
+    /**
+     * type は文字列でも配列でも書ける（JSON Schema の union 型）。
+     * null を許す項目は ["integer", "null"] のように書く。
+     *
+     * @param  array<string, mixed>  $schema
+     * @return list<string>
+     */
+    private function typesOf(array $schema): array
+    {
+        $type = $schema['type'] ?? null;
+
+        if (is_string($type)) {
+            return [$type];
+        }
+
+        if (is_array($type)) {
+            return array_values(array_filter($type, is_string(...)));
+        }
+
+        return [];
+    }
+
+    /**
+     * @param  list<string>  $types
+     */
+    private function matchesAnyType(mixed $data, array $types): bool
+    {
+        foreach ($types as $type) {
+            if ($this->matchesType($data, $type)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function matchesType(mixed $data, string $type): bool

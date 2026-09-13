@@ -168,11 +168,13 @@ final class VoiceTransformPrompt implements FeaturePrompt
                 'detected_items' => [
                     'type' => 'object',
                     'required' => ['meal_staple_rate', 'meal_side_rate', 'water_ml', 'bathing_performed', 'incident_suspected'],
+                    // null を許す項目は JSON Schema 標準の union 型で書く。
+                    // OpenAPI の nullable: true は JSON Schema の記法ではないため使わない。
                     'properties' => [
-                        'meal_staple_rate' => ['type' => 'integer', 'nullable' => true, 'enum' => [0, 30, 50, 80, 100, null]],
-                        'meal_side_rate' => ['type' => 'integer', 'nullable' => true, 'enum' => [0, 30, 50, 80, 100, null]],
-                        'water_ml' => ['type' => 'integer', 'nullable' => true],
-                        'bathing_performed' => ['type' => 'boolean', 'nullable' => true],
+                        'meal_staple_rate' => ['type' => ['integer', 'null'], 'enum' => [0, 30, 50, 80, 100, null]],
+                        'meal_side_rate' => ['type' => ['integer', 'null'], 'enum' => [0, 30, 50, 80, 100, null]],
+                        'water_ml' => ['type' => ['integer', 'null']],
+                        'bathing_performed' => ['type' => ['boolean', 'null']],
                         'incident_suspected' => ['type' => 'boolean'],
                     ],
                 ],
