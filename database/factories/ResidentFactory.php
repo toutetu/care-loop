@@ -59,7 +59,10 @@ class ResidentFactory extends Factory
 
         return [
             'facility_id' => Facility::factory(),
-            'care_level_id' => CareLevel::factory(),
+            // 要介護度はマスタなので、すでに存在するものがあれば再利用する。
+            // 利用者を複数作るたびに新しいマスタ行を作ると、code の一意制約に
+            // ぶつかってテストが不安定になるため。
+            'care_level_id' => CareLevel::query()->inRandomOrder()->value('id') ?? CareLevel::factory(),
             'name' => $surname[0].' '.$given[0],
             'name_kana' => $surname[1].' '.$given[1],
             'insurance_number' => fake()->numerify('##########'),

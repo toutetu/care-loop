@@ -191,8 +191,8 @@ final class FakeClient implements LlmClient
             ],
 
             LlmFeature::RiskDetection => [
-                'assessed_at' => '2026-09-11T10:00:00+09:00',
                 'no_risk_detected' => false,
+                'confidence' => 'medium',
                 'risks' => [
                     [
                         'category' => 'malnutrition',
