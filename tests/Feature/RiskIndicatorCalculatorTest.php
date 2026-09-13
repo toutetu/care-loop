@@ -12,6 +12,7 @@ use App\Models\Resident;
 use App\Models\ServiceRecord;
 use App\Models\VitalSign;
 use App\Models\WeightRecord;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -241,6 +242,24 @@ class RiskIndicatorCalculatorTest extends TestCase
         $second = $this->calculate();
 
         $this->assertEquals($first, $second);
+    }
+
+    public function test_イミュータブルな日付でも呼び出せる(): void
+    {
+        // このアプリは Date::use(CarbonImmutable::class) を設定しているため、
+        // now() は CarbonImmutable を返す。型ヒントをミュータブルな Carbon に
+        // していると、テストは通るのに実アプリからの呼び出しで TypeError になる。
+        // デプロイして初めて壊れる類のバグなので、ここで固定する。
+        $this->weight('2026-08-01', 42.6);
+        $this->weight('2026-09-01', 41.1);
+
+        $indicators = $this->calculator->calculate(
+            $this->resident->fresh(),
+            CarbonImmutable::parse('2026-06-01'),
+            CarbonImmutable::parse('2026-09-30'),
+        );
+
+        $this->assertCount(1, $indicators);
     }
 
     // ---------------------------------------------------------------

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\LlmFeature;
 use App\Enums\LlmJobStatus;
+use Carbon\CarbonInterface;
 use Database\Factories\LlmJobFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -12,7 +13,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
-use Illuminate\Support\Carbon;
 use Throwable;
 
 /**
@@ -27,16 +27,16 @@ use Throwable;
  * @property LlmFeature $feature
  * @property string|null $target_type
  * @property int|null $target_id
- * @property Carbon|null $period_from
- * @property Carbon|null $period_to
+ * @property CarbonInterface|null $period_from
+ * @property CarbonInterface|null $period_to
  * @property LlmJobStatus $status
  * @property int|null $requested_by
  * @property array<string, mixed>|null $result
  * @property string|null $error_type
  * @property string|null $error_message
  * @property int $attempts
- * @property Carbon|null $started_at
- * @property Carbon|null $finished_at
+ * @property CarbonInterface|null $started_at
+ * @property CarbonInterface|null $finished_at
  */
 #[Fillable([
     'feature', 'target_type', 'target_id', 'period_from', 'period_to',

@@ -2,19 +2,19 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Database\Factories\WeightRecordFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
 
 /**
  * 体重記録（月次）。低栄養リスクのルールベース判定に使う。
  *
  * @property int $id
  * @property int $resident_id
- * @property Carbon $measured_on
+ * @property CarbonInterface $measured_on
  * @property float $weight_kg
  * @property int|null $recorded_by
  */

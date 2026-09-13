@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Database\Factories\CarePlanFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -9,15 +10,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Carbon;
 
 /**
  * 通所介護計画書。
  *
  * @property int $id
  * @property int $resident_id
- * @property Carbon $period_from
- * @property Carbon $period_to
+ * @property CarbonInterface $period_from
+ * @property CarbonInterface $period_to
  * @property string $long_term_goal
  * @property string $status
  * @property int|null $created_by
@@ -53,7 +53,7 @@ class CarePlan extends Model
      * @param  Builder<static>  $query
      * @return Builder<static>
      */
-    public function scopeCovering(Builder $query, Carbon $date): Builder
+    public function scopeCovering(Builder $query, CarbonInterface $date): Builder
     {
         return $query->where('period_from', '<=', $date)->where('period_to', '>=', $date);
     }

@@ -13,7 +13,7 @@ use App\Models\CarePlanGoal;
 use App\Models\GoalProgressReport;
 use App\Models\LlmJob;
 use App\Models\Resident;
-use Illuminate\Support\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -43,8 +43,8 @@ final class SummarizeGoalProgress
     public function handle(
         Resident $resident,
         CarePlan $plan,
-        Carbon $from,
-        Carbon $to,
+        CarbonInterface $from,
+        CarbonInterface $to,
         ?LlmJob $job = null,
     ): GoalProgressReport {
         $goals = $plan->goals()->get();
@@ -98,8 +98,8 @@ final class SummarizeGoalProgress
         Resident $resident,
         CarePlan $plan,
         $goals,
-        Carbon $from,
-        Carbon $to,
+        CarbonInterface $from,
+        CarbonInterface $to,
         PiiMasker $masker,
     ): string {
         $lines = [
@@ -167,8 +167,8 @@ final class SummarizeGoalProgress
         Resident $resident,
         CarePlan $plan,
         $goals,
-        Carbon $from,
-        Carbon $to,
+        CarbonInterface $from,
+        CarbonInterface $to,
         array $result,
         ?LlmJob $job,
     ): GoalProgressReport {

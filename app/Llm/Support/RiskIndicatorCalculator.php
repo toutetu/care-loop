@@ -9,7 +9,7 @@ use App\Models\IncidentReport;
 use App\Models\Resident;
 use App\Models\ServiceRecord;
 use App\Models\VitalSign;
-use Illuminate\Support\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
 /**
@@ -37,7 +37,7 @@ final class RiskIndicatorCalculator
     /**
      * @return list<RiskIndicator>
      */
-    public function calculate(Resident $resident, Carbon $from, Carbon $to): array
+    public function calculate(Resident $resident, CarbonInterface $from, CarbonInterface $to): array
     {
         $records = $resident->serviceRecords()
             ->attended()
@@ -62,7 +62,7 @@ final class RiskIndicatorCalculator
      *
      * 介護現場で広く使われている栄養スクリーニングの目安に基づく。
      */
-    private function weightLoss(Resident $resident, Carbon $from, Carbon $to): ?RiskIndicator
+    private function weightLoss(Resident $resident, CarbonInterface $from, CarbonInterface $to): ?RiskIndicator
     {
         $latest = $resident->weightRecords()
             ->whereBetween('measured_on', [$from, $to])

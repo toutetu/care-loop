@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Database\Factories\VitalSignFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
 
 /**
  * バイタル。1日に複数回測定するため記録から分離している（第1正規形）。
@@ -17,7 +17,7 @@ use Illuminate\Support\Carbon;
  *
  * @property int $id
  * @property int $service_record_id
- * @property Carbon $measured_at
+ * @property CarbonInterface $measured_at
  * @property string|null $timing
  * @property float|null $temperature
  * @property int|null $systolic_bp

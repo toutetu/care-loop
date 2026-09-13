@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\BlindIndex;
+use Carbon\CarbonInterface;
 use Database\Factories\ResidentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -12,7 +13,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Carbon;
 
 /**
  * 利用者。要配慮個人情報（健康状態・病歴）を保持する唯一のテーブル。
@@ -39,11 +39,11 @@ use Illuminate\Support\Carbon;
  * @property string|null $phone 暗号化
  * @property string|null $family_contact 暗号化
  * @property string|null $medical_history 暗号化
- * @property Carbon|null $birth_date
+ * @property CarbonInterface|null $birth_date
  * @property string|null $gender
  * @property array<int, int>|null $service_weekdays
- * @property Carbon|null $started_at
- * @property Carbon|null $ended_at
+ * @property CarbonInterface|null $started_at
+ * @property CarbonInterface|null $ended_at
  * @property string|null $care_manager_name
  * @property-read int|null $age
  */

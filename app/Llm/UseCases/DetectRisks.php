@@ -15,7 +15,7 @@ use App\Models\LlmJob;
 use App\Models\Resident;
 use App\Models\RiskAssessment;
 use App\Models\ServiceRecord;
-use Illuminate\Support\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -46,7 +46,7 @@ final class DetectRisks
     /**
      * ルールベースの指標とLLMの指摘をまとめた評価を1件作成して返す。
      */
-    public function handle(Resident $resident, Carbon $from, Carbon $to, ?LlmJob $job = null): RiskAssessment
+    public function handle(Resident $resident, CarbonInterface $from, CarbonInterface $to, ?LlmJob $job = null): RiskAssessment
     {
         $indicators = $this->calculator->calculate($resident, $from, $to);
 
@@ -112,8 +112,8 @@ final class DetectRisks
      */
     private function buildUserMessage(
         Resident $resident,
-        Carbon $from,
-        Carbon $to,
+        CarbonInterface $from,
+        CarbonInterface $to,
         array $indicators,
         $records,
         PiiMasker $masker,
@@ -171,8 +171,8 @@ final class DetectRisks
      */
     private function persist(
         Resident $resident,
-        Carbon $from,
-        Carbon $to,
+        CarbonInterface $from,
+        CarbonInterface $to,
         array $indicators,
         array $result,
         ?LlmJob $job,

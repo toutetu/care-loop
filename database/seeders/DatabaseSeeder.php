@@ -2,24 +2,20 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
+/**
+ * 投入順は依存関係のとおり。
+ *   1. 要介護度マスタ（制度上決まっている7区分）
+ *   2. デモデータ（架空の事業所・職員・ご利用者と、約3ヶ月分の記録）
+ */
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        $this->call([
+            CareLevelSeeder::class,
+            DemoDataSeeder::class,
         ]);
     }
 }

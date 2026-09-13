@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Database\Factories\CarePlanGoalFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Carbon;
 
 /**
  * 短期目標。計画書から分離した繰り返し項目（第1正規形）。
@@ -19,7 +19,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $care_plan_id
  * @property string $goal_text
- * @property Carbon|null $target_date
+ * @property CarbonInterface|null $target_date
  * @property int $sort_order
  */
 #[Fillable(['care_plan_id', 'goal_text', 'target_date', 'sort_order'])]

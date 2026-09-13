@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Database\Factories\RiskAssessmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -9,7 +10,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Carbon;
 
 /**
  * リスク兆候抽出（F-LLM-02）の実行単位。個々の指摘は riskFindings に持つ。
@@ -21,13 +21,13 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $resident_id
  * @property int|null $llm_job_id
- * @property Carbon $period_from
- * @property Carbon $period_to
- * @property Carbon $assessed_at
+ * @property CarbonInterface $period_from
+ * @property CarbonInterface $period_to
+ * @property CarbonInterface $assessed_at
  * @property bool $no_risk_detected
  * @property string|null $confidence
  * @property int|null $reviewed_by
- * @property Carbon|null $reviewed_at
+ * @property CarbonInterface|null $reviewed_at
  */
 #[Fillable([
     'resident_id', 'llm_job_id', 'period_from', 'period_to', 'assessed_at',

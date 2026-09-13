@@ -3,13 +3,13 @@
 namespace App\Models;
 
 use App\Enums\LlmFeature;
+use Carbon\CarbonInterface;
 use Database\Factories\LlmRequestFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
 
 /**
  * LLM呼び出しの監査ログ（F-LLM-07）。API呼び出し1回につき1行。
@@ -74,7 +74,7 @@ class LlmRequest extends Model
     }
 
     /** 指定月の合計コスト。月次予算の上限判定に使う。 */
-    public static function monthlySpendUsd(?Carbon $month = null): float
+    public static function monthlySpendUsd(?CarbonInterface $month = null): float
     {
         $month ??= now();
 
@@ -88,7 +88,7 @@ class LlmRequest extends Model
      * これが 0 のまま推移するときは、システムプロンプトに毎回変わる値
      * （日時など）が混ざっていてキャッシュが効いていない可能性が高い。
      */
-    public static function cacheHitRate(?Carbon $month = null): float
+    public static function cacheHitRate(?CarbonInterface $month = null): float
     {
         $month ??= now();
         $range = [$month->copy()->startOfMonth(), $month->copy()->endOfMonth()];

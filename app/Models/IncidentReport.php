@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Database\Factories\IncidentReportFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -9,7 +10,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Carbon;
 
 /**
  * ヒヤリハット・事故報告。
@@ -24,7 +24,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $reported_by
  * @property string $category
  * @property string $severity
- * @property Carbon $occurred_at
+ * @property CarbonInterface $occurred_at
  * @property string $description
  * @property bool $family_notified
  */

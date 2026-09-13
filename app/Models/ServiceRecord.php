@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Database\Factories\ServiceRecordFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -10,7 +11,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Carbon;
 
 /**
  * サービス提供記録。介護保険法上の法定文書。
@@ -27,7 +27,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $resident_id
  * @property int|null $recorded_by
- * @property Carbon $service_date
+ * @property CarbonInterface $service_date
  * @property string $attendance_status
  * @property int|null $total_water_ml
  * @property string|null $raw_note
@@ -37,7 +37,7 @@ use Illuminate\Support\Carbon;
  * @property bool $record_text_edited_by_human
  * @property bool $family_text_edited_by_human
  * @property int|null $llm_job_id
- * @property Carbon|null $confirmed_at
+ * @property CarbonInterface|null $confirmed_at
  */
 #[Fillable([
     'resident_id', 'recorded_by', 'service_date', 'arrival_time', 'departure_time',
@@ -71,7 +71,7 @@ class ServiceRecord extends Model
      * @param  Builder<static>  $query
      * @return Builder<static>
      */
-    public function scopeInPeriod(Builder $query, Carbon $from, Carbon $to): Builder
+    public function scopeInPeriod(Builder $query, CarbonInterface $from, CarbonInterface $to): Builder
     {
         return $query->whereBetween('service_date', [$from, $to]);
     }

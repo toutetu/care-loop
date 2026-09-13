@@ -4,7 +4,7 @@ namespace App\Llm\Support;
 
 use App\Models\Resident;
 use App\Models\ServiceRecord;
-use Illuminate\Support\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
 /**
@@ -27,7 +27,7 @@ final class PeriodStatistics
     /**
      * @return list<string>
      */
-    public function lines(Resident $resident, Carbon $from, Carbon $to): array
+    public function lines(Resident $resident, CarbonInterface $from, CarbonInterface $to): array
     {
         $records = $resident->serviceRecords()
             ->inPeriod($from, $to)
@@ -116,7 +116,7 @@ final class PeriodStatistics
         );
     }
 
-    private function weight(Resident $resident, Carbon $from, Carbon $to): ?string
+    private function weight(Resident $resident, CarbonInterface $from, CarbonInterface $to): ?string
     {
         $records = $resident->weightRecords()
             ->whereBetween('measured_on', [$from, $to])
@@ -176,7 +176,7 @@ final class PeriodStatistics
         return sprintf('- バイタル: 発熱 %d回 / 血圧の逸脱 %d回 / SpO2低下 %d回', $fever, $bp, $spo2);
     }
 
-    private function incidents(Resident $resident, Carbon $from, Carbon $to): string
+    private function incidents(Resident $resident, CarbonInterface $from, CarbonInterface $to): string
     {
         $count = $resident->incidentReports()
             ->whereBetween('occurred_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])

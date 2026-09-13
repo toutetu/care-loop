@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Database\Factories\GoalProgressReportFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -9,7 +10,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Carbon;
 
 /**
  * 目標進捗要約（F-LLM-01）の実行単位。モニタリング記録の下書きとして使う。
@@ -18,12 +18,12 @@ use Illuminate\Support\Carbon;
  * @property int $resident_id
  * @property int|null $care_plan_id
  * @property int|null $llm_job_id
- * @property Carbon $period_from
- * @property Carbon $period_to
+ * @property CarbonInterface $period_from
+ * @property CarbonInterface $period_to
  * @property string|null $overall_summary
  * @property array<int, string>|null $next_actions
  * @property string|null $confidence
- * @property Carbon|null $reviewed_at
+ * @property CarbonInterface|null $reviewed_at
  */
 #[Fillable([
     'resident_id', 'care_plan_id', 'llm_job_id', 'period_from', 'period_to',
