@@ -10,6 +10,7 @@ use App\Llm\Exceptions\LlmException;
 use App\Llm\Support\ResponseValidator;
 use App\Models\LlmJob;
 use App\Models\LlmRequest as LlmRequestRecord;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Sleep;
 
 /**
@@ -67,16 +68,26 @@ final class LlmGateway
         $networkRetries = 0;
         $correctionUsed = false;
 
+        // 合計時間の締切。再試行と訂正が重なって数分に達すると、その前に
+        // 手前のゲートウェイが切り、職員には英語のエラーページだけが出る。
+        $deadlineAt = now()->addSeconds(max(1, (int) config('llm.deadline')));
+
         while (true) {
             try {
                 $response = $this->attempt($current, $networkRetries, $job);
 
                 return $this->validator->validate($response, $schema);
             } catch (LlmException $exception) {
+                // 締切を過ぎていれば、もう一度送らずにここで終える。
+                // 間に合わないと分かっている送信は、費用だけを増やす。
+                if (now()->greaterThanOrEqualTo($deadlineAt)) {
+                    throw $exception;
+                }
+
                 // 1. 時間を置けば直るかもしれない失敗
                 if ($exception->isRetryable() && $networkRetries < $maxRetries) {
                     $networkRetries++;
-                    $this->waitBeforeRetry($exception, $networkRetries);
+                    $this->waitBeforeRetry($exception, $networkRetries, $deadlineAt);
 
                     continue;
                 }
@@ -151,19 +162,28 @@ final class LlmGateway
      * （1秒 → 2秒 → 4秒）にジッターを加える。
      * ジッターを入れるのは、同時に失敗した複数のジョブが
      * まったく同じ時刻に再送して再び詰まるのを避けるため。
+     *
+     * ただし待つ時間には上限を置く。Anthropic の Retry-After は60秒以上に
+     * なることがあり、リクエストの中でそれだけ眠ると、待っているあいだに
+     * 手前のゲートウェイが切る。待った意味がなくなるうえ、職員には英語の
+     * エラーページだけが残る。締切までの残り時間も超えない。
      */
-    private function waitBeforeRetry(LlmException $exception, int $attempt): void
+    private function waitBeforeRetry(LlmException $exception, int $attempt, CarbonInterface $deadlineAt): void
     {
-        if ($exception->retryAfterSeconds !== null) {
-            Sleep::for($exception->retryAfterSeconds)->seconds();
+        $delayMs = $exception->retryAfterSeconds !== null
+            ? $exception->retryAfterSeconds * 1000
+            : (int) config('llm.retry_base_delay_ms') * (2 ** ($attempt - 1)) + random_int(0, 250);
 
+        $capMs = max(0, (int) config('llm.max_retry_wait')) * 1000;
+        $remainingMs = max(0, now()->diffInMilliseconds($deadlineAt, absolute: false));
+
+        $waitMs = (int) min($delayMs, $capMs, $remainingMs);
+
+        if ($waitMs <= 0) {
             return;
         }
 
-        $base = (int) config('llm.retry_base_delay_ms');
-        $delayMs = $base * (2 ** ($attempt - 1)) + random_int(0, 250);
-
-        Sleep::for($delayMs)->milliseconds();
+        Sleep::for($waitMs)->milliseconds();
     }
 
     /**
