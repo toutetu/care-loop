@@ -90,7 +90,10 @@ class FortifyServiceProvider extends ServiceProvider
     private function configureViews(): void
     {
         Fortify::loginView(fn (Request $request) => Inertia::render('auth/login', [
-            'canResetPassword' => Features::enabled(Features::resetPasswords()),
+            // Fortify の機能としては常に有効にしてある（ビルドを環境変数に
+            // 左右させないため）。実際に使えるかは設定側で決まる。
+            'canResetPassword' => Features::enabled(Features::resetPasswords())
+                && config('careloop.features.password_reset'),
             'status' => $request->session()->get('status'),
             'demoAccounts' => $this->demoAccounts(),
         ]));
