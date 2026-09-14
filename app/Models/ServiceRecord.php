@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\BathingType;
 use Carbon\CarbonInterface;
 use Database\Factories\ServiceRecordFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -30,6 +31,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property CarbonInterface $service_date
  * @property string $attendance_status
  * @property int|null $total_water_ml
+ * @property BathingType|null $bathing_type 入浴・清拭。null は未記録
  * @property string|null $raw_note
  * @property string|null $record_text
  * @property string|null $family_text
@@ -41,7 +43,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 #[Fillable([
     'resident_id', 'recorded_by', 'service_date', 'arrival_time', 'departure_time',
-    'attendance_status', 'absence_reason', 'total_water_ml', 'bathing_performed',
+    'attendance_status', 'absence_reason', 'total_water_ml', 'bathing_type',
     'raw_note', 'record_text', 'family_text', 'handover_note',
     'record_text_edited_by_human', 'family_text_edited_by_human',
     'llm_job_id', 'confirmed_at',
@@ -58,7 +60,7 @@ class ServiceRecord extends Model
             'confirmed_at' => 'datetime',
             'record_text_edited_by_human' => 'boolean',
             'family_text_edited_by_human' => 'boolean',
-            'bathing_performed' => 'boolean',
+            'bathing_type' => BathingType::class,
         ];
     }
 

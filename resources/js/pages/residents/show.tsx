@@ -53,7 +53,7 @@ type ServiceRecordRow = {
     temperature: number | null;
     waterMl: number | null;
     stapleRate: number | null;
-    bathing: boolean | null;
+    bathing: string | null;
     recorder: string | null;
     confirmed: boolean;
     hasAiDraft: boolean;
@@ -451,7 +451,7 @@ export default function ResidentShow({
                                         <th className="pb-2 font-medium">体温</th>
                                         <th className="pb-2 font-medium">水分</th>
                                         <th className="pb-2 font-medium">主食</th>
-                                        <th className="pb-2 font-medium">入浴</th>
+                                        <th className="pb-2 font-medium">入浴・清拭</th>
                                         <th className="pb-2 font-medium">記録</th>
                                         <th className="pb-2" />
                                     </tr>
@@ -486,11 +486,7 @@ export default function ResidentShow({
                                                 {row.stapleRate !== null ? `${row.stapleRate}%` : '—'}
                                             </td>
                                             <td className="py-2">
-                                                {row.bathing === null
-                                                    ? '—'
-                                                    : row.bathing
-                                                      ? 'あり'
-                                                      : 'なし'}
+                                                {row.bathing ?? '—'}
                                             </td>
                                             <td className="py-2">
                                                 <RecordStatusBadge

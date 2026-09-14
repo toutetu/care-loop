@@ -239,13 +239,10 @@
             <tr>
                 <th>入浴</th>
                 <td>
-                    @if ($record->bathing_performed === true)
-                        お入りになりました
-                    @elseif ($record->bathing_performed === false)
-                        本日はお休みされました
-                    @else
-                        —
-                    @endif
+                    {{-- 記録がないことと、実施しなかったことは違う。
+                         未記録を「お休みされました」と書くと、ご家族に
+                         誤った説明をすることになる。 --}}
+                    {{ $record->bathing_type?->familyLabel() ?? '—' }}
                 </td>
             </tr>
             <tr>

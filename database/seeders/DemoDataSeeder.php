@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\BathingType;
 use App\Enums\LlmFeature;
 use App\Enums\LlmJobStatus;
 use App\Enums\ProgressStatus;
@@ -317,8 +318,13 @@ class DemoDataSeeder extends Seeder
                 'departure_time' => $this->minutesToTime($departure),
                 'attendance_status' => 'attended',
                 'total_water_ml' => $this->water($key, $fromEnd, $index, $seed),
-                // 入浴は利用のたびに実施するのが基本。体調等で見送る日もある
-                'bathing_performed' => ($index + $seed) % 7 !== 5,
+                // 入浴は利用のたびに実施するのが基本。体調等で見送る日は
+                // 清拭に切り替える。何もしない日はほとんどない。
+                'bathing_type' => match (($index + $seed) % 7) {
+                    5 => BathingType::Wipe,
+                    6 => BathingType::None,
+                    default => BathingType::Bath,
+                },
                 'record_text' => $this->note($key, $fromEnd, $index),
                 'family_text' => $this->familyNote($key, $fromEnd, $index),
                 'handover_note' => $this->handoverNote($key, $fromEnd),

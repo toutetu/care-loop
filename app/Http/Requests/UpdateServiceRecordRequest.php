@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\BathingType;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * サービス提供記録の更新。
@@ -35,7 +37,8 @@ class UpdateServiceRecordRequest extends FormRequest
             'departure_time' => ['nullable', 'date_format:H:i', 'after:arrival_time'],
             'attendance_status' => ['required', 'in:attended,absent,cancelled'],
             'absence_reason' => ['nullable', 'string', 'max:255'],
-            'bathing_performed' => ['nullable', 'boolean'],
+            // 空文字は「未記録」として扱う。選択を外せる必要がある。
+            'bathing_type' => ['nullable', Rule::enum(BathingType::class)],
             'total_water_ml' => ['nullable', 'integer', 'min:0', 'max:5000'],
 
             'vital.temperature' => ['nullable', 'numeric', 'min:30', 'max:43'],
@@ -68,6 +71,7 @@ class UpdateServiceRecordRequest extends FormRequest
             'departure_time' => '帰宅時刻',
             'attendance_status' => '利用状況',
             'total_water_ml' => '水分摂取量',
+            'bathing_type' => '入浴・清拭',
             'vital.temperature' => '体温',
             'vital.systolic_bp' => '収縮期血圧',
             'vital.diastolic_bp' => '拡張期血圧',

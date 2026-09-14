@@ -312,7 +312,7 @@ class ResidentController extends Controller
                 'temperature' => $vital?->temperature,
                 'waterMl' => $record->total_water_ml,
                 'stapleRate' => $lunch?->staple_rate,
-                'bathing' => $record->bathing_performed,
+                'bathing' => $record->bathing_type?->label(),
                 'recorder' => $record->recorder?->name,
                 'confirmed' => $record->isConfirmed(),
                 'hasAiDraft' => $record->hasUnconfirmedAiDraft(),

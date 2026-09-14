@@ -77,7 +77,9 @@ final class JsonSchema
      */
     private static function dropTypeBesideEnum(array $schema): array
     {
-        if (isset($schema['enum']) && is_array($schema['type'])) {
+        // type を書いていないノードもある（enum だけで値が定まる場合）。
+        // 未定義の添字を読まないよう ?? を挟む。
+        if (isset($schema['enum']) && is_array($schema['type'] ?? null)) {
             unset($schema['type']);
         }
 

@@ -116,6 +116,15 @@ final class VoiceTransformPrompt implements FeaturePrompt
             摂取割合は 0 / 30 / 50 / 80 / 100 のいずれかに丸めてください。
             「半分くらい」は 50、「ほとんど食べられた」は 80 とします。
 
+            bathing_type は次のいずれかです。
+            - bath : 入浴・シャワー浴を行った
+            - wipe : 清拭のみ（体を拭いた。「お風呂は見送って体を拭いた」など）
+            - none : 入浴も清拭も行わなかったと明言されている
+
+            入浴を見送った日でも清拭は行うことが多く、両者は別の行為です。
+            どちらか判断できないときは null にしてください。
+            言及がないことを none にしてはいけません。
+
             # 出力
             指定されたJSON形式のみを出力してください。前後に説明文を付けないでください。
             PROMPT;
@@ -167,14 +176,15 @@ final class VoiceTransformPrompt implements FeaturePrompt
 
                 'detected_items' => [
                     'type' => 'object',
-                    'required' => ['meal_staple_rate', 'meal_side_rate', 'water_ml', 'bathing_performed', 'incident_suspected'],
+                    'required' => ['meal_staple_rate', 'meal_side_rate', 'water_ml', 'bathing_type', 'incident_suspected'],
                     // null を許す項目は JSON Schema 標準の union 型で書く。
                     // OpenAPI の nullable: true は JSON Schema の記法ではないため使わない。
                     'properties' => [
                         'meal_staple_rate' => ['type' => ['integer', 'null'], 'enum' => [0, 30, 50, 80, 100, null]],
                         'meal_side_rate' => ['type' => ['integer', 'null'], 'enum' => [0, 30, 50, 80, 100, null]],
                         'water_ml' => ['type' => ['integer', 'null']],
-                        'bathing_performed' => ['type' => ['boolean', 'null']],
+                        // 入浴を見送った日も清拭は行う。真偽値では両者の区別が消える。
+                        'bathing_type' => ['enum' => ['bath', 'wipe', 'none', null]],
                         'incident_suspected' => ['type' => 'boolean'],
                     ],
                 ],

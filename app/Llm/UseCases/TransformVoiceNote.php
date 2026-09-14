@@ -2,6 +2,7 @@
 
 namespace App\Llm\UseCases;
 
+use App\Enums\BathingType;
 use App\Llm\Data\LlmRequest;
 use App\Llm\LlmGateway;
 use App\Llm\Prompts\VoiceTransformPrompt;
@@ -239,8 +240,12 @@ final class TransformVoiceNote
             $updates['total_water_ml'] = $detected['water_ml'];
         }
 
-        if ($record->bathing_performed === null && is_bool($detected['bathing_performed'] ?? null)) {
-            $updates['bathing_performed'] = $detected['bathing_performed'];
+        $bathingType = is_string($detected['bathing_type'] ?? null)
+            ? BathingType::tryFrom($detected['bathing_type'])
+            : null;
+
+        if ($record->bathing_type === null && $bathingType !== null) {
+            $updates['bathing_type'] = $bathingType;
         }
 
         if ($updates !== []) {

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\BathingType;
 use App\Enums\VerbalContactStatus;
 use App\Models\Facility;
 use App\Models\MealRecord;
@@ -99,20 +100,32 @@ class DailyFamilyReportTest extends TestCase
 
     public function test_入浴の有無が載る(): void
     {
-        $this->record->update(['bathing_performed' => true]);
+        $this->record->update(['bathing_type' => BathingType::Bath]);
 
         $this->actingAs($this->staff)->get($this->url())
             ->assertSee('入浴')
             ->assertSee('お入りになりました');
     }
 
+    public function test_清拭は入浴とは別の表現で載る(): void
+    {
+        // 入浴を見送った日も清拭は行う。「お休みされました」と書くと、
+        // 何もしなかったようにご家族へ伝わる。
+        $this->record->update(['bathing_type' => BathingType::Wipe]);
+
+        $this->actingAs($this->staff)->get($this->url())
+            ->assertSee('体を拭いてさっぱりしていただきました')
+            ->assertDontSee('本日はお休みされました');
+    }
+
     public function test_入浴の記録がなければ実施なしとは書かない(): void
     {
         // 記録がないことと、実施しなかったことは違う
-        $this->record->update(['bathing_performed' => null]);
+        $this->record->update(['bathing_type' => null]);
 
         $this->actingAs($this->staff)->get($this->url())
-            ->assertDontSee('本日はお休みされました');
+            ->assertDontSee('本日はお休みされました')
+            ->assertDontSee('お入りになりました');
     }
 
     public function test_事業所からのお知らせが載る(): void

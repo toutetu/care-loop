@@ -185,7 +185,7 @@ final class FakeClient implements LlmClient
                     'meal_staple_rate' => 50,
                     'meal_side_rate' => null,
                     'water_ml' => null,
-                    'bathing_performed' => true,
+                    'bathing_type' => 'bath',
                     'incident_suspected' => true,
                 ],
             ],
