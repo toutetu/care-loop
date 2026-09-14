@@ -53,9 +53,34 @@ return [
     |
     */
 
-    'timeout' => (int) env('LLM_TIMEOUT_SECONDS', 60),
+    'timeout' => (int) env('LLM_TIMEOUT_SECONDS', 30),
 
     'max_retries' => (int) env('LLM_MAX_RETRIES', 2),
+
+    /*
+     * 1回の実行にかけてよい合計時間。
+     *
+     * AI処理はHTTPリクエストの中で同期実行している。1回あたりの timeout だけを
+     * 決めていると、再試行と訂正が重なって合計が数分に達することがある。
+     * その前に手前のゲートウェイ（Cloudflare）が切り、職員には英語の
+     * 「Gateway time-out」だけが出る。何が起きたのかも、次に何をすればよいのかも
+     * 伝わらない。
+     *
+     * 締切を先に決め、間に合わないと分かった時点でアプリ側から失敗を返す。
+     * そうすれば「混み合っています」のような日本語の案内を出せる。
+     *
+     * 45秒にしているのは、ゲートウェイの制限より十分手前で返すため。
+     * 根本的には実行をキューへ移すべきで、これはその前の安全弁である。
+     */
+    'deadline' => (int) env('LLM_DEADLINE_SECONDS', 45),
+
+    /*
+     * 再送までに待ってよい上限。
+     *
+     * Anthropic の Retry-After は60秒以上になることがある。リクエストの中で
+     * それだけ眠ると、待っているあいだにゲートウェイが切る。待つ意味がない。
+     */
+    'max_retry_wait' => (int) env('LLM_MAX_RETRY_WAIT_SECONDS', 5),
 
     'retry_base_delay_ms' => 1000,
 

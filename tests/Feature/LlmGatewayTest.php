@@ -101,11 +101,66 @@ class LlmGatewayTest extends TestCase
     public function test_retry_afterが指定されていればその秒数だけ待つ(): void
     {
         // 自前の指数バックオフより、サーバーが指定した待ち時間を優先する
+        config(['llm.max_retry_wait' => 10]);
+
         $this->fake->queueFailure(LlmErrorType::RateLimit, retryAfterSeconds: 7);
 
         $this->gateway->send($this->request(), $this->schema());
 
         Sleep::assertSlept(fn (CarbonInterval $duration): bool => (int) $duration->totalSeconds === 7);
+    }
+
+    public function test_retry_afterが長すぎる場合は上限までしか待たない(): void
+    {
+        // AI処理はHTTPリクエストの中で動く。Anthropic の Retry-After は
+        // 60秒以上になることがあり、その間眠ると手前のゲートウェイが先に切る。
+        // 待った意味がなくなり、職員には英語のエラーページだけが残る。
+        config(['llm.max_retry_wait' => 5]);
+
+        $this->fake->queueFailure(LlmErrorType::RateLimit, retryAfterSeconds: 90);
+
+        $this->gateway->send($this->request(), $this->schema());
+
+        Sleep::assertSlept(fn (CarbonInterval $duration): bool => (int) $duration->totalSeconds === 5);
+    }
+
+    public function test_合計時間の締切を過ぎたら再送しない(): void
+    {
+        // 間に合わないと分かっている送信は、費用だけを増やす。
+        // アプリ側から失敗を返せば、日本語の案内を出せる。
+        //
+        // 待ち時間で時計を進めたいので、時刻を固定したうえで
+        // Sleep と Carbon を同期させる。固定しないと now() は実時刻を返し、
+        // 眠っても時計が進まない。
+        $this->freezeTime();
+        Sleep::fake(syncWithCarbon: true);
+
+        config([
+            'llm.deadline' => 10,
+            'llm.max_retry_wait' => 6,
+            'llm.max_retries' => 5,
+        ]);
+
+        // 失敗を続けさせる。締切がなければ5回まで再送するはず。
+        $this->fake
+            ->queueFailure(LlmErrorType::RateLimit, retryAfterSeconds: 6)
+            ->queueFailure(LlmErrorType::RateLimit, retryAfterSeconds: 6)
+            ->queueFailure(LlmErrorType::RateLimit, retryAfterSeconds: 6)
+            ->queueFailure(LlmErrorType::RateLimit, retryAfterSeconds: 6)
+            ->queueFailure(LlmErrorType::RateLimit, retryAfterSeconds: 6);
+
+        try {
+            $this->gateway->send($this->request(), $this->schema());
+            $this->fail('締切を過ぎても例外にならなかった');
+        } catch (LlmException) {
+            // 6秒待って再送、もう一度失敗した時点で12秒経過し締切を超える。
+            // 上限の5回ではなく、そこで止まる。
+            $this->assertSame(
+                3,
+                $this->fake->callCount(),
+                '締切を過ぎた時点で再送をやめる（上限の5回まで送らない）',
+            );
+        }
     }
 
     public function test_再送の上限を超えたら諦めて例外になる(): void
