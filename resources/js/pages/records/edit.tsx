@@ -93,6 +93,17 @@ export default function RecordEdit({ record, verbalContacts, mealForms, canEdit 
     const [rawNote, setRawNote] = useState(record.rawNote ?? '');
     const [mealForm, setMealForm] = useState(record.lunch.meal_form ?? '');
 
+    // 別の記録へ移ったら入力中の値を捨てる。
+    // Inertia は同じ画面のあいだコンポーネントを作り直さないため、
+    // これがないと前のご利用者の入力が残ったまま次の記録に表示される。
+    const [shownRecordId, setShownRecordId] = useState(record.id);
+
+    if (shownRecordId !== record.id) {
+        setShownRecordId(record.id);
+        setRawNote(record.rawNote ?? '');
+        setMealForm(record.lunch.meal_form ?? '');
+    }
+
     const { supported, listening, start, stop } = useSpeechRecognition((text) =>
         // 認識結果は追記する。上書きすると、それまで話した内容が消える。
         setRawNote((current) => (current === '' ? text : `${current}${text}`)),
@@ -206,17 +217,22 @@ export default function RecordEdit({ record, verbalContacts, mealForms, canEdit 
                                 options={{ preserveScroll: true }}
                             >
                                 {({ processing }) => (
-                                    <Button
-                                        type="submit"
-                                        disabled={processing || rawNote.trim() === ''}
-                                    >
-                                        {processing ? (
-                                            <Spinner className="size-4" />
-                                        ) : (
-                                            <Sparkles className="size-4" aria-hidden />
-                                        )}
-                                        記録・ご家族向け・申し送りに変換
-                                    </Button>
+                                    <>
+                                        {/* 押した時点の原文を一緒に送る。保存を忘れたまま
+                                            押しても、画面に見えている内容で変換される。 */}
+                                        <input type="hidden" name="raw_note" value={rawNote} />
+                                        <Button
+                                            type="submit"
+                                            disabled={processing || rawNote.trim() === ''}
+                                        >
+                                            {processing ? (
+                                                <Spinner className="size-4" />
+                                            ) : (
+                                                <Sparkles className="size-4" aria-hidden />
+                                            )}
+                                            記録・ご家族向け・申し送りに変換
+                                        </Button>
+                                    </>
                                 )}
                             </Form>
                         )}
@@ -289,7 +305,10 @@ export default function RecordEdit({ record, verbalContacts, mealForms, canEdit 
                                 />
 
                                 <div className="mt-4 flex items-center gap-2">
+                                    {/* 音声から抽出された値が入ることがある。
+                                        サーバーの値が変わったら作り直す（TextBlock と同じ理由） */}
                                     <Checkbox
+                                        key={String(record.bathingPerformed)}
                                         id="bathing_performed"
                                         name="bathing_performed"
                                         value="1"
@@ -370,6 +389,7 @@ export default function RecordEdit({ record, verbalContacts, mealForms, canEdit 
                                     <div className="grid gap-2">
                                         <Label htmlFor="staple_rate">主食（%）</Label>
                                         <Input
+                                            key={String(record.lunch.staple_rate)}
                                             id="staple_rate"
                                             name="lunch[staple_rate]"
                                             type="number"
@@ -381,6 +401,7 @@ export default function RecordEdit({ record, verbalContacts, mealForms, canEdit 
                                     <div className="grid gap-2">
                                         <Label htmlFor="side_rate">副菜（%）</Label>
                                         <Input
+                                            key={String(record.lunch.side_rate)}
                                             id="side_rate"
                                             name="lunch[side_rate]"
                                             type="number"
@@ -412,6 +433,7 @@ export default function RecordEdit({ record, verbalContacts, mealForms, canEdit 
                                     <div className="grid gap-2">
                                         <Label htmlFor="total_water_ml">水分合計（ml）</Label>
                                         <Input
+                                            key={String(record.totalWaterMl)}
                                             id="total_water_ml"
                                             name="total_water_ml"
                                             type="number"
@@ -472,7 +494,12 @@ export default function RecordEdit({ record, verbalContacts, mealForms, canEdit 
                             {canEdit && (
                                 <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background/95 px-4 py-3 backdrop-blur">
                                     <label className="flex items-center gap-2 text-sm">
+                                        {/* AIが文章を書き直すと確定は外れる。チェックの状態も
+                                            必ず作り直す。外れたはずのチェックが入ったまま
+                                            残ると、職員が読んでいないAIの下書きが
+                                            そのまま確定できてしまう。 */}
                                         <Checkbox
+                                            key={String(record.confirmedAt)}
                                             name="confirm"
                                             value="1"
                                             defaultChecked={record.confirmedAt !== null}
@@ -534,7 +561,13 @@ function TextBlock({
                 )}
                 <span className="text-xs text-muted-foreground">{hint}</span>
             </div>
+            {/* サーバーの値が変わったら作り直す。
+                非制御の入力は再描画してもDOMの値が残るため、AIが書き直した文章が
+                画面に出ないままになる。key を値に結びつけることで、
+                サーバー側が変わったときだけ差し替わる。職員が手で書き換えた内容は、
+                サーバーの値が変わっていない限り消えない。 */}
             <textarea
+                key={defaultValue ?? ''}
                 id={id}
                 name={id}
                 rows={rows}

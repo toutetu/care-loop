@@ -54,6 +54,11 @@ class LlmActionController extends Controller
     ): RedirectResponse {
         Gate::authorize('update', $serviceRecord);
 
+        // 画面で入力した原文をそのまま受け取る。
+        // 「保存してから変換」の2手順にすると、保存を忘れたまま押した職員には
+        // 何も起きていないように見える。押した時点の内容で動くのが自然である。
+        $this->storeRawNote($request, $serviceRecord);
+
         if (trim((string) $serviceRecord->raw_note) === '') {
             return back()->with('error', '先に音声入力または原文の入力を行ってください。');
         }
@@ -119,6 +124,26 @@ class LlmActionController extends Controller
     }
 
     // ---------------------------------------------------------------
+
+    /**
+     * 画面から送られた原文を記録へ反映する。
+     *
+     * 【変換の前に保存する】
+     * raw_note はAIが何を変えたのかを後から検証するための原本である。
+     * 変換に使った文章が残っていなければ、検証のしようがない。
+     */
+    private function storeRawNote(Request $request, ServiceRecord $record): void
+    {
+        $rawNote = $request->string('raw_note')->trim()->value();
+
+        if ($rawNote === '' || $rawNote === (string) $record->raw_note) {
+            return;
+        }
+
+        // 上限は記録本文と同じ。音声入力が延々と続いた状態でそのまま
+        // 送ると、トークンも費用も跳ね上がる。
+        $record->forceFill(['raw_note' => mb_substr($rawNote, 0, 5000)])->save();
+    }
 
     /**
      * 実行を包む共通処理。ジョブの記録と、失敗時の画面表示をここに集約する。

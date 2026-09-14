@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\UserRole;
 use App\Models\Facility;
+use App\Models\LlmJob;
 use App\Models\MealRecord;
 use App\Models\Resident;
 use App\Models\ServiceRecord;
@@ -159,6 +160,27 @@ class ServiceRecordScreenTest extends TestCase
         ]);
 
         $this->assertNotNull($this->record->refresh()->confirmed_at);
+    }
+
+    public function test_確定済みの記録もai下書きなら未確認として画面に渡る(): void
+    {
+        // AIが文章を書き直すと確定は外れる（TransformVoiceNote）。
+        // 画面がこの状態を確定済みとして描くと、職員が読んでいない下書きが
+        // そのまま法定文書になってしまう。
+        // どのAI実行で生成したかが分からない文章は、AI下書きとは扱わない。
+        // 職員が自分で書いた文章まで未確認として警告すると、警告が意味を失う。
+        $this->record->forceFill([
+            'record_text' => 'AIが生成した文章です。',
+            'llm_job_id' => LlmJob::factory()->create()->id,
+            'confirmed_at' => null,
+            'record_text_edited_by_human' => false,
+        ])->save();
+
+        $this->actingAs($this->staff)->get($this->editUrl())
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('record.confirmedAt', null)
+                ->where('record.hasAiDraft', true)
+            );
     }
 
     // ---------------------------------------------------------------

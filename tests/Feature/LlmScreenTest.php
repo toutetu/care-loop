@@ -11,6 +11,7 @@ use App\Models\Facility;
 use App\Models\LlmJob;
 use App\Models\LlmRequest;
 use App\Models\Resident;
+use App\Models\ServiceRecord;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
@@ -162,13 +163,7 @@ class LlmScreenTest extends TestCase
     public function test_音声の原文がなければ実行しない(): void
     {
         // 空の入力で呼び出しても意味がなく、費用だけがかかる
-        $resident = Resident::factory()->for($this->facility)->create();
-        $record = $resident->serviceRecords()->create([
-            'recorded_by' => $this->staff->id,
-            'service_date' => today(),
-            'attendance_status' => 'attended',
-            'raw_note' => null,
-        ]);
+        $record = $this->recordWithRawNote(null);
 
         $this->actingAs($this->staff)
             ->from(route('records.edit', $record))
@@ -176,6 +171,29 @@ class LlmScreenTest extends TestCase
             ->assertSessionHas('error', '先に音声入力または原文の入力を行ってください。');
 
         $this->assertSame(0, LlmJob::query()->count());
+    }
+
+    public function test_保存していない原文でも変換できる(): void
+    {
+        // 「保存してから変換」の2手順にすると、保存を忘れたまま押した職員には
+        // 何も起きていないように見える。押した時点の内容で動くのが自然である。
+        $record = $this->recordWithRawNote(null);
+
+        $this->mock(LlmClient::class, function (Mockery\MockInterface $mock): void {
+            $mock->shouldReceive('send')
+                ->andThrow(LlmException::rateLimited('429 Too Many Requests'));
+        });
+
+        $this->actingAs($this->staff)->post(route('llm.voice-transform', $record), [
+            'raw_note' => 'えーっと 午前中は体操に参加されて',
+        ]);
+
+        // 原文は変換の前に保存される。AIが何を変えたのかを後から検証するには、
+        // 変換に使った文章が残っている必要がある。
+        $this->assertSame('えーっと 午前中は体操に参加されて', $record->refresh()->raw_note);
+
+        // 呼び出しは行われている（ここではモックが失敗を返している）
+        $this->assertSame(1, LlmJob::query()->count());
     }
 
     public function test_通所介護計画書がなければ進捗要約を実行しない(): void
@@ -202,5 +220,19 @@ class LlmScreenTest extends TestCase
         $this->actingAs($this->staff)
             ->get("/residents/{$resident->id}/risk-detection")
             ->assertStatus(405);
+    }
+
+    // ---------------------------------------------------------------
+
+    private function recordWithRawNote(?string $rawNote): ServiceRecord
+    {
+        $resident = Resident::factory()->for($this->facility)->create();
+
+        return $resident->serviceRecords()->create([
+            'recorded_by' => $this->staff->id,
+            'service_date' => today(),
+            'attendance_status' => 'attended',
+            'raw_note' => $rawNote,
+        ]);
     }
 }
