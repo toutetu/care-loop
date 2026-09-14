@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\NoteInputMethod;
 use App\Llm\Clients\FakeClient;
 use App\Llm\LlmGateway;
 use App\Llm\LlmRequestLogger;
@@ -152,7 +153,7 @@ class TransformVoiceNoteTest extends TestCase
 
         $this->useCase->handle($record);
 
-        $this->assertSame($rawNote, $record->fresh()->raw_note);
+        $this->assertSame($rawNote, $record->fresh()->load('notes')->combinedNoteText());
     }
 
     public function test_職員が確認するまで記録は確定しない(): void
@@ -265,15 +266,26 @@ class TransformVoiceNoteTest extends TestCase
             'name' => $staffName ?? '河野 直樹',
         ]);
 
-        return ServiceRecord::factory()->for($resident)->create([
+        $record = ServiceRecord::factory()->for($resident)->create([
             'recorded_by' => $staff->id,
-            'raw_note' => $rawNote,
             'record_text' => null,
             'family_text' => null,
             'handover_note' => null,
             'total_water_ml' => null,
             'confirmed_at' => null,
         ]);
+
+        // 原文は record_notes へ1件として積む。空文字のときは積まない
+        // （原文なしの状態を作るテストがあるため）。
+        if (trim($rawNote) !== '') {
+            $record->notes()->create([
+                'recorded_by' => $staff->id,
+                'body' => $rawNote,
+                'input_method' => NoteInputMethod::Voice,
+            ]);
+        }
+
+        return $record->load('notes');
     }
 
     /**

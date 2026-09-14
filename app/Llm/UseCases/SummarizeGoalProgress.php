@@ -135,14 +135,16 @@ final class SummarizeGoalProgress
             ->attended()
             ->inPeriod($from, $to)
             ->orderBy('service_date')
+            ->with('notes')
             ->get();
 
         $hasNote = false;
 
         foreach ($records as $record) {
-            $note = $record->record_text ?? $record->raw_note;
+            // 整形済みの記録文があればそれを、なければその日の原文をつないで渡す。
+            $note = $record->record_text ?? $record->combinedNoteText();
 
-            if ($note === null || trim($note) === '') {
+            if (trim($note) === '') {
                 continue;
             }
 

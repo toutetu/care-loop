@@ -41,12 +41,6 @@ enum UserRole: string
         return $this !== self::Staff;
     }
 
-    /** 他職員が書いた記録を編集できるか。 */
-    public function canEditOthersRecords(): bool
-    {
-        return $this !== self::Staff;
-    }
-
     /** LLM利用ログとコストを参照できるか。 */
     public function canViewLlmLogs(): bool
     {

@@ -45,9 +45,7 @@ type RecordProps = {
     departureTime: string | null;
     attendanceStatus: string;
     absenceReason: string | null;
-    bathingType: string | null;
     totalWaterMl: number | null;
-    rawNote: string | null;
     recordText: string | null;
     familyText: string | null;
     handoverNote: string | null;
@@ -55,19 +53,44 @@ type RecordProps = {
     familyTextEditedByHuman: boolean;
     confirmedAt: string | null;
     hasAiDraft: boolean;
-    vital: {
+    /*
+     * 入力済みの分。いずれも1日に複数回ありうるので配列で受ける。
+     * 誰がいつ入れたかを添えて並べ、画面から消えないようにする。
+     */
+    vitals: {
+        id: number;
+        measuredAt: string;
         temperature: number | null;
-        systolic_bp: number | null;
-        diastolic_bp: number | null;
+        systolicBp: number | null;
+        diastolicBp: number | null;
         pulse: number | null;
         spo2: number | null;
-    };
-    lunch: {
-        staple_rate: number | null;
-        side_rate: number | null;
-        meal_form: string | null;
+        recorder: string | null;
+    }[];
+    meals: {
+        id: number;
+        recordedAt: string | null;
+        mealType: string;
+        stapleRate: number | null;
+        sideRate: number | null;
+        mealForm: string | null;
         choking: boolean;
-    };
+        recorder: string | null;
+    }[];
+    bathings: {
+        id: number;
+        bathedAt: string | null;
+        label: string;
+        note: string | null;
+        recorder: string | null;
+    }[];
+    notes: {
+        id: number;
+        body: string;
+        inputMethod: string;
+        recordedAt: string;
+        recorder: string | null;
+    }[];
 };
 
 type Props = {
@@ -98,9 +121,11 @@ export default function RecordEdit({
     bathingTypes,
     canEdit,
 }: Props) {
-    const [rawNote, setRawNote] = useState(record.rawNote ?? '');
-    const [mealForm, setMealForm] = useState(record.lunch.meal_form ?? '');
-    const [bathingType, setBathingType] = useState(record.bathingType ?? '');
+    // 入力欄は毎回空から始める。前に入れた分は下の一覧に残っているので、
+    // 欄に残しておくと、同じ内容をもう一度積んでしまう。
+    const [rawNote, setRawNote] = useState('');
+    const [mealForm, setMealForm] = useState('');
+    const [bathingType, setBathingType] = useState('');
 
     // 別の記録へ移ったら入力中の値を捨てる。
     // Inertia は同じ画面のあいだコンポーネントを作り直さないため、
@@ -109,9 +134,9 @@ export default function RecordEdit({
 
     if (shownRecordId !== record.id) {
         setShownRecordId(record.id);
-        setRawNote(record.rawNote ?? '');
-        setMealForm(record.lunch.meal_form ?? '');
-        setBathingType(record.bathingType ?? '');
+        setRawNote('');
+        setMealForm('');
+        setBathingType('');
     }
 
     /**
@@ -238,6 +263,16 @@ export default function RecordEdit({
                     title="音声入力"
                     description="お話しになった内容をそのまま入力してください。整えるのはAIが行います。"
                 >
+                    <EntryList
+                        items={record.notes.map((note) => ({
+                            id: note.id,
+                            when: `${note.recordedAt}（${note.inputMethod}）`,
+                            text: note.body,
+                            recorder: note.recorder,
+                        }))}
+                        empty="まだ入力はありません。"
+                    />
+
                     <div className="space-y-3">
                         <div className="relative">
                             <textarea
@@ -425,9 +460,23 @@ export default function RecordEdit({
                                 {/* 入浴を見送った日も清拭は行う。両者は別の行為なので
                                     3択にしている。選ばないままなら「未記録」で、
                                     実施しなかったこととは区別される。 */}
-                                <div className="mt-4 grid gap-2 sm:max-w-xs">
+                                <div className="mt-4">
+                                    <EntryList
+                                        items={record.bathings.map(
+                                            (bathing) => ({
+                                                id: bathing.id,
+                                                when: bathing.bathedAt,
+                                                text: bathing.label,
+                                                recorder: bathing.recorder,
+                                            }),
+                                        )}
+                                        empty="入浴・清拭の記録はまだありません。"
+                                    />
+                                </div>
+
+                                <div className="grid gap-2 sm:max-w-xs">
                                     <Label htmlFor="bathing_type">
-                                        入浴・清拭
+                                        入浴・清拭を追加
                                     </Label>
                                     <Select
                                         value={bathingType}
@@ -461,6 +510,32 @@ export default function RecordEdit({
                                 title="バイタル"
                                 description="測っていない項目は空欄のままにしてください。0と書くと、測って0だったという記録になります。"
                             >
+                                <EntryList
+                                    items={record.vitals.map((vital) => ({
+                                        id: vital.id,
+                                        when: vital.measuredAt,
+                                        text:
+                                            [
+                                                vital.temperature !== null
+                                                    ? `体温 ${vital.temperature} ℃`
+                                                    : null,
+                                                vital.systolicBp !== null
+                                                    ? `血圧 ${vital.systolicBp}/${vital.diastolicBp ?? '—'}`
+                                                    : null,
+                                                vital.pulse !== null
+                                                    ? `脈拍 ${vital.pulse}`
+                                                    : null,
+                                                vital.spo2 !== null
+                                                    ? `SpO2 ${vital.spo2}%`
+                                                    : null,
+                                            ]
+                                                .filter(Boolean)
+                                                .join(' ／ ') || '記録なし',
+                                        recorder: vital.recorder,
+                                    }))}
+                                    empty="まだ測定の記録はありません。"
+                                />
+
                                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                     <div className="grid gap-2">
                                         <Label htmlFor="temperature">
@@ -472,9 +547,7 @@ export default function RecordEdit({
                                             type="number"
                                             step="0.1"
                                             inputMode="decimal"
-                                            defaultValue={
-                                                record.vital.temperature ?? ''
-                                            }
+                                            defaultValue=""
                                         />
                                         <InputError
                                             message={
@@ -491,9 +564,7 @@ export default function RecordEdit({
                                             name="vital[systolic_bp]"
                                             type="number"
                                             inputMode="numeric"
-                                            defaultValue={
-                                                record.vital.systolic_bp ?? ''
-                                            }
+                                            defaultValue=""
                                         />
                                         <InputError
                                             message={
@@ -510,9 +581,7 @@ export default function RecordEdit({
                                             name="vital[diastolic_bp]"
                                             type="number"
                                             inputMode="numeric"
-                                            defaultValue={
-                                                record.vital.diastolic_bp ?? ''
-                                            }
+                                            defaultValue=""
                                         />
                                         <InputError
                                             message={
@@ -529,9 +598,7 @@ export default function RecordEdit({
                                             name="vital[pulse]"
                                             type="number"
                                             inputMode="numeric"
-                                            defaultValue={
-                                                record.vital.pulse ?? ''
-                                            }
+                                            defaultValue=""
                                         />
                                         <InputError
                                             message={errors['vital.pulse']}
@@ -544,9 +611,7 @@ export default function RecordEdit({
                                             name="vital[spo2]"
                                             type="number"
                                             inputMode="numeric"
-                                            defaultValue={
-                                                record.vital.spo2 ?? ''
-                                            }
+                                            defaultValue=""
                                         />
                                         <InputError
                                             message={errors['vital.spo2']}
@@ -557,22 +622,43 @@ export default function RecordEdit({
 
                             {/* --- 食事・水分 --- */}
                             <Section title="昼食・水分">
+                                <EntryList
+                                    items={record.meals.map((meal) => ({
+                                        id: meal.id,
+                                        when: meal.recordedAt,
+                                        text: [
+                                            meal.mealType === 'snack'
+                                                ? 'おやつ'
+                                                : '昼食',
+                                            meal.stapleRate !== null
+                                                ? `主食 ${meal.stapleRate}%`
+                                                : null,
+                                            meal.sideRate !== null
+                                                ? `副菜 ${meal.sideRate}%`
+                                                : null,
+                                            meal.mealForm,
+                                            meal.choking
+                                                ? 'むせ込みあり'
+                                                : null,
+                                        ]
+                                            .filter(Boolean)
+                                            .join(' ／ '),
+                                        recorder: meal.recorder,
+                                    }))}
+                                    empty="まだ食事の記録はありません。"
+                                />
+
                                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                                     <div className="grid gap-2">
                                         <Label htmlFor="staple_rate">
                                             主食（%）
                                         </Label>
                                         <Input
-                                            key={String(
-                                                record.lunch.staple_rate,
-                                            )}
                                             id="staple_rate"
                                             name="lunch[staple_rate]"
                                             type="number"
                                             inputMode="numeric"
-                                            defaultValue={
-                                                record.lunch.staple_rate ?? ''
-                                            }
+                                            defaultValue=""
                                         />
                                         <InputError
                                             message={
@@ -585,14 +671,11 @@ export default function RecordEdit({
                                             副菜（%）
                                         </Label>
                                         <Input
-                                            key={String(record.lunch.side_rate)}
                                             id="side_rate"
                                             name="lunch[side_rate]"
                                             type="number"
                                             inputMode="numeric"
-                                            defaultValue={
-                                                record.lunch.side_rate ?? ''
-                                            }
+                                            defaultValue=""
                                         />
                                         <InputError
                                             message={errors['lunch.side_rate']}
@@ -651,7 +734,7 @@ export default function RecordEdit({
                                         id="choking"
                                         name="lunch[choking]"
                                         value="1"
-                                        defaultChecked={record.lunch.choking}
+                                        defaultChecked={false}
                                     />
                                     <Label
                                         htmlFor="choking"
@@ -753,6 +836,45 @@ export default function RecordEdit({
  * 人が手を入れた文章には印を付ける。どこまでがAIの出力で、どこからが
  * 職員の判断なのかを後から追えないと、法定文書として説明できない。
  */
+/**
+ * すでに入れてある分の一覧。
+ *
+ * 【なぜ入力欄と別に出すか】
+ * 1日に何度も入る項目なので、入力欄に最新の1件を表示すると、
+ * それ以前に誰が何を入れたのかが画面から消える。入力欄は「足す」ための
+ * ものと割り切り、入った分はここに時刻と職員名を添えて並べる。
+ */
+function EntryList({
+    items,
+    empty,
+}: {
+    items: {
+        id: number;
+        when: string | null;
+        text: string;
+        recorder: string | null;
+    }[];
+    empty: string;
+}) {
+    if (items.length === 0) {
+        return <p className="text-muted-foreground mb-4 text-sm">{empty}</p>;
+    }
+
+    return (
+        <ul className="mb-4 divide-y rounded-md border">
+            {items.map((item) => (
+                <li key={item.id} className="px-3 py-2 text-sm">
+                    <p className="whitespace-pre-wrap">{item.text}</p>
+                    <p className="text-muted-foreground mt-0.5 text-xs">
+                        {item.when ?? '時刻の記録なし'}
+                        {item.recorder ? ` ／ ${item.recorder}` : ''}
+                    </p>
+                </li>
+            ))}
+        </ul>
+    );
+}
+
 function TextBlock({
     id,
     label,

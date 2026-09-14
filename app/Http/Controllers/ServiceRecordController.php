@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\BathingType;
+use App\Enums\NoteInputMethod;
 use App\Http\Requests\UpdateServiceRecordRequest;
 use App\Models\Resident;
 use App\Models\ServiceRecord;
@@ -57,7 +58,7 @@ class ServiceRecordController extends Controller
         $records = ServiceRecord::query()
             ->whereHas('resident', fn ($query) => $query->where('facility_id', $user->facility_id))
             ->whereDate('service_date', $date)
-            ->with(['resident.careLevel', 'recorder', 'vitalSigns'])
+            ->with(['resident.careLevel', 'recorder', 'vitalSigns', 'bathingRecords'])
             ->get();
 
         $rows = $records
@@ -131,7 +132,10 @@ class ServiceRecordController extends Controller
     private function rows($records, User $user): array
     {
         return array_values($records->map(function (ServiceRecord $record) use ($user): array {
-            $vital = $record->vitalSigns->first();
+            // 一覧には最後の1件を出す。1日に何度も測るので、朝の値のまま
+            // 止まっていると、その後の変化が一覧から見えない。
+            $vital = $record->vitalSigns->last();
+            $bathing = $record->bathingRecords->last();
 
             return [
                 'recordId' => $record->id,
@@ -147,7 +151,7 @@ class ServiceRecordController extends Controller
                     $record->isConfirmed() => 'confirmed',
                     default => 'draft',
                 },
-                'bathing' => $record->bathing_type?->label(),
+                'bathing' => $bathing?->bathing_type->label(),
                 'canEdit' => $user->can('update', $record),
             ];
         })->all());
@@ -169,10 +173,11 @@ class ServiceRecordController extends Controller
     {
         Gate::authorize('view', $serviceRecord);
 
-        $serviceRecord->load(['resident.careLevel', 'recorder', 'vitalSigns', 'mealRecords', 'verbalContactTasks']);
-
-        $vital = $serviceRecord->vitalSigns->first();
-        $lunch = $serviceRecord->mealRecords->firstWhere('meal_type', 'lunch');
+        $serviceRecord->load([
+            'resident.careLevel', 'recorder', 'verbalContactTasks',
+            'vitalSigns.recorder', 'mealRecords.recorder',
+            'bathingRecords.recorder', 'notes.recorder',
+        ]);
 
         return Inertia::render('records/edit', [
             'canEdit' => $request->user()?->can('update', $serviceRecord) ?? false,
@@ -187,9 +192,7 @@ class ServiceRecordController extends Controller
                 'departureTime' => $this->hhmm($serviceRecord->departure_time),
                 'attendanceStatus' => $serviceRecord->attendance_status,
                 'absenceReason' => $serviceRecord->absence_reason,
-                'bathingType' => $serviceRecord->bathing_type?->value,
                 'totalWaterMl' => $serviceRecord->total_water_ml,
-                'rawNote' => $serviceRecord->raw_note,
                 'recordText' => $serviceRecord->record_text,
                 'familyText' => $serviceRecord->family_text,
                 'handoverNote' => $serviceRecord->handover_note,
@@ -197,19 +200,43 @@ class ServiceRecordController extends Controller
                 'familyTextEditedByHuman' => $serviceRecord->family_text_edited_by_human,
                 'confirmedAt' => $serviceRecord->confirmed_at?->translatedFormat('n月j日 H:i'),
                 'hasAiDraft' => $serviceRecord->hasUnconfirmedAiDraft(),
-                'vital' => [
-                    'temperature' => $vital?->temperature !== null ? (float) $vital->temperature : null,
-                    'systolic_bp' => $vital?->systolic_bp,
-                    'diastolic_bp' => $vital?->diastolic_bp,
-                    'pulse' => $vital?->pulse,
-                    'spo2' => $vital?->spo2,
-                ],
-                'lunch' => [
-                    'staple_rate' => $lunch?->staple_rate,
-                    'side_rate' => $lunch?->side_rate,
-                    'meal_form' => $lunch?->meal_form,
-                    'choking' => (bool) $lunch?->choking,
-                ],
+                // 入力済みの分は1件ずつ、誰がいつ入れたかを添えて返す。
+                // まとめて1つの値にすると、あとから入れた職員の分しか見えない。
+                'vitals' => $serviceRecord->vitalSigns->map(fn ($vital): array => [
+                    'id' => $vital->id,
+                    'measuredAt' => $vital->measured_at->translatedFormat('n月j日 H:i'),
+                    'temperature' => $vital->temperature !== null ? (float) $vital->temperature : null,
+                    'systolicBp' => $vital->systolic_bp,
+                    'diastolicBp' => $vital->diastolic_bp,
+                    'pulse' => $vital->pulse,
+                    'spo2' => $vital->spo2,
+                    'recorder' => $vital->recorder?->name,
+                ])->values()->all(),
+                'meals' => $serviceRecord->mealRecords->map(fn ($meal): array => [
+                    'id' => $meal->id,
+                    'recordedAt' => $meal->recorded_at?->translatedFormat('n月j日 H:i'),
+                    'mealType' => $meal->meal_type,
+                    'stapleRate' => $meal->staple_rate,
+                    'sideRate' => $meal->side_rate,
+                    'mealForm' => $meal->meal_form,
+                    'choking' => (bool) $meal->choking,
+                    'recorder' => $meal->recorder?->name,
+                ])->values()->all(),
+                'bathings' => $serviceRecord->bathingRecords->map(fn ($bathing): array => [
+                    'id' => $bathing->id,
+                    'bathedAt' => $bathing->bathed_at?->translatedFormat('n月j日 H:i'),
+                    'label' => $bathing->bathing_type->label(),
+                    'note' => $bathing->note,
+                    'recorder' => $bathing->recorder?->name,
+                ])->values()->all(),
+                // 原文は書き換えない。訂正は新しい1件として積む。
+                'notes' => $serviceRecord->notes->map(fn ($note): array => [
+                    'id' => $note->id,
+                    'body' => $note->body,
+                    'inputMethod' => $note->input_method->label(),
+                    'recordedAt' => $note->created_at->translatedFormat('n月j日 H:i'),
+                    'recorder' => $note->recorder?->name,
+                ])->values()->all(),
             ],
             // 口頭連絡タスクは記録画面にも出す。生成して終わりにせず、
             // 送迎担当が必ず目にする場所へ置く（F-20）。
@@ -236,15 +263,15 @@ class ServiceRecordController extends Controller
 
         $data = $request->validated();
 
-        DB::transaction(function () use ($request, $serviceRecord, $data): void {
+        $userId = $request->user()?->id;
+
+        DB::transaction(function () use ($request, $serviceRecord, $data, $userId): void {
             $serviceRecord->fill([
                 'arrival_time' => $data['arrival_time'] ?? null,
                 'departure_time' => $data['departure_time'] ?? null,
                 'attendance_status' => $data['attendance_status'],
                 'absence_reason' => $data['absence_reason'] ?? null,
-                'bathing_type' => ($data['bathing_type'] ?? '') !== '' ? $data['bathing_type'] : null,
                 'total_water_ml' => $data['total_water_ml'] ?? null,
-                'raw_note' => $data['raw_note'] ?? null,
                 'handover_note' => $data['handover_note'] ?? null,
             ]);
 
@@ -261,11 +288,15 @@ class ServiceRecordController extends Controller
                 $serviceRecord->confirmed_at = now();
             }
 
-            $serviceRecord->recorded_by ??= $request->user()?->id;
+            $serviceRecord->recorded_by ??= $userId;
             $serviceRecord->save();
 
-            $this->saveVital($serviceRecord, $data['vital'] ?? []);
-            $this->saveLunch($serviceRecord, $data['lunch'] ?? []);
+            // 原文は書き換えず1件として積む。誰が入れたかを行ごとに残す。
+            $this->saveNote($serviceRecord, $data, $userId);
+
+            $this->saveVital($serviceRecord, $data['vital'] ?? [], $userId);
+            $this->saveLunch($serviceRecord, $data['lunch'] ?? [], $userId);
+            $this->saveBathing($serviceRecord, $data, $userId);
         });
 
         return back()->with('success', '記録を保存しました。');
@@ -301,25 +332,68 @@ class ServiceRecordController extends Controller
      *
      * @param  array<string, mixed>  $values
      */
-    private function saveVital(ServiceRecord $record, array $values): void
+    /**
+     * 原文を1件足す。
+     *
+     * 同じ内容が続けて送られたときだけ捨てる。保存を押し直しただけで同じ文が
+     * 二重に積まれるのを防ぐためで、内容が違えば必ず別の1件として残す。
+     */
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function saveNote(ServiceRecord $record, array $data, ?int $userId): void
     {
-        $values = array_filter($values, fn ($value) => $value !== null && $value !== '');
+        $body = trim((string) ($data['raw_note'] ?? ''));
 
-        $vital = $record->vitalSigns()->orderBy('measured_at')->first();
-
-        if ($values === [] && $vital === null) {
+        if ($body === '') {
             return;
         }
 
-        if ($vital === null) {
-            $vital = $record->vitalSigns()->make([
-                'measured_at' => $record->service_date->copy()->setTime(9, 45),
-                'timing' => 'arrival',
-            ]);
+        $record->loadMissing('notes');
+
+        if (trim((string) $record->notes->last()?->body) === $body) {
+            return;
         }
 
-        // 未測定を空欄として保存できるようにする。
-        // 0 で埋めると「測って0だった」と読めてしまい、記録として誤りになる。
+        $record->notes()->create([
+            'recorded_by' => $userId,
+            'body' => $body,
+            'input_method' => ($data['input_method'] ?? null) === 'voice'
+                ? NoteInputMethod::Voice
+                : NoteInputMethod::Keyboard,
+        ]);
+
+        $record->unsetRelation('notes');
+    }
+
+    /**
+     * バイタルを1件足す。
+     *
+     * 【上書きしない】
+     * 以前は先頭の1件を書き換えていた。来所時に測った体温を、入浴前に測った
+     * 職員が消していたことになる。1日に何度も測るものなので、そのつど別の
+     * 1件として積む。入力が空のときは何も足さない。
+     *
+     * 未測定は空欄のまま保存する。0 で埋めると「測って0だった」と読めてしまい、
+     * 記録として誤りになる。
+     */
+    /**
+     * @param  array<string, mixed>  $values
+     */
+    private function saveVital(ServiceRecord $record, array $values, ?int $userId): void
+    {
+        $values = array_filter($values, fn ($value) => $value !== null && $value !== '');
+
+        if ($values === []) {
+            return;
+        }
+
+        $vital = $record->vitalSigns()->make([
+            'recorded_by' => $userId,
+            'measured_at' => $values['measured_at'] ?? now(),
+            'timing' => $values['timing'] ?? null,
+        ]);
+
         foreach (['temperature', 'systolic_bp', 'diastolic_bp', 'pulse', 'spo2'] as $column) {
             $vital->{$column} = $values[$column] ?? null;
         }
@@ -331,26 +405,61 @@ class ServiceRecordController extends Controller
     /**
      * @param  array<string, mixed>  $values
      */
-    private function saveLunch(ServiceRecord $record, array $values): void
+    /**
+     * 食事を1件足す。
+     *
+     * バイタルと同じく上書きをやめた。食後に摂取量を入れ直したときは、
+     * 前の1件を書き換えるのではなく、その時点の事実として積む。
+     */
+    /**
+     * @param  array<string, mixed>  $values
+     */
+    private function saveLunch(ServiceRecord $record, array $values, ?int $userId): void
     {
         $hasValue = collect($values)
             ->except('choking')
             ->contains(fn ($value) => $value !== null && $value !== '');
 
-        $lunch = $record->mealRecords()->firstWhere('meal_type', 'lunch');
-
-        if (! $hasValue && $lunch === null) {
+        // むせ込みだけを記録したい場面がある。チェックが入っていれば足す。
+        if (! $hasValue && ! ($values['choking'] ?? false)) {
             return;
         }
 
-        $lunch ??= $record->mealRecords()->make(['meal_type' => 'lunch']);
+        $record->mealRecords()->create([
+            'recorded_by' => $userId,
+            'recorded_at' => now(),
+            'meal_type' => $values['meal_type'] ?? 'lunch',
+            'staple_rate' => $values['staple_rate'] ?? null,
+            'side_rate' => $values['side_rate'] ?? null,
+            'meal_form' => $values['meal_form'] ?? null,
+            'choking' => (bool) ($values['choking'] ?? false),
+            'note' => $values['note'] ?? null,
+        ]);
+    }
 
-        $lunch->staple_rate = $values['staple_rate'] ?? null;
-        $lunch->side_rate = $values['side_rate'] ?? null;
-        $lunch->meal_form = $values['meal_form'] ?? null;
-        $lunch->choking = (bool) ($values['choking'] ?? false);
-        $lunch->service_record_id = $record->id;
-        $lunch->save();
+    /**
+     * 入浴・清拭を1件足す。
+     *
+     * 1カラムだった頃は1日1つしか持てなかった。午前に入浴して午後に清拭する
+     * 日もあるため、実施のたびに1件として残す。
+     */
+    /**
+     * @param  array<string, mixed>  $values
+     */
+    private function saveBathing(ServiceRecord $record, array $values, ?int $userId): void
+    {
+        $type = $values['bathing_type'] ?? '';
+
+        if ($type === '') {
+            return;
+        }
+
+        $record->bathingRecords()->create([
+            'recorded_by' => $userId,
+            'bathed_at' => $values['bathed_at'] ?? now(),
+            'bathing_type' => $type,
+            'note' => $values['note'] ?? null,
+        ]);
     }
 
     private function hhmm(?string $time): ?string

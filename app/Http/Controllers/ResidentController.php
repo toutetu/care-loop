@@ -297,7 +297,7 @@ class ResidentController extends Controller
     private function recentRecords(Resident $resident, User $user): array
     {
         $records = $resident->serviceRecords()
-            ->with(['vitalSigns', 'mealRecords', 'recorder'])
+            ->with(['vitalSigns', 'mealRecords', 'recorder', 'bathingRecords'])
             ->latest('service_date')
             ->limit(self::RECENT_RECORDS)
             ->get();
@@ -312,7 +312,7 @@ class ResidentController extends Controller
                 'temperature' => $vital?->temperature,
                 'waterMl' => $record->total_water_ml,
                 'stapleRate' => $lunch?->staple_rate,
-                'bathing' => $record->bathing_type?->label(),
+                'bathing' => $record->bathingRecords->last()?->bathing_type->label(),
                 'recorder' => $record->recorder?->name,
                 'confirmed' => $record->isConfirmed(),
                 'hasAiDraft' => $record->hasUnconfirmedAiDraft(),

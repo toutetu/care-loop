@@ -132,15 +132,27 @@ class CareDomainTest extends TestCase
         $this->assertFalse($normal->isLowIntake());
     }
 
-    public function test_同じ日に同じ食事区分は登録できない(): void
+    public function test_同じ日に同じ食事区分を何度でも残せる(): void
     {
-        // 第2正規形を担保する一意制約が効いていることの確認
+        // 以前は種別ごと1件に制限していた。しかし食後に摂取量を入れ直すと、
+        // 前の職員が書いた1件を上書きすることになっていた。
+        // 書き直すのではなく、その時点の事実として積む。
         $record = ServiceRecord::factory()->create();
-        MealRecord::factory()->for($record)->create(['meal_type' => 'lunch']);
 
-        $this->expectException(UniqueConstraintViolationException::class);
+        $first = MealRecord::factory()->for($record)->create([
+            'meal_type' => 'lunch',
+            'staple_rate' => 30,
+        ]);
+        $second = MealRecord::factory()->for($record)->create([
+            'meal_type' => 'lunch',
+            'staple_rate' => 80,
+        ]);
 
-        MealRecord::factory()->for($record)->create(['meal_type' => 'lunch']);
+        $this->assertNotSame($first->id, $second->id);
+        $this->assertSame(2, $record->mealRecords()->where('meal_type', 'lunch')->count());
+
+        // 先に入れた分が消えていないこと
+        $this->assertSame(30, $first->fresh()->staple_rate);
     }
 
     public function test_同じ利用者の同じ日に記録は1件しか作れない(): void
@@ -174,7 +186,7 @@ class CareDomainTest extends TestCase
 
         $this->assertTrue($record->hasUnconfirmedAiDraft());
         $this->assertFalse($record->isConfirmed());
-        $this->assertNotNull($record->raw_note);
+        $this->assertNotSame('', $record->load('notes')->combinedNoteText());
         $this->assertNull($record->record_text);
     }
 }

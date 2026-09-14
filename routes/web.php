@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\BatchEntryController;
 use App\Http\Controllers\DailyFamilyReportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LlmActionController;
@@ -44,6 +45,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('staff', [StaffController::class, 'store'])->name('staff.store');
     Route::get('staff/{user}/edit', [StaffController::class, 'edit'])->name('staff.edit');
     Route::put('staff/{user}', [StaffController::class, 'update'])->name('staff.update');
+
+    /*
+     * --- 一括入力（入浴・食事・バイタル） ---
+     *
+     * 記録入力画面と同じ表へ書く。入浴介助を終えた職員が、担当した方を
+     * 順に入れる場面のための画面で、ご利用者を1人ずつ開き直さずに済む。
+     *
+     * {kind} はコントローラ側で入浴・食事・バイタルのいずれかに限っている。
+     */
+    Route::get('records/batch/{kind}', [BatchEntryController::class, 'index'])
+        ->name('records.batch');
+    Route::post('records/batch/{kind}', [BatchEntryController::class, 'store'])
+        ->name('records.batch.store');
 
     // --- サービス提供記録 ---
     Route::get('records', [ServiceRecordController::class, 'index'])->name('records.index');

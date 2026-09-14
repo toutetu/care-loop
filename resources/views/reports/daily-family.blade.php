@@ -242,7 +242,7 @@
                     {{-- 記録がないことと、実施しなかったことは違う。
                          未記録を「お休みされました」と書くと、ご家族に
                          誤った説明をすることになる。 --}}
-                    {{ $record->bathing_type?->familyLabel() ?? '—' }}
+                    {{ $record->bathingRecords->last()?->bathing_type->familyLabel() ?? '—' }}
                 </td>
             </tr>
             <tr>

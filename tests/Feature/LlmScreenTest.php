@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\LlmFeature;
 use App\Enums\LlmJobStatus;
+use App\Enums\NoteInputMethod;
 use App\Enums\UserRole;
 use App\Llm\Contracts\LlmClient;
 use App\Llm\Exceptions\LlmException;
@@ -190,7 +191,10 @@ class LlmScreenTest extends TestCase
 
         // 原文は変換の前に保存される。AIが何を変えたのかを後から検証するには、
         // 変換に使った文章が残っている必要がある。
-        $this->assertSame('えーっと 午前中は体操に参加されて', $record->refresh()->raw_note);
+        $this->assertSame(
+            'えーっと 午前中は体操に参加されて',
+            $record->refresh()->load('notes')->combinedNoteText(),
+        );
 
         // 呼び出しは行われている（ここではモックが失敗を返している）
         $this->assertSame(1, LlmJob::query()->count());
@@ -228,11 +232,20 @@ class LlmScreenTest extends TestCase
     {
         $resident = Resident::factory()->for($this->facility)->create();
 
-        return $resident->serviceRecords()->create([
+        $record = $resident->serviceRecords()->create([
             'recorded_by' => $this->staff->id,
             'service_date' => today(),
             'attendance_status' => 'attended',
-            'raw_note' => $rawNote,
         ]);
+
+        if ($rawNote !== null && trim($rawNote) !== '') {
+            $record->notes()->create([
+                'recorded_by' => $this->staff->id,
+                'body' => $rawNote,
+                'input_method' => NoteInputMethod::Voice,
+            ]);
+        }
+
+        return $record;
     }
 }

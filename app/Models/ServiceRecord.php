@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\BathingType;
 use Carbon\CarbonInterface;
 use Database\Factories\ServiceRecordFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -16,14 +15,18 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * サービス提供記録。介護保険法上の法定文書。
  *
- * 【4種類のテキスト】
- *   raw_note      … 音声入力された原文。絶対に書き換えない
+ * 【テキストの種類】
+ *   notes（別表）  … 音声入力・手入力の原文。1件ずつ、入れた職員つきで積む
  *   record_text   … 記録用（法定文書の本体）
  *   family_text   … ご家族向け
  *   handover_note … 申し送り用
  *
- * raw_note を残すことで、AIが何を変えたのかを後から検証できる。
+ * 原文を書き換えずに残すことで、AIが何を変えたのかを後から検証できる。
  * 検証できない記録は法定文書として使えない。
+ *
+ * 【1日に何度も起きることは別表に持つ】
+ * バイタル・食事・入浴・原文は、1日に複数回ありうる。1カラムに持つと、
+ * あとから入力した職員が前の職員の記録を消すことになる。
  *
  * @property int $id
  * @property int $resident_id
@@ -31,8 +34,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property CarbonInterface $service_date
  * @property string $attendance_status
  * @property int|null $total_water_ml
- * @property BathingType|null $bathing_type 入浴・清拭。null は未記録
- * @property string|null $raw_note
  * @property string|null $record_text
  * @property string|null $family_text
  * @property string|null $handover_note
@@ -43,8 +44,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 #[Fillable([
     'resident_id', 'recorded_by', 'service_date', 'arrival_time', 'departure_time',
-    'attendance_status', 'absence_reason', 'total_water_ml', 'bathing_type',
-    'raw_note', 'record_text', 'family_text', 'handover_note',
+    'attendance_status', 'absence_reason', 'total_water_ml',
+    'record_text', 'family_text', 'handover_note',
     'record_text_edited_by_human', 'family_text_edited_by_human',
     'llm_job_id', 'confirmed_at',
 ])]
@@ -60,7 +61,6 @@ class ServiceRecord extends Model
             'confirmed_at' => 'datetime',
             'record_text_edited_by_human' => 'boolean',
             'family_text_edited_by_human' => 'boolean',
-            'bathing_type' => BathingType::class,
         ];
     }
 
@@ -89,14 +89,40 @@ class ServiceRecord extends Model
     }
 
     /**
-     * 自由記述が入っている記録のみ。LLMの入力ソースになる。
+     * 自由記述が入っている記録のみ。LLMの入力ソースと、指摘の根拠に使う。
+     *
+     * 原文は record_notes へ移したので、1件でも積まれていれば対象にする。
      *
      * @param  Builder<static>  $query
      * @return Builder<static>
      */
     public function scopeWithNote(Builder $query): Builder
     {
-        return $query->whereNotNull('raw_note')->orWhereNotNull('record_text');
+        // 括弧で包む。包まないと、呼び出し側が先に付けた条件と or が
+        // 並んでしまい、他のご利用者の記録まで拾える式になる。
+        return $query->where(fn (Builder $inner) => $inner
+            ->whereHas('notes')
+            ->orWhereNotNull('record_text'));
+    }
+
+    /**
+     * その日に入力された原文をすべてつないだもの。AIへ渡す入力になる。
+     *
+     * 【なぜつなぐか】
+     * 送迎担当と入浴担当が別々にメモを入れる。最新の1件だけを渡すと、
+     * 前の職員が書いた内容が記録文に反映されない。1日ぶんの記録文を作る
+     * 処理なので、その日に入った原文はすべて材料になる。
+     *
+     * 【記録者の名前は入れない】
+     * 誰が入れたかは画面で1件ずつ出す。AIに渡して記録文へ混ぜる必要はなく、
+     * 外部へ送る情報は少ないほどよい（要件定義 7.2節）。
+     */
+    public function combinedNoteText(): string
+    {
+        return $this->notes
+            ->map(fn (RecordNote $note): string => trim($note->body))
+            ->filter(fn (string $body): bool => $body !== '')
+            ->implode("\n");
     }
 
     // ---------------------------------------------------------------
@@ -155,7 +181,32 @@ class ServiceRecord extends Model
      */
     public function mealRecords(): HasMany
     {
-        return $this->hasMany(MealRecord::class);
+        return $this->hasMany(MealRecord::class)->orderBy('id');
+    }
+
+    /**
+     * 入浴・清拭。1日に複数回ありうる。
+     *
+     * 時刻が不明な記録（1カラムだった頃から移したもの）を末尾へ回さないよう、
+     * 時刻のあとに id でも並べる。null の時刻どうしでも順序が定まる。
+     *
+     * @return HasMany<BathingRecord, $this>
+     */
+    public function bathingRecords(): HasMany
+    {
+        return $this->hasMany(BathingRecord::class)
+            ->orderBy('bathed_at')
+            ->orderBy('id');
+    }
+
+    /**
+     * 音声入力・手入力の原文。入れた順に積む。
+     *
+     * @return HasMany<RecordNote, $this>
+     */
+    public function notes(): HasMany
+    {
+        return $this->hasMany(RecordNote::class)->orderBy('id');
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Database\Factories\MealRecordFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -9,7 +10,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * 食事記録。(service_record_id, meal_type) で一意（第2正規形）。
+ * 食事記録。1日に複数件ありうる（昼食・おやつ、食後の入れ直し）。
+ *
+ * 以前は (service_record_id, meal_type) で一意にしていたが、あとから
+ * 入力した職員が前の1件を上書きすることになっていたため制限を外した。
+ * 量が変わったときは書き直すのではなく、その時点の事実として積む。
  *
  * サロゲートキー id を主キーとし、複合キーにしないことで、
  * service_date のような service_record_id のみに従属する項目を
@@ -17,6 +22,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @property int $id
  * @property int $service_record_id
+ * @property int|null $recorded_by
+ * @property CarbonInterface|null $recorded_at
  * @property string $meal_type
  * @property int|null $staple_rate
  * @property int|null $side_rate
@@ -25,7 +32,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $note
  */
 #[Fillable([
-    'service_record_id', 'meal_type', 'staple_rate', 'side_rate',
+    'service_record_id', 'recorded_by', 'recorded_at',
+    'meal_type', 'staple_rate', 'side_rate',
     'meal_form', 'choking', 'note',
 ])]
 class MealRecord extends Model
@@ -37,6 +45,7 @@ class MealRecord extends Model
     {
         return [
             'choking' => 'boolean',
+            'recorded_at' => 'datetime',
         ];
     }
 
@@ -58,5 +67,15 @@ class MealRecord extends Model
     public function serviceRecord(): BelongsTo
     {
         return $this->belongsTo(ServiceRecord::class);
+    }
+
+    /**
+     * この記録を入力した職員。
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function recorder(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'recorded_by');
     }
 }
