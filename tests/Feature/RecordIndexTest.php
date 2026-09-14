@@ -137,9 +137,10 @@ class RecordIndexTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page->has('records', 1));
     }
 
-    public function test_一般職員には他人の記録を編集不可として渡す(): void
+    public function test_一般職員にも他人の記録を編集可として渡す(): void
     {
-        // 押せないボタンを並べても、403になるまで分からない
+        // 担当が入れ替わる現場で、最初に触れた職員しか書けないと
+        // 入浴を担当した職員が入浴の記録を残せない。
         $record = $this->record('ヤマダ タロウ', confirmed: false);
 
         $otherStaff = User::factory()->create([
@@ -150,7 +151,7 @@ class RecordIndexTest extends TestCase
         $this->actingAs($otherStaff)->get('/records')
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('records.0.recordId', $record->id)
-                ->where('records.0.canEdit', false)
+                ->where('records.0.canEdit', true)
             );
     }
 

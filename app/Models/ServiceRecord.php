@@ -155,7 +155,32 @@ class ServiceRecord extends Model
      */
     public function mealRecords(): HasMany
     {
-        return $this->hasMany(MealRecord::class);
+        return $this->hasMany(MealRecord::class)->orderBy('id');
+    }
+
+    /**
+     * 入浴・清拭。1日に複数回ありうる。
+     *
+     * 時刻が不明な記録（1カラムだった頃から移したもの）を末尾へ回さないよう、
+     * 時刻のあとに id でも並べる。null の時刻どうしでも順序が定まる。
+     *
+     * @return HasMany<BathingRecord, $this>
+     */
+    public function bathingRecords(): HasMany
+    {
+        return $this->hasMany(BathingRecord::class)
+            ->orderBy('bathed_at')
+            ->orderBy('id');
+    }
+
+    /**
+     * 音声入力・手入力の原文。入れた順に積む。
+     *
+     * @return HasMany<RecordNote, $this>
+     */
+    public function notes(): HasMany
+    {
+        return $this->hasMany(RecordNote::class)->orderBy('id');
     }
 
     /**

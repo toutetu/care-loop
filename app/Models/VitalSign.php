@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @property int $id
  * @property int $service_record_id
+ * @property int|null $recorded_by
  * @property CarbonInterface $measured_at
  * @property string|null $timing
  * @property float|null $temperature
@@ -26,7 +27,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $spo2
  */
 #[Fillable([
-    'service_record_id', 'measured_at', 'timing',
+    'service_record_id', 'recorded_by', 'measured_at', 'timing',
     'temperature', 'systolic_bp', 'diastolic_bp', 'pulse', 'spo2',
 ])]
 class VitalSign extends Model
@@ -80,5 +81,15 @@ class VitalSign extends Model
     public function serviceRecord(): BelongsTo
     {
         return $this->belongsTo(ServiceRecord::class);
+    }
+
+    /**
+     * この測定を入力した職員。
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function recorder(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'recorded_by');
     }
 }

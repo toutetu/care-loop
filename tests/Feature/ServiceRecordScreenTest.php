@@ -64,10 +64,10 @@ class ServiceRecordScreenTest extends TestCase
             );
     }
 
-    public function test_他の職員の記録も開けるが書き換えられない(): void
+    public function test_他の職員が記録した分も書き換えられる(): void
     {
-        // 根拠の記録を開けないと、AIの出力を職員が検証するという前提が成り立たない。
-        // 閲覧は同じ事業所なら誰でも、書き換えは記録者か管理者以上に限る。
+        // 送迎・入浴・食事・帰宅で担当が入れ替わる。最初に触れた職員しか
+        // 書けない作りでは、入浴を担当した職員が入浴の記録を残せない。
         $other = User::factory()->create([
             'facility_id' => $this->facility->id,
             'role' => UserRole::Staff,
@@ -75,11 +75,11 @@ class ServiceRecordScreenTest extends TestCase
 
         $this->actingAs($other)->get($this->editUrl())
             ->assertOk()
-            ->assertInertia(fn (AssertableInertia $page) => $page->where('canEdit', false));
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('canEdit', true));
 
         $this->actingAs($other)
             ->put($this->updateUrl(), ['attendance_status' => 'attended'])
-            ->assertForbidden();
+            ->assertRedirect();
     }
 
     public function test_管理者は他の職員の記録も編集できる(): void
