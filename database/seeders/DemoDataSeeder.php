@@ -4,22 +4,32 @@ namespace Database\Seeders;
 
 use App\Enums\LlmFeature;
 use App\Enums\LlmJobStatus;
+use App\Enums\ProgressStatus;
+use App\Enums\RiskCategory;
+use App\Enums\RiskSeverity;
+use App\Enums\RiskSource;
 use App\Enums\UserRole;
 use App\Enums\VerbalContactStatus;
+use App\Llm\Support\RiskIndicatorCalculator;
 use App\Models\CareLevel;
 use App\Models\CarePlan;
 use App\Models\CarePlanGoal;
 use App\Models\Facility;
+use App\Models\GoalProgressItem;
+use App\Models\GoalProgressReport;
 use App\Models\IncidentReport;
 use App\Models\LlmJob;
 use App\Models\LlmRequest;
 use App\Models\MealRecord;
 use App\Models\Resident;
+use App\Models\RiskAssessment;
+use App\Models\RiskFinding;
 use App\Models\ServiceRecord;
 use App\Models\User;
 use App\Models\VerbalContactTask;
 use App\Models\VitalSign;
 use App\Models\WeightRecord;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 
@@ -157,6 +167,8 @@ class DemoDataSeeder extends Seeder
 
         $this->createIncidents($residents['tanaka'], $staff['staff']);
         $this->createVerbalContactTasks($residents);
+        $this->createRiskAssessments($residents, $staff, $from, $to);
+        $this->createGoalProgress($residents['sato'], $staff['manager'], $from, $to);
         $this->createLlmHistory($staff['manager']);
 
         $this->command->info('  デモデータを投入しました（ご利用者20名・約3ヶ月分の記録）');
@@ -488,6 +500,222 @@ class DemoDataSeeder extends Seeder
             'source' => 'llm',
             'status' => VerbalContactStatus::Pending,
         ]);
+    }
+
+    /**
+     * リスク兆候抽出（F-LLM-02）の結果を作る。
+     *
+     * 【ルールベース分は本物の計算結果を入れる】
+     * 固定文を流し込むのではなく、RiskIndicatorCalculator を実際に走らせている。
+     * 上で作った記録から、しきい値判定が本当に反応することを確かめられる状態に
+     * しておきたいため。デモ用に辻褄を合わせた表示になっていない。
+     *
+     * 【LLM由来の指摘だけは手で書く】
+     * こちらはAPIを呼ばないと得られない。シーディングのたびに課金するわけには
+     * いかないので、実行結果と同じ形の指摘をあらかじめ置いておく。
+     * source が llm_detected になっているため、画面では「AIが記述から検出」
+     * のバッジが付き、ルールベースの指摘と区別して表示される（要件定義 7.1節）。
+     *
+     * @param  array<string, Resident>  $residents
+     * @param  array{admin: User, manager: User, staff: User, staff2: User}  $staff
+     */
+    private function createRiskAssessments(
+        array $residents,
+        array $staff,
+        CarbonInterface $from,
+        CarbonInterface $to,
+    ): void {
+        $calculator = new RiskIndicatorCalculator;
+
+        foreach ($residents as $key => $resident) {
+            $indicators = $calculator->calculate($resident, $from, $to);
+            $llmFindings = $this->llmDetectedFindings($key, $resident);
+
+            // 兆候が出た方だけ抽出を走らせたことにはしない。
+            // 全員に対して実行し「今回は該当なし」も記録として残すのが本来の運用。
+            // 実行していない期間と、実行して何も出なかった期間は区別できる必要がある。
+            $assessment = RiskAssessment::query()->create([
+                'resident_id' => $resident->id,
+                'period_from' => $from,
+                'period_to' => $to,
+                'assessed_at' => $to->copy()->setTime(18, 0),
+                'no_risk_detected' => $indicators === [] && $llmFindings === [],
+                'confidence' => $llmFindings === [] ? 'high' : 'medium',
+                // 要対応の3名だけ未確認にしておく。全件が未確認だと、
+                // ダッシュボードの「要確認」が何を指しているのか分からなくなる。
+                'reviewed_by' => in_array($key, ['sato', 'tanaka', 'nakamura'], true) ? null : $staff['manager']->id,
+                'reviewed_at' => in_array($key, ['sato', 'tanaka', 'nakamura'], true) ? null : $to->copy()->setTime(18, 30),
+            ]);
+
+            foreach ($indicators as $indicator) {
+                RiskFinding::query()->create([
+                    'risk_assessment_id' => $assessment->id,
+                    ...$indicator->toFindingAttributes(RiskSource::RuleBased),
+                ]);
+            }
+
+            foreach ($llmFindings as $finding) {
+                RiskFinding::query()->create([
+                    'risk_assessment_id' => $assessment->id,
+                    ...$finding,
+                ]);
+            }
+        }
+    }
+
+    /**
+     * 数値のしきい値では拾えない、記述から読み取る兆候。
+     *
+     * 中村 みつ の 37.4℃ は、発熱のしきい値 37.5℃ をあえて下回らせてある。
+     * ルールベースでは反応しないが、記録には「自覚症状はないが」と書かれている。
+     * 役割分担が実際に機能していることを、画面上で見せるための仕込みである。
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function llmDetectedFindings(string $key, Resident $resident): array
+    {
+        return match ($key) {
+            'sato' => [[
+                'category' => RiskCategory::Fall,
+                'severity' => RiskSeverity::High,
+                'source' => RiskSource::LlmDetected,
+                'title' => 'ふらつきに関する記述が直近2週間で4件に増加',
+                'reason' => '「ふらつき」「支えた」「挙上が不十分」といった記述が直近4回の記録すべてに現れています。'
+                    .'それ以前の記録には同様の記述がありません。転倒には至っていないため事故報告にはなっていませんが、'
+                    .'介助を要する場面が続いています。',
+                'evidence' => $this->recentEvidence($resident, 4),
+                'suggested_actions' => [
+                    '歩行時の見守りと、送迎時の2名介助を継続する',
+                    'ご家族に、ご自宅での歩行の様子と直近の転倒の有無を確認する',
+                    '担当の介護支援専門員へ状況を共有し、住宅改修の要否を相談する',
+                ],
+            ]],
+            'nakamura' => [[
+                'category' => RiskCategory::Infection,
+                'severity' => RiskSeverity::Medium,
+                'source' => RiskSource::LlmDetected,
+                'title' => '発熱の基準未満だが、37.4℃の記録と摂取量低下が重なっている',
+                'reason' => '体温 37.4℃ は発熱の判定基準（37.5℃）に達していないため、しきい値判定では検出されません。'
+                    .'ただし同じ時期に昼食の摂取量低下が続いており、記録には「自覚症状はないが」と書かれています。'
+                    .'単独では基準未満でも、複数の変化が重なっている点は確認の価値があります。',
+                'evidence' => $this->recentEvidence($resident, 3),
+                'suggested_actions' => [
+                    '次回利用日に、到着時と午後の2回検温する',
+                    'ご家族に、ご自宅での食事量と体温を確認する',
+                    '発熱が続く場合は、かかりつけ医への相談をご家族に提案する',
+                ],
+            ]],
+            default => [],
+        };
+    }
+
+    /**
+     * 直近の記録を根拠として添える。
+     *
+     * 根拠のない指摘を画面に出さないため、evidence には必ず実在する記録IDを入れる。
+     * 職員が原典を開いて、書かれている内容を自分で確かめられる状態にしておく
+     * （要件定義 7.3節 Human-in-the-Loop）。
+     *
+     * @return list<array{record_id: int|null, date: string, excerpt: string}>
+     */
+    private function recentEvidence(Resident $resident, int $limit): array
+    {
+        $records = $resident->serviceRecords()
+            ->withNote()
+            ->latest('service_date')
+            ->limit($limit)
+            ->get()
+            ->reverse();
+
+        $evidence = [];
+
+        foreach ($records as $record) {
+            $evidence[] = [
+                'record_id' => $record->id,
+                'date' => $record->service_date->toDateString(),
+                'excerpt' => mb_strimwidth((string) $record->record_text, 0, 90, '…'),
+            ];
+        }
+
+        return $evidence;
+    }
+
+    /**
+     * 目標進捗要約（F-LLM-01）の結果を作る。
+     *
+     * 3つの短期目標のうち1つを insufficient_data にしている。
+     * 記録が足りない目標に対して、無理に「改善」「横ばい」と評価させないことが
+     * この機能の設計上の要点であり、それが画面に出ている状態を見せたいため
+     * （要件定義 7.3節）。
+     */
+    private function createGoalProgress(
+        Resident $resident,
+        User $manager,
+        CarbonInterface $from,
+        CarbonInterface $to,
+    ): void {
+        $plan = $resident->carePlans()->latest('period_from')->first();
+
+        if ($plan === null) {
+            return;
+        }
+
+        $report = GoalProgressReport::query()->create([
+            'resident_id' => $resident->id,
+            'care_plan_id' => $plan->id,
+            'period_from' => $from,
+            'period_to' => $to,
+            'overall_summary' => '通所は予定どおり週3回継続されています。入浴時の動作は手すりの使用で安定しており、'
+                .'長期目標に向けた進みが見られます。一方、直近2週間はふらつきに関する記述が増え、'
+                .'水分摂取量も目標を下回る日が続いています。体重も1ヶ月で3.5%減少しているため、'
+                .'次回のモニタリングでは転倒と低栄養の両面からの確認が必要です。',
+            'next_actions' => [
+                '歩行時の見守りと送迎の2名介助を継続し、記録に残す',
+                '水分摂取の声かけ回数を増やし、通所日ごとの摂取量を確認する',
+                'ご家族に、ご自宅での食事量と体重の変化を確認する',
+            ],
+            // 体重減少とふらつきという、方向の違う変化が同時に出ている期間である。
+            // 原因が一つに絞れない以上、高い確信度を出すべきではない。
+            'confidence' => 'medium',
+            'reviewed_by' => $manager->id,
+            'reviewed_at' => $to->copy()->setTime(19, 0),
+        ]);
+
+        $goals = $plan->goals()->orderBy('sort_order')->get();
+
+        $items = [
+            [
+                ProgressStatus::Improving,
+                '浴槽をまたぐ動作は、手すりの使用と腰部の支持により安定して行えています。'
+                .'期間を通じて実施できない日はありませんでした。',
+                4,
+            ],
+            [
+                ProgressStatus::Unchanged,
+                '週3回の通所は継続できています。ただし直近はレクリエーションの途中で休憩される場面があり、'
+                .'交流の時間そのものは短くなっています。',
+                3,
+            ],
+            [
+                // 水分摂取量は入力されているが、目標を下回る日が続いている。
+                // 数値はあっても「なぜ下回るのか」を判断する材料が記録にない。
+                ProgressStatus::InsufficientData,
+                '直近4回の摂取量は 910〜980ml で、目標の 1,200ml を下回っています。'
+                .'ただし、ご本人が飲みたがらないのか、提供の機会が少ないのかを判断できる記述が記録にありません。'
+                .'評価にはご本人の様子の記載が必要です。',
+                4,
+            ],
+        ];
+
+        foreach ($items as $index => [$status, $comment, $evidenceCount]) {
+            GoalProgressItem::query()->create([
+                'goal_progress_report_id' => $report->id,
+                'care_plan_goal_id' => $goals[$index]->id ?? null,
+                'progress_status' => $status,
+                'comment' => $comment,
+                'evidence' => $this->recentEvidence($resident, $evidenceCount),
+            ]);
+        }
     }
 
     /**
