@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use RuntimeException;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -28,6 +29,32 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureRateLimiting();
+    }
+
+    /**
+     * タイムゾーンの設定が正しいことを、起動時に確かめる。
+     *
+     * 【なぜ起動を止めるのか】
+     * PHP は date_default_timezone_set() に不正な名前を渡されても例外を投げず、
+     * UTC のまま動き続ける。環境変数を一文字打ち間違えただけで、記録の時刻が
+     * 9時間ずれる。しかも画面は普通に表示されるため、誰も気づかない。
+     *
+     * サービス提供記録は法定の保存文書であり、時刻はその一部である。
+     * 誤った時刻で残り続けるより、起動しないほうが被害が小さい。
+     */
+    protected function assertTimezoneIsValid(): void
+    {
+        $timezone = (string) config('app.timezone');
+
+        if (in_array($timezone, timezone_identifiers_list(), true)) {
+            return;
+        }
+
+        throw new RuntimeException(
+            "タイムゾーン「{$timezone}」は存在しません。"
+            .'環境変数 APP_TIMEZONE を確認してください（例: Asia/Tokyo）。'
+            .'誤った値のまま起動すると、記録の時刻がずれたまま保存されます。'
+        );
     }
 
     /**
@@ -63,6 +90,8 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function configureDefaults(): void
     {
+        $this->assertTimezoneIsValid();
+
         Date::use(CarbonImmutable::class);
 
         DB::prohibitDestructiveCommands(
