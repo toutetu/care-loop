@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use InvalidArgumentException;
 
 /**
  * LLM呼び出しの監査ログ（F-LLM-07）。API呼び出し1回につき1行。
@@ -63,7 +64,13 @@ class LlmRequest extends Model
         $pricing = config("llm.pricing.{$model}");
 
         if (! is_array($pricing)) {
-            return 0.0;
+            // 0 を返してはいけない。「値段が分からない」ことと「無料」は違う。
+            // 0 として記録すると、課金は発生しているのに合計が増えず、
+            // 月次上限が永久に発動しない。費用管理としては最悪の壊れ方になる。
+            throw new InvalidArgumentException(
+                "モデル {$model} の単価が config/llm.php の pricing にありません。"
+                .'単価が分からないと費用を算出できず、月次上限の判定も効かなくなります。'
+            );
         }
 
         return round(
@@ -71,6 +78,17 @@ class LlmRequest extends Model
             + ($outputTokens / 1_000_000) * (float) $pricing['output'],
             6
         );
+    }
+
+    /**
+     * 単価が分かっているモデルか。
+     *
+     * APIを呼ぶ前の確認に使う。呼んでしまってから「値段が分からない」と
+     * 気づいても、課金はすでに発生している。
+     */
+    public static function hasPricing(string $model): bool
+    {
+        return is_array(config("llm.pricing.{$model}"));
     }
 
     /** 指定月の合計コスト。月次予算の上限判定に使う。 */

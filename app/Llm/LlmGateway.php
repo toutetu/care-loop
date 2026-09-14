@@ -57,6 +57,9 @@ final class LlmGateway
      */
     public function send(LlmRequest $request, array $schema, ?LlmJob $job = null): array
     {
+        // 単価の確認を先に置く。上限判定そのものが、単価が分かることを前提に
+        // 成り立っているため。
+        $this->assertModelIsPriced($request->model);
         $this->assertWithinBudget();
 
         $maxRetries = max(0, (int) config('llm.max_retries'));
@@ -161,6 +164,30 @@ final class LlmGateway
         $delayMs = $base * (2 ** ($attempt - 1)) + random_int(0, 250);
 
         Sleep::for($delayMs)->milliseconds();
+    }
+
+    /**
+     * 単価の分かるモデルかを、APIを呼ぶ前に確認する。
+     *
+     * 【なぜ実行を止めるのか】
+     * 料金表にないモデルを指定すると、実行後に費用を算出できない。
+     * 費用が積み上がらないため、月次の上限判定も永久に発動しなくなる。
+     * 課金は実際に発生しているのに、画面上は無料に見える状態になる。
+     *
+     * 設定の誤りは、無言で通すよりその場で止めたほうが被害が小さい。
+     * 環境変数のモデル名を一文字打ち間違えただけで、上限が効かなくなる。
+     */
+    private function assertModelIsPriced(string $model): void
+    {
+        if (LlmRequestRecord::hasPricing($model)) {
+            return;
+        }
+
+        throw new LlmException(
+            LlmErrorType::UnknownModel,
+            "モデル {$model} の単価が config/llm.php の pricing にありません。"
+            .'単価が分からないと月次上限の判定が効かないため、実行を中止しました。',
+        );
     }
 
     /**

@@ -38,6 +38,15 @@ enum LlmErrorType: string
     case NotConfigured = 'not_configured';
 
     /**
+     * 料金表にないモデルが指定されている。
+     *
+     * 単価が分からないと実行後のコストを算出できず、月次上限の判定も
+     * 効かなくなる。課金は実際に発生するのに、画面上は無料に見える。
+     * 費用管理としては、値段の分からないものを実行しないほうが安全である。
+     */
+    case UnknownModel = 'unknown_model';
+
+    /**
      * 同じ内容で再送する価値があるか。
      * 時間を置けば解消しうる一時的な失敗だけが true になる。
      */
@@ -68,7 +77,7 @@ enum LlmErrorType: string
     public function needsOperatorAttention(): bool
     {
         return match ($this) {
-            self::Authentication, self::BudgetExceeded => true,
+            self::Authentication, self::BudgetExceeded, self::UnknownModel => true,
             default => false,
         };
     }
@@ -92,6 +101,7 @@ enum LlmErrorType: string
             self::JsonParse, self::SchemaMismatch => 'うまく生成できませんでした。手動で入力してください。',
             self::BudgetExceeded => '今月のAI利用上限に達しました。管理者にご連絡ください。',
             self::NotConfigured => 'デモモードで動作しています。実際のAIは呼び出されていません。',
+            self::UnknownModel => 'システム設定に問題があります。管理者にご連絡ください。',
         };
     }
 
@@ -110,6 +120,7 @@ enum LlmErrorType: string
             self::SchemaMismatch => 'スキーマ不一致',
             self::BudgetExceeded => '予算上限超過',
             self::NotConfigured => 'APIキー未設定',
+            self::UnknownModel => '料金表にないモデル',
         };
     }
 
