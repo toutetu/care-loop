@@ -65,7 +65,7 @@ export default function ResidentIndex({ residents, canCreate }: Props) {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <h1 className="text-lg font-semibold">
                         利用者一覧
-                        <span className="ml-2 text-sm font-normal text-muted-foreground">
+                        <span className="text-muted-foreground ml-2 text-sm font-normal">
                             {filtered.length} 名
                         </span>
                     </h1>
@@ -73,12 +73,14 @@ export default function ResidentIndex({ residents, canCreate }: Props) {
                     <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                         <div className="relative w-full sm:w-72">
                             <Search
-                                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                                className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
                                 aria-hidden
                             />
                             <Input
                                 value={keyword}
-                                onChange={(event) => setKeyword(event.target.value)}
+                                onChange={(event) =>
+                                    setKeyword(event.target.value)
+                                }
                                 placeholder="お名前・カナ・要介護度で絞り込む"
                                 className="pl-9"
                                 aria-label="ご利用者の絞り込み"
@@ -112,49 +114,63 @@ export default function ResidentIndex({ residents, canCreate }: Props) {
                             <Link
                                 key={resident.id}
                                 href={residentRoutes.show(resident.id)}
-                                className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                className="focus-visible:ring-ring rounded-xl outline-none focus-visible:ring-2"
                             >
-                                <Card className="h-full transition-colors hover:border-primary/40 hover:bg-accent/40">
+                                <Card className="hover:border-primary/40 hover:bg-accent/40 h-full transition-colors">
                                     <CardContent className="space-y-3 py-1">
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="min-w-0">
                                                 <p className="truncate font-medium">
                                                     {resident.name} 様
                                                 </p>
-                                                <p className="truncate text-xs text-muted-foreground">
+                                                <p className="text-muted-foreground truncate text-xs">
                                                     {resident.nameKana}
                                                 </p>
                                             </div>
-                                            {resident.unreviewedRiskCount > 0 && (
+                                            {resident.unreviewedRiskCount >
+                                                0 && (
                                                 <Badge
                                                     variant="outline"
-                                                    className="shrink-0 gap-1 border-transparent bg-red-600 text-white dark:bg-red-700"
+                                                    className="bg-danger text-danger-foreground shrink-0 gap-1 border-transparent"
                                                 >
-                                                    <CircleAlert className="size-3" aria-hidden />
+                                                    <CircleAlert
+                                                        className="size-3"
+                                                        aria-hidden
+                                                    />
                                                     要確認
                                                 </Badge>
                                             )}
                                         </div>
 
                                         <dl className="grid grid-cols-2 gap-y-1 text-sm">
-                                            <dt className="text-muted-foreground">年齢</dt>
+                                            <dt className="text-muted-foreground">
+                                                年齢
+                                            </dt>
                                             <dd className="tabular-nums">
                                                 {resident.age !== null
                                                     ? `${resident.age}歳（${resident.gender}）`
                                                     : resident.gender}
                                             </dd>
 
-                                            <dt className="text-muted-foreground">要介護度</dt>
+                                            <dt className="text-muted-foreground">
+                                                要介護度
+                                            </dt>
                                             <dd>{resident.careLevel ?? '—'}</dd>
 
-                                            <dt className="text-muted-foreground">利用曜日</dt>
+                                            <dt className="text-muted-foreground">
+                                                利用曜日
+                                            </dt>
                                             <dd>
                                                 {resident.weekdays.length > 0
-                                                    ? resident.weekdays.join('・')
+                                                    ? resident.weekdays.join(
+                                                          '・',
+                                                      )
                                                     : '—'}
                                             </dd>
 
-                                            <dt className="text-muted-foreground">次回</dt>
+                                            <dt className="text-muted-foreground">
+                                                次回
+                                            </dt>
                                             <dd>{resident.nextVisit ?? '—'}</dd>
                                         </dl>
                                     </CardContent>

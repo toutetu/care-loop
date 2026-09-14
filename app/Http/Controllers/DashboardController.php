@@ -130,7 +130,6 @@ class DashboardController extends Controller
             'category' => $finding->category->label(),
             'severityLabel' => $finding->severity->label(),
             'source' => $finding->source->value,
-            'sourceLabel' => $finding->source->label(),
             // 再現性のある指摘か、読んで判断すべき指摘かを画面で区別する
             // （要件定義 7.1節）。ここがこのアプリの設計上の要点にあたる。
             'isDeterministic' => $finding->source->isDeterministic(),

@@ -76,7 +76,12 @@ type Props = {
  * 失敗しても既定値が表示されるだけで、誰も気づかないまま使われ続ける。
  * 呼び出しの結果・所要時間・費用を、画面で確認できるようにしている。
  */
-export default function LlmLogIndex({ summary, features, errors, requests }: Props) {
+export default function LlmLogIndex({
+    summary,
+    features,
+    errors,
+    requests,
+}: Props) {
     return (
         <>
             <Head title="AI利用ログ" />
@@ -94,8 +99,12 @@ export default function LlmLogIndex({ summary, features, errors, requests }: Pro
                     )}
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <StatCard label="実行回数" value={summary.total} unit="件" />
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+                    <StatCard
+                        label="実行回数"
+                        value={summary.total}
+                        unit="件"
+                    />
                     <StatCard
                         label="成功率"
                         value={
@@ -126,16 +135,26 @@ export default function LlmLogIndex({ summary, features, errors, requests }: Pro
                 >
                     <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
                         <div>
-                            <dt className="text-muted-foreground">既定のモデル</dt>
-                            <dd className="font-mono text-xs">{summary.defaultModel}</dd>
+                            <dt className="text-muted-foreground">
+                                既定のモデル
+                            </dt>
+                            <dd className="font-mono text-xs">
+                                {summary.defaultModel}
+                            </dd>
                         </div>
                         <div>
-                            <dt className="text-muted-foreground">プロンプト版</dt>
-                            <dd className="font-mono text-xs">{summary.promptVersion}</dd>
+                            <dt className="text-muted-foreground">
+                                プロンプト版
+                            </dt>
+                            <dd className="font-mono text-xs">
+                                {summary.promptVersion}
+                            </dd>
                         </div>
                         <div>
                             <dt className="text-muted-foreground">ドライバ</dt>
-                            <dd className="font-mono text-xs">{summary.driver}</dd>
+                            <dd className="font-mono text-xs">
+                                {summary.driver}
+                            </dd>
                         </div>
                     </dl>
                 </Section>
@@ -150,25 +169,43 @@ export default function LlmLogIndex({ summary, features, errors, requests }: Pro
                         <div className="overflow-x-auto">
                             <table className="w-full min-w-[860px] text-sm">
                                 <thead>
-                                    <tr className="border-b text-left text-xs text-muted-foreground">
-                                        <th className="pb-2 font-medium">機能</th>
-                                        <th className="pb-2 font-medium">モデル</th>
-                                        <th className="pb-2 text-right font-medium">実行</th>
-                                        <th className="pb-2 text-right font-medium">失敗</th>
-                                        <th className="pb-2 text-right font-medium">入力</th>
-                                        <th className="pb-2 text-right font-medium">出力</th>
-                                        <th className="pb-2 text-right font-medium">平均応答</th>
-                                        <th className="pb-2 text-right font-medium">費用</th>
+                                    <tr className="text-muted-foreground border-b text-left text-xs">
+                                        <th className="pb-2 font-medium">
+                                            機能
+                                        </th>
+                                        <th className="pb-2 font-medium">
+                                            モデル
+                                        </th>
+                                        <th className="pb-2 text-right font-medium">
+                                            実行
+                                        </th>
+                                        <th className="pb-2 text-right font-medium">
+                                            失敗
+                                        </th>
+                                        <th className="pb-2 text-right font-medium">
+                                            入力
+                                        </th>
+                                        <th className="pb-2 text-right font-medium">
+                                            出力
+                                        </th>
+                                        <th className="pb-2 text-right font-medium">
+                                            平均応答
+                                        </th>
+                                        <th className="pb-2 text-right font-medium">
+                                            費用
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y">
                                     {features.map((row) => (
                                         <tr key={row.code}>
                                             <td className="py-2">
-                                                <span className="font-mono text-xs text-muted-foreground">
+                                                <span className="text-muted-foreground font-mono text-xs">
                                                     {row.code}
                                                 </span>
-                                                <span className="ml-2">{row.label}</span>
+                                                <span className="ml-2">
+                                                    {row.label}
+                                                </span>
                                             </td>
                                             <td className="py-2">
                                                 {/* 期間内にモデルを切り替えると複数並ぶ。
@@ -176,7 +213,7 @@ export default function LlmLogIndex({ summary, features, errors, requests }: Pro
                                                 {row.models.map((model) => (
                                                     <div
                                                         key={model}
-                                                        className="font-mono text-xs whitespace-nowrap text-muted-foreground"
+                                                        className="text-muted-foreground font-mono text-xs whitespace-nowrap"
                                                     >
                                                         {model}
                                                     </div>
@@ -187,7 +224,7 @@ export default function LlmLogIndex({ summary, features, errors, requests }: Pro
                                             </td>
                                             <td className="py-2 text-right tabular-nums">
                                                 {row.failed > 0 ? (
-                                                    <span className="text-red-600 dark:text-red-400">
+                                                    <span className="text-danger-ink">
                                                         {row.failed}
                                                     </span>
                                                 ) : (
@@ -201,7 +238,10 @@ export default function LlmLogIndex({ summary, features, errors, requests }: Pro
                                                 {row.outputTokens.toLocaleString()}
                                             </td>
                                             <td className="py-2 text-right tabular-nums">
-                                                {(row.avgLatencyMs / 1000).toFixed(1)} 秒
+                                                {(
+                                                    row.avgLatencyMs / 1000
+                                                ).toFixed(1)}{' '}
+                                                秒
                                             </td>
                                             <td className="py-2 text-right tabular-nums">
                                                 ${row.costUsd.toFixed(4)}
@@ -223,31 +263,47 @@ export default function LlmLogIndex({ summary, features, errors, requests }: Pro
                     ) : (
                         <ul className="space-y-2">
                             {errors.map((row) => (
-                                <li key={row.type} className="rounded-lg border p-3">
+                                <li
+                                    key={row.type}
+                                    className="rounded-lg border p-3"
+                                >
                                     <div className="flex flex-wrap items-center gap-2">
                                         <TriangleAlert
-                                            className="size-4 shrink-0 text-amber-600"
+                                            className="text-warning-ink size-4 shrink-0"
                                             aria-hidden
                                         />
-                                        <span className="font-medium">{row.label}</span>
-                                        <span className="font-mono text-xs text-muted-foreground">
+                                        <span className="font-medium">
+                                            {row.label}
+                                        </span>
+                                        <span className="text-muted-foreground font-mono text-xs">
                                             {row.type}
                                         </span>
-                                        <Badge variant="outline" className="tabular-nums">
+                                        <Badge
+                                            variant="outline"
+                                            className="tabular-nums"
+                                        >
                                             {row.count} 件
                                         </Badge>
                                         {row.isRetryable && (
-                                            <Badge variant="secondary" className="gap-1">
-                                                <RefreshCw className="size-3" aria-hidden />
+                                            <Badge
+                                                variant="secondary"
+                                                className="gap-1"
+                                            >
+                                                <RefreshCw
+                                                    className="size-3"
+                                                    aria-hidden
+                                                />
                                                 自動で再試行
                                             </Badge>
                                         )}
                                         {row.needsOperatorAttention && (
-                                            <Badge variant="destructive">要対応</Badge>
+                                            <Badge variant="destructive">
+                                                要対応
+                                            </Badge>
                                         )}
                                     </div>
                                     {row.userMessage && (
-                                        <p className="mt-1 text-sm text-muted-foreground">
+                                        <p className="text-muted-foreground mt-1 text-sm">
                                             画面表示：{row.userMessage}
                                         </p>
                                     )}
@@ -267,53 +323,82 @@ export default function LlmLogIndex({ summary, features, errors, requests }: Pro
                         <div className="overflow-x-auto">
                             <table className="w-full min-w-[1000px] text-sm">
                                 <thead>
-                                    <tr className="border-b text-left text-xs text-muted-foreground">
-                                        <th className="pb-2 font-medium">日時</th>
-                                        <th className="pb-2 font-medium">機能</th>
-                                        <th className="pb-2 font-medium">モデル</th>
-                                        <th className="pb-2 font-medium">結果</th>
-                                        <th className="pb-2 text-right font-medium">入力</th>
+                                    <tr className="text-muted-foreground border-b text-left text-xs">
+                                        <th className="pb-2 font-medium">
+                                            日時
+                                        </th>
+                                        <th className="pb-2 font-medium">
+                                            機能
+                                        </th>
+                                        <th className="pb-2 font-medium">
+                                            モデル
+                                        </th>
+                                        <th className="pb-2 font-medium">
+                                            結果
+                                        </th>
+                                        <th className="pb-2 text-right font-medium">
+                                            入力
+                                        </th>
                                         <th className="pb-2 text-right font-medium">
                                             うちキャッシュ
                                         </th>
-                                        <th className="pb-2 text-right font-medium">出力</th>
-                                        <th className="pb-2 text-right font-medium">応答</th>
-                                        <th className="pb-2 text-right font-medium">費用</th>
-                                        <th className="pb-2 font-medium">実行者</th>
+                                        <th className="pb-2 text-right font-medium">
+                                            出力
+                                        </th>
+                                        <th className="pb-2 text-right font-medium">
+                                            応答
+                                        </th>
+                                        <th className="pb-2 text-right font-medium">
+                                            費用
+                                        </th>
+                                        <th className="pb-2 font-medium">
+                                            実行者
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y">
                                     {requests.data.map((row) => (
                                         <tr key={row.id}>
-                                            <td className="py-2 whitespace-nowrap tabular-nums text-muted-foreground">
+                                            <td className="text-muted-foreground py-2 whitespace-nowrap tabular-nums">
                                                 {row.createdAt ?? '—'}
                                             </td>
-                                            <td className="py-2 whitespace-nowrap">{row.feature}</td>
-                                            <td className="py-2 font-mono text-xs whitespace-nowrap text-muted-foreground">
+                                            <td className="py-2 whitespace-nowrap">
+                                                {row.feature}
+                                            </td>
+                                            <td className="text-muted-foreground py-2 font-mono text-xs whitespace-nowrap">
                                                 {row.model}
                                             </td>
                                             <td className="py-2">
                                                 {row.status === 'failed' ? (
                                                     <Badge variant="destructive">
-                                                        {row.errorLabel ?? '失敗'}
+                                                        {row.errorLabel ??
+                                                            '失敗'}
                                                     </Badge>
                                                 ) : (
-                                                    <Badge variant="secondary">成功</Badge>
+                                                    <Badge variant="secondary">
+                                                        成功
+                                                    </Badge>
                                                 )}
                                                 {(row.retryCount ?? 0) > 0 && (
-                                                    <span className="ml-1 text-xs text-muted-foreground">
+                                                    <span className="text-muted-foreground ml-1 text-xs">
                                                         再試行 {row.retryCount}
                                                     </span>
                                                 )}
                                             </td>
                                             <td className="py-2 text-right tabular-nums">
-                                                {(row.inputTokens ?? 0).toLocaleString()}
+                                                {(
+                                                    row.inputTokens ?? 0
+                                                ).toLocaleString()}
                                             </td>
-                                            <td className="py-2 text-right tabular-nums text-muted-foreground">
-                                                {(row.cachedTokens ?? 0).toLocaleString()}
+                                            <td className="text-muted-foreground py-2 text-right tabular-nums">
+                                                {(
+                                                    row.cachedTokens ?? 0
+                                                ).toLocaleString()}
                                             </td>
                                             <td className="py-2 text-right tabular-nums">
-                                                {(row.outputTokens ?? 0).toLocaleString()}
+                                                {(
+                                                    row.outputTokens ?? 0
+                                                ).toLocaleString()}
                                             </td>
                                             <td className="py-2 text-right tabular-nums">
                                                 {row.latencyMs !== null
@@ -323,7 +408,7 @@ export default function LlmLogIndex({ summary, features, errors, requests }: Pro
                                             <td className="py-2 text-right tabular-nums">
                                                 ${row.costUsd.toFixed(4)}
                                             </td>
-                                            <td className="py-2 whitespace-nowrap text-muted-foreground">
+                                            <td className="text-muted-foreground py-2 whitespace-nowrap">
                                                 {row.requester ?? '—'}
                                             </td>
                                         </tr>

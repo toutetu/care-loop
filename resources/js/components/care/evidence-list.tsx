@@ -18,7 +18,7 @@ import type { Evidence } from '@/types/care';
 export function EvidenceList({ evidence }: { evidence: Evidence[] }) {
     if (evidence.length === 0) {
         return (
-            <p className="flex items-center gap-1.5 text-sm text-amber-700 dark:text-amber-400">
+            <p className="text-warning-ink flex items-center gap-1.5 text-sm">
                 <TriangleAlert className="size-4 shrink-0" aria-hidden />
                 根拠となる記録が添えられていません。この指摘は確認できません。
             </p>
@@ -31,17 +31,24 @@ export function EvidenceList({ evidence }: { evidence: Evidence[] }) {
                 const label = (
                     <>
                         <FileText className="size-3.5 shrink-0" aria-hidden />
-                        <span className="shrink-0 tabular-nums">{item.date ?? '日付不明'}</span>
-                        <span className="text-muted-foreground">{item.excerpt}</span>
+                        <span className="shrink-0 tabular-nums">
+                            {item.date ?? '日付不明'}
+                        </span>
+                        <span className="text-muted-foreground">
+                            {item.excerpt}
+                        </span>
                     </>
                 );
 
                 return (
-                    <li key={`${item.recordId ?? 'none'}-${index}`} className="text-sm">
+                    <li
+                        key={`${item.recordId ?? 'none'}-${index}`}
+                        className="text-sm"
+                    >
                         {item.recordId !== null ? (
                             <Link
                                 href={records.edit(item.recordId)}
-                                className="flex items-start gap-1.5 rounded px-1 py-0.5 hover:bg-accent"
+                                className="hover:bg-accent flex items-start gap-1.5 rounded px-1 py-0.5"
                             >
                                 {label}
                             </Link>

@@ -13,21 +13,16 @@ namespace App\Enums;
  *
  * 画面ではこの違いをバッジで表示し、職員が信頼度を判断できるようにする。
  * LLMに全部投げる実装との決定的な差がここにある。
+ *
+ * バッジの文言と色は resources/js/lib/care-presentation.ts が持つ。
+ * Both は3つ目の色を作らず、RuleBased と LlmDetected のバッジを2枚並べて
+ * 表すため、この enum 側に表示用のラベルは置いていない。
  */
 enum RiskSource: string
 {
     case RuleBased = 'rule_based';
     case LlmDetected = 'llm_detected';
     case Both = 'both';
-
-    public function label(): string
-    {
-        return match ($this) {
-            self::RuleBased => 'ルールベース検出',
-            self::LlmDetected => 'AIが記述から検出',
-            self::Both => '両方で検出',
-        };
-    }
 
     /** 再現性があり、同じ入力なら必ず同じ結果になるか。 */
     public function isDeterministic(): bool

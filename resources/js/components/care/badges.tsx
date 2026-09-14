@@ -1,6 +1,15 @@
-import { CircleAlert, FunctionSquare, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
+    PROGRESS_STATUS,
+    RECORD_STATUS,
+    RISK_SEVERITY,
+    riskSourceBadges,
+} from '@/lib/care-presentation';
 import { cn } from '@/lib/utils';
 import type {
     ProgressStatus,
@@ -8,6 +17,17 @@ import type {
     RiskSeverity,
     RiskSource,
 } from '@/types/care';
+
+/**
+ * 業務バッジ。色とアイコンは lib/care-presentation.ts だけが決める。
+ * このファイルは並べ方と読み上げの面倒を見る。
+ *
+ * 文字は font-semibold にしてある。小さな色つき文字は、細いと色そのものが
+ * 読み取りにくくなる。職員は50〜60代が中心で、加齢でコントラスト感度が落ちる。
+ */
+
+/** バッジ共通の形。寸法はここでだけ決める。 */
+const SHAPE = 'gap-1.5 font-semibold';
 
 /**
  * 検出元のバッジ。この画面でいちばん重要な表示。
@@ -20,44 +40,40 @@ import type {
  *
  * この2つを同じ見た目で並べると、職員はどちらも同じ重さで受け取ってしまう。
  * 全部をLLMに投げる実装との違いが、ここに出る（要件定義 7.1節）。
+ *
+ * 「両方で検出」は3つ目の色を作らず、2枚並べて返す。色を1つ増やすより、
+ * 知っている2枚が同時に出るほうが取り違えが起きない。
  */
-export function SourceBadge({ source, label }: { source: RiskSource; label: string }) {
-    const style = {
-        rule_based: {
-            className:
-                'border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-200',
-            icon: FunctionSquare,
-            help: '記録の数値としきい値から算出しています。同じ記録なら必ず同じ結果になります。',
-        },
-        llm_detected: {
-            className:
-                'border-violet-300 bg-violet-50 text-violet-900 dark:border-violet-900 dark:bg-violet-950 dark:text-violet-200',
-            icon: Sparkles,
-            help: 'AIが記述から読み取った内容です。根拠の記録をご確認のうえ、職員がご判断ください。',
-        },
-        both: {
-            className:
-                'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200',
-            icon: FunctionSquare,
-            help: '数値の判定と記述の両方から検出しています。',
-        },
-    }[source];
-
-    const Icon = style.icon;
-
+export function SourceBadge({ source }: { source: RiskSource }) {
     return (
-        <Tooltip>
-            <TooltipTrigger asChild>
-                <Badge variant="outline" className={cn('gap-1 font-medium', style.className)}>
-                    <Icon className="size-3" aria-hidden />
-                    {label}
-                </Badge>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-72">{style.help}</TooltipContent>
-        </Tooltip>
+        <>
+            {riskSourceBadges(source).map((style) => {
+                const Icon = style.icon;
+
+                return (
+                    <Tooltip key={style.label}>
+                        <TooltipTrigger asChild>
+                            <Badge
+                                variant="outline"
+                                className={cn(SHAPE, style.className)}
+                            >
+                                {Icon && (
+                                    <Icon className="size-4" aria-hidden />
+                                )}
+                                {style.label}
+                            </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-72">
+                            {style.help}
+                        </TooltipContent>
+                    </Tooltip>
+                );
+            })}
+        </>
     );
 }
 
+/** リスクの重要度。文言は PHP の RiskSeverity enum が持つ。 */
 export function SeverityBadge({
     severity,
     label,
@@ -65,60 +81,31 @@ export function SeverityBadge({
     severity: RiskSeverity;
     label: string;
 }) {
-    const className = {
-        high: 'border-transparent bg-red-600 text-white dark:bg-red-700',
-        medium:
-            'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200',
-        low: 'border-transparent bg-muted text-muted-foreground',
-    }[severity];
+    const style = RISK_SEVERITY[severity];
+    const Icon = style.icon;
 
     return (
-        <Badge variant="outline" className={cn('font-medium', className)}>
-            {severity === 'high' && <CircleAlert className="size-3" aria-hidden />}
+        <Badge variant="outline" className={cn(SHAPE, style.className)}>
+            {Icon && <Icon className="size-4" aria-hidden />}
             {label}
         </Badge>
     );
 }
 
-/**
- * 記録の入力状況。
- *
- * 「AI下書き」を確定前と別の状態にしている。AIが書いた文章を職員が
- * 一度も読んでいない記録が、確定済みに混ざってはいけないため。
- */
+/** 記録の入力状況。文言は画面側の言い回しなので care-presentation が持つ。 */
 export function RecordStatusBadge({ status }: { status: RecordStatus }) {
-    const style = {
-        confirmed: {
-            label: '確定済み',
-            className:
-                'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200',
-        },
-        ai_draft: {
-            label: 'AI下書き・未確認',
-            className:
-                'border-violet-300 bg-violet-50 text-violet-900 dark:border-violet-900 dark:bg-violet-950 dark:text-violet-200',
-        },
-        draft: {
-            label: '未確定',
-            className:
-                'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200',
-        },
-    }[status];
+    const style = RECORD_STATUS[status];
+    const Icon = style.icon;
 
     return (
-        <Badge variant="outline" className={cn('font-medium', style.className)}>
+        <Badge variant="outline" className={cn(SHAPE, style.className)}>
+            {Icon && <Icon className="size-4" aria-hidden />}
             {style.label}
         </Badge>
     );
 }
 
-/**
- * 進捗評価。
- *
- * 「判断できる材料が不足」を目立たせている。記録が足りないまま評価を
- * 書かせないことがこの機能の要点であり、その状態こそ職員が見るべきもの
- * だからである（要件定義 7.3節）。
- */
+/** 目標の進捗評価。文言は PHP の ProgressStatus enum が持つ。 */
 export function ProgressBadge({
     status,
     label,
@@ -126,18 +113,11 @@ export function ProgressBadge({
     status: ProgressStatus;
     label: string;
 }) {
-    const className = {
-        improving:
-            'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200',
-        unchanged: 'border-transparent bg-muted text-muted-foreground',
-        declining:
-            'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200',
-        insufficient_data:
-            'border-dashed border-foreground/40 bg-background text-foreground',
-    }[status];
-
     return (
-        <Badge variant="outline" className={cn('font-medium', className)}>
+        <Badge
+            variant="outline"
+            className={cn(SHAPE, PROGRESS_STATUS[status].className)}
+        >
             {label}
         </Badge>
     );

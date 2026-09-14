@@ -13,7 +13,7 @@ use App\Enums\RiskSource;
  * 同じ入力なら必ず同じ結果になり、根拠の数値も添えられる。
  *
  * LLMが抽出する質的な兆候（RiskSource::LlmDetected）とは扱いが違う。
- * こちらは再現性があるため、画面でも「ルールベース検出」として
+ * こちらは再現性があるため、画面でも「数値から算出」として
  * 区別して表示する（要件定義 7.1節）。
  */
 final readonly class RiskIndicator

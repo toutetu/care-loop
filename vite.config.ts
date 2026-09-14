@@ -13,6 +13,11 @@ export default defineConfig({
             input: ['resources/css/app.css', 'resources/js/app.tsx'],
             refresh: true,
             fonts: [
+                // 画面は全面日本語。日本語グリフを持つ書体を読まないと、
+                // 字面が端末のOS任せになる。700 はバッジ等の太字用。
+                bunny('Noto Sans JP', {
+                    weights: [400, 500, 700],
+                }),
                 bunny('Instrument Sans', {
                     weights: [400, 500, 600],
                 }),

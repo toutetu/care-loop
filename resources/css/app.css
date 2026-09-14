@@ -8,10 +8,29 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
+    /*
+     * 画面は全面日本語である。日本語グリフを持つ書体を先頭に置かないと、
+     * 端末のOS任せ（Windows: Yu Gothic UI / iPad: Hiragino）になり、
+     * 現場の端末ごとに字面が変わる。Instrument Sans は欧文の受け皿として残す。
+     */
     --font-sans:
-        'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
+        'Noto Sans JP', 'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';
+
+    /*
+     * 文字寸法を1段ずつ引き上げる。職員は50〜60代が中心で、14pxの日本語は
+     * 漢字の細部が潰れる。各画面のクラスを書き換えるのではなく尺度側を動かし、
+     * text-sm / text-xs の呼び出しをそのまま底上げする。
+     * text-sm が16pxになる副次効果として、iOS Safari で入力欄に触れたときの
+     * 自動ズーム（16px未満で発生する）も止まる。
+     */
+    --text-xs: 0.875rem;
+    --text-xs--line-height: 1.6;
+    --text-sm: 1rem;
+    --text-sm--line-height: 1.7;
+    --text-base: 1.125rem;
+    --text-base--line-height: 1.7;
 
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
@@ -59,6 +78,52 @@
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
+
+    /*
+     * 意味ベースの配色。色は「職員が手を動かす必要があるか」だけを表す。
+     *
+     *   danger        要対応。今日中に見る
+     *   warning       注意。放置しない
+     *   success       済み・良好
+     *   ai            AIが出した。人が目で確かめる必要がある
+     *   deterministic 数値としきい値から算出した事実。色で煽らない
+     *
+     * 各役割は次を持つ。
+     *   R-soft   淡い面（バッジ・注意書きの背景）
+     *   R-ink    色つきの文字（白地・soft のどちらに載せても読める）
+     *   R-line   枠線
+     * danger のみベタ塗り（--color-danger / -foreground）も持つ。重要度 高に使う。
+     *
+     * ink は明暗どちらのモードでも 7:1（WCAG AAA）以上を確保してある。
+     * 職員は50〜60代が中心で、加齢によりコントラスト感度が落ちるため
+     * AA（4.5:1）では足りない。値を変えるときは比率を測り直すこと。
+     *
+     * 色は2軸に分けてある。軸1（danger/warning/success）が対応の要否、
+     * 軸2（ai/deterministic）が情報の出どころである。軸をまたいで同じ色を
+     * 使わない。「両方で検出」はここに3色目を足さず、ai と deterministic の
+     * バッジを2枚並べて表す。覚える色を増やさないためである。
+     */
+    --color-danger: var(--danger);
+    --color-danger-foreground: var(--danger-foreground);
+    --color-danger-soft: var(--danger-soft);
+    --color-danger-ink: var(--danger-ink);
+    --color-danger-line: var(--danger-line);
+
+    --color-warning-soft: var(--warning-soft);
+    --color-warning-ink: var(--warning-ink);
+    --color-warning-line: var(--warning-line);
+
+    --color-success-soft: var(--success-soft);
+    --color-success-ink: var(--success-ink);
+    --color-success-line: var(--success-line);
+
+    --color-ai-soft: var(--ai-soft);
+    --color-ai-ink: var(--ai-ink);
+    --color-ai-line: var(--ai-line);
+
+    --color-deterministic-soft: var(--deterministic-soft);
+    --color-deterministic-ink: var(--deterministic-ink);
+    --color-deterministic-line: var(--deterministic-line);
 }
 
 :root {
@@ -73,14 +138,14 @@
     --secondary: oklch(0.97 0 0);
     --secondary-foreground: oklch(0.205 0 0);
     --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
+    --muted-foreground: oklch(0.44 0 0);
     --accent: oklch(0.97 0 0);
     --accent-foreground: oklch(0.205 0 0);
     --destructive: oklch(0.577 0.245 27.325);
     --destructive-foreground: oklch(0.577 0.245 27.325);
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
-    --ring: oklch(0.87 0 0);
+    --ring: oklch(0.45 0 0); /* 白地 7.44:1 */
     --chart-1: oklch(0.646 0.222 41.116);
     --chart-2: oklch(0.6 0.118 184.704);
     --chart-3: oklch(0.398 0.07 227.392);
@@ -94,7 +159,30 @@
     --sidebar-accent: oklch(0.97 0 0);
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.87 0 0);
+    --sidebar-ring: oklch(0.45 0 0);
+
+    /* 明モード。括弧内は白地でのコントラスト比。 */
+    --danger: oklch(0.5 0.195 27); /* 白文字を載せて 6.64:1 */
+    --danger-foreground: oklch(1 0 0);
+    --danger-soft: oklch(0.95 0.02 25);
+    --danger-ink: oklch(0.44 0.165 27); /* soft上 7.26:1 / 白地 8.46:1 */
+    --danger-line: oklch(0.86 0.06 25);
+
+    --warning-soft: oklch(0.96 0.033 85);
+    --warning-ink: oklch(0.435 0.09 75); /* soft上 7.18:1 / 白地 8.06:1 */
+    --warning-line: oklch(0.88 0.075 85);
+
+    --success-soft: oklch(0.955 0.032 152);
+    --success-ink: oklch(0.42 0.098 152); /* soft上 7.16:1 / 白地 8.08:1 */
+    --success-line: oklch(0.87 0.07 152);
+
+    --ai-soft: oklch(0.95 0.025 305);
+    --ai-ink: oklch(0.44 0.155 300); /* soft上 7.18:1 / 白地 8.37:1 */
+    --ai-line: oklch(0.86 0.065 305);
+
+    --deterministic-soft: oklch(0.95 0 0);
+    --deterministic-ink: oklch(0.32 0 0); /* soft上 10.96:1 / 白地 12.69:1 */
+    --deterministic-line: oklch(0.85 0 0);
 }
 
 .dark {
@@ -116,7 +204,7 @@
     --destructive-foreground: oklch(0.637 0.237 25.331);
     --border: oklch(0.269 0 0);
     --input: oklch(0.269 0 0);
-    --ring: oklch(0.439 0 0);
+    --ring: oklch(0.75 0 0); /* カード面 8.90:1 */
     --chart-1: oklch(0.488 0.243 264.376);
     --chart-2: oklch(0.696 0.17 162.48);
     --chart-3: oklch(0.769 0.188 70.08);
@@ -129,7 +217,30 @@
     --sidebar-accent: oklch(0.269 0 0);
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(0.269 0 0);
-    --sidebar-ring: oklch(0.439 0 0);
+    --sidebar-ring: oklch(0.75 0 0);
+
+    /* 暗モード。括弧内はカード面 oklch(0.145) でのコントラスト比。 */
+    --danger: oklch(0.55 0.2 27); /* 白文字を載せて 5.15:1 */
+    --danger-foreground: oklch(0.985 0 0);
+    --danger-soft: oklch(0.26 0.065 25);
+    --danger-ink: oklch(0.84 0.085 27); /* soft上 9.43:1 / 面上 11.74:1 */
+    --danger-line: oklch(0.42 0.09 25);
+
+    --warning-soft: oklch(0.27 0.05 80);
+    --warning-ink: oklch(0.87 0.11 85); /* soft上 10.17:1 / 面上 13.30:1 */
+    --warning-line: oklch(0.43 0.07 80);
+
+    --success-soft: oklch(0.26 0.05 152);
+    --success-ink: oklch(0.85 0.115 152); /* soft上 10.08:1 / 面上 13.06:1 */
+    --success-line: oklch(0.42 0.07 152);
+
+    --ai-soft: oklch(0.27 0.06 305);
+    --ai-ink: oklch(0.84 0.095 303); /* soft上 9.15:1 / 面上 11.78:1 */
+    --ai-line: oklch(0.43 0.08 305);
+
+    --deterministic-soft: oklch(0.27 0 0);
+    --deterministic-ink: oklch(0.88 0 0); /* soft上 10.50:1 / 面上 13.79:1 */
+    --deterministic-line: oklch(0.4 0 0);
 }
 
 @layer base {
@@ -139,5 +250,19 @@
 
     body {
         @apply bg-background text-foreground;
+        /*
+         * 行間を広げる。行を追い直す回数が減り、長い申し送りが読みやすくなる。
+         * text-* を持たない要素にも効かせるため body に置く。
+         */
+        line-height: 1.7;
+    }
+
+    /*
+     * 表の数字を等幅にする。体温・水分量・費用・件数が桁で揃い、
+     * 縦に並んだ数値を比べやすくなる。表は画面ごとに手書きされているため、
+     * セル単位で付けて回るのではなく、ここで一度に効かせる。
+     */
+    table {
+        font-variant-numeric: tabular-nums;
     }
 }

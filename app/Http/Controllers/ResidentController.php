@@ -362,7 +362,6 @@ class ResidentController extends Controller
                 'severity' => $finding->severity->value,
                 'severityLabel' => $finding->severity->label(),
                 'source' => $finding->source->value,
-                'sourceLabel' => $finding->source->label(),
                 'isDeterministic' => $finding->source->isDeterministic(),
                 'title' => $finding->title,
                 'reason' => $finding->reason,

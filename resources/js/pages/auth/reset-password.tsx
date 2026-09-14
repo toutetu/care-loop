@@ -4,7 +4,6 @@ import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
 import { update } from '@/routes/password';
 
 type Props = {
@@ -77,10 +76,9 @@ export default function ResetPassword({ token, email, passwordRules }: Props) {
                         <Button
                             type="submit"
                             className="mt-4 w-full"
-                            disabled={processing}
+                            pending={processing}
                             data-test="reset-password-button"
                         >
-                            {processing && <Spinner />}
                             Reset password
                         </Button>
                     </div>
