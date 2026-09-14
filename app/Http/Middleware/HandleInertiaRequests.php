@@ -42,6 +42,17 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            /*
+             * AI機能の実行結果を画面に返すために使う。
+             *
+             * 成功と失敗を別のキーにしているのは、失敗のときに画面の色と
+             * 残り時間を変えるため。LLMの失敗は「もう一度押せばよい」ものと
+             * 「管理者に連絡が要る」ものがあり、読み飛ばされては困る。
+             */
+            'flash' => [
+                'success' => $request->session()->get('success'),
+                'error' => $request->session()->get('error'),
+            ],
         ];
     }
 }
