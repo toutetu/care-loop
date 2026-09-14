@@ -9,7 +9,7 @@ import {
     Sparkles,
     UserPen,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import LlmActionController from '@/actions/App/Http/Controllers/LlmActionController';
 import ServiceRecordController from '@/actions/App/Http/Controllers/ServiceRecordController';
 import { RecordStatusBadge } from '@/components/care/badges';
@@ -104,6 +104,23 @@ export default function RecordEdit({ record, verbalContacts, mealForms, canEdit 
         setMealForm(record.lunch.meal_form ?? '');
     }
 
+    /**
+     * 記録一覧の「確認して確定」から来たときは、読むべき文章まで移動する。
+     *
+     * 確定のチェック欄は画面下部に貼り付いていて常に見えているが、
+     * 先に読ませたいのは生成された文章のほうである。
+     * チェック欄へ直接飛ばすと、読まずにチェックできてしまう。
+     */
+    useEffect(() => {
+        if (window.location.hash !== '#confirm') {
+            return;
+        }
+
+        document
+            .getElementById('record-texts')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, [record.id]);
+
     const { supported, listening, start, stop } = useSpeechRecognition((text) =>
         // 認識結果は追記する。上書きすると、それまで話した内容が消える。
         setRawNote((current) => (current === '' ? text : `${current}${text}`)),
@@ -151,6 +168,36 @@ export default function RecordEdit({ record, verbalContacts, mealForms, canEdit 
                         </Button>
                     </div>
                 </div>
+
+                {/* AIが書いた文章が未確認のまま残っている記録では、何をすれば
+                    確定するのかをここで伝える。バッジだけでは、次にどう操作すれば
+                    よいのかが分からない。 */}
+                {record.hasAiDraft && canEdit && (
+                    <div className="rounded-md border border-violet-300 bg-violet-50 px-3 py-2 dark:border-violet-900 dark:bg-violet-950">
+                        <p className="flex items-start gap-2 text-sm font-medium">
+                            <Sparkles className="mt-0.5 size-4 shrink-0" aria-hidden />
+                            AIが生成した下書きが未確認です
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            下の「記録の文章」をお読みいただき、必要なら直してください。
+                            そのうえで最下部の「内容を確認したので確定する」にチェックを入れ、
+                            保存すると確定します。
+                        </p>
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() =>
+                                document
+                                    .getElementById('record-texts')
+                                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                            }
+                        >
+                            記録の文章を確認する
+                        </Button>
+                    </div>
+                )}
 
                 {/* 書き換えられない記録は、そのことを最初に伝える。
                     保存できないと分かるのが最後では、入力した時間が無駄になる。 */}
@@ -461,6 +508,8 @@ export default function RecordEdit({ record, verbalContacts, mealForms, canEdit 
                             </Section>
 
                             {/* --- 3つの文章 --- */}
+                            {/* 記録一覧の「確認して確定」から、ここへ案内する */}
+                            <div id="record-texts" className="scroll-mt-4">
                             <Section
                                 title="記録の文章"
                                 description="AIが生成した下書きです。内容をご確認のうえ、必要に応じて直してください。"
@@ -489,6 +538,7 @@ export default function RecordEdit({ record, verbalContacts, mealForms, canEdit 
                                     />
                                 </div>
                             </Section>
+                            </div>
 
                             {/* --- 保存 --- */}
                             {canEdit && (

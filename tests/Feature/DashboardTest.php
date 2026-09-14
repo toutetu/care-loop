@@ -57,7 +57,7 @@ class DashboardTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('dashboard')
                 ->where('day.isToday', true)
-                ->has('attendance', 1)
+                ->where('counts.residents', 1)
             );
     }
 
@@ -74,7 +74,7 @@ class DashboardTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('day.isToday', false)
                 ->where('day.date', today()->subDays(3)->toDateString())
-                ->has('attendance', 1)
+                ->where('counts.residents', 1)
             );
     }
 

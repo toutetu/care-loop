@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\LlmErrorType;
 use App\Enums\LlmJobStatus;
 use App\Models\LlmJob;
 use App\Models\LlmRequest;
@@ -40,10 +39,13 @@ class DashboardController extends Controller
                 'label' => $date->translatedFormat('n月j日（D）'),
                 'isToday' => $date->isToday(),
             ],
-            'attendance' => $this->attendance($user, $date),
+            // 一覧そのものは記録一覧の画面が持つ。ここは件数だけを出し、
+            // 中身を見たい人はその画面へ送る。朝礼で全体を見る場所と、
+            // 記録を埋めていく場所は目的が違う。
+            'counts' => $this->recordCounts($facilityId, $date),
             'risks' => $this->urgentRisks($facilityId),
             'verbalContacts' => $this->pendingVerbalContacts($facilityId),
-            'llm' => $this->llmStatus(),
+            'llm' => $this->llmStatus($facilityId),
             'canViewLlmLogs' => $user->role->canViewLlmLogs(),
         ]);
     }
@@ -77,56 +79,26 @@ class DashboardController extends Controller
     }
 
     /**
-     * その日のご利用者と、記録の入力状況。
+     * その日の記録の件数。
      *
-     * 【確定済みかどうかを一覧に出す】
-     * 記録は法定の保存文書であり、書き忘れたまま日をまたぐと、後から
-     * 思い出して書くことになる。その日のうちに気づける形にしておく。
+     * 【一覧ではなく件数だけを持つ】
+     * 一覧は記録一覧の画面が持つ。ダッシュボードは朝礼で全体を見る場所で、
+     * 「何件残っているか」が分かれば足りる。中身を見たい人はその画面へ移る。
      *
-     * 【並べ替えをPHP側で行っている理由】
-     * 氏名カナは暗号化して保存しているため、SQLでは並べ替えられない
-     * （要件定義 9.3節）。1日のご利用者は定員以下に収まるので、
-     * 取得してから並べても問題にならない。
-     *
-     * @return list<array<string, mixed>>
+     * @return array<string, int>
      */
-    private function attendance(User $user, CarbonInterface $date): array
+    private function recordCounts(?int $facilityId, CarbonInterface $date): array
     {
-        $records = ServiceRecord::query()
-            ->whereHas('resident', fn ($query) => $query->where('facility_id', $user->facility_id))
-            ->whereDate('service_date', $date)
-            ->with(['resident.careLevel', 'recorder', 'vitalSigns'])
-            ->get()
-            ->sortBy(fn (ServiceRecord $record) => $record->resident->name_kana)
-            ->values();
+        $onDate = fn () => ServiceRecord::query()
+            ->whereHas('resident', fn ($query) => $query->where('facility_id', $facilityId))
+            ->whereDate('service_date', $date);
 
-        // array_values で添字を振り直す。連番でない配列はJSONにするとオブジェクトに
-        // なり、画面側で配列として扱えなくなる。
-        return array_values($records->map(function (ServiceRecord $record) use ($user): array {
-            $vital = $record->vitalSigns->first();
-
-            return [
-                'recordId' => $record->id,
-                'residentId' => $record->resident_id,
-                'name' => $record->resident->name,
-                'careLevel' => $record->resident->careLevel?->name,
-                'arrivalTime' => $this->hhmm($record->arrival_time),
-                'departureTime' => $this->hhmm($record->departure_time),
-                'temperature' => $vital?->temperature,
-                'recorder' => $record->recorder?->name,
-                // 確定済み・確定前・AI下書きのまま の3状態を出し分ける。
-                // AIが書いた文章が未確認のまま残っている状態を見逃さないため。
-                'status' => match (true) {
-                    $record->hasUnconfirmedAiDraft() => 'ai_draft',
-                    $record->isConfirmed() => 'confirmed',
-                    default => 'draft',
-                },
-                'bathing' => $record->bathing_performed,
-                // 一般職員は自分が記録したものだけ編集できる（ServiceRecordPolicy）。
-                // 押せないボタンを並べても、403になるまで分からない。
-                'canEdit' => $user->can('update', $record),
-            ];
-        })->all());
+        return [
+            'residents' => $onDate()->count(),
+            // 記録は法定の保存文書であり、書き忘れたまま日をまたぐと
+            // 後から思い出して書くことになる。その日のうちに気づける形にする。
+            'unconfirmed' => $onDate()->whereNull('confirmed_at')->count(),
+        ];
     }
 
     /**
@@ -196,15 +168,19 @@ class DashboardController extends Controller
     /**
      * AIの実行状況と、今月の費用。
      *
+     * 【一覧ではなく件数だけを持つ】
+     * 実行の明細は「AI処理の実行状況」の画面が持つ。
+     *
      * 【費用を職員の見える場所に出す】
      * 1回あたりの単価が小さいと、呼び出し放題という誤解が生まれる。
      * 上限に対して今どこまで使っているのかを、常に見せておく。
      *
      * @return array<string, mixed>
      */
-    private function llmStatus(): array
+    private function llmStatus(?int $facilityId): array
     {
         $jobs = LlmJob::query()
+            ->whereHas('requester', fn ($query) => $query->where('facility_id', $facilityId))
             ->where('created_at', '>=', now()->startOfMonth())
             ->get();
 
@@ -217,39 +193,6 @@ class DashboardController extends Controller
             'spentUsd' => round($spent, 4),
             'budgetUsd' => $budget,
             'usageRate' => $budget > 0 ? min(1.0, round($spent / $budget, 4)) : 0.0,
-            // キャッシュが効いていることは、プロンプトの前半が安定している証拠でもある
-            'cacheHitRate' => round(LlmRequest::cacheHitRate(), 3),
-            'recent' => $this->recentJobs(),
         ];
-    }
-
-    /** @return list<array<string, mixed>> */
-    private function recentJobs(): array
-    {
-        $jobs = LlmJob::query()
-            ->with('requester')
-            ->latest('created_at')
-            ->limit(5)
-            ->get();
-
-        return array_values($jobs->map(fn (LlmJob $job): array => [
-            'id' => $job->id,
-            'feature' => $job->feature->label(),
-            'status' => $job->status->value,
-            'statusLabel' => $job->status->label(),
-            'requester' => $job->requester?->name,
-            'errorLabel' => $job->error_type !== null
-                ? LlmErrorType::tryFrom($job->error_type)?->label()
-                : null,
-            'finishedAt' => $job->finished_at?->translatedFormat('n/j H:i'),
-        ])->all());
-    }
-
-    /**
-     * time 型の列は "09:30:00" の文字列で返る。画面では秒まで要らない。
-     */
-    private function hhmm(?string $time): ?string
-    {
-        return $time !== null ? substr($time, 0, 5) : null;
     }
 }
