@@ -122,19 +122,17 @@ export default function LlmLogIndex({ summary, features, errors, requests }: Pro
                     title="実行環境"
                     description="出力の品質が変わったとき、どの設定で動いていたのかを追えるようにしています。"
                 >
-                    <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
-                        <div className="flex gap-2">
-                            <dt className="w-32 shrink-0 text-muted-foreground">既定のモデル</dt>
+                    <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                        <div>
+                            <dt className="text-muted-foreground">既定のモデル</dt>
                             <dd className="font-mono text-xs">{summary.defaultModel}</dd>
                         </div>
-                        <div className="flex gap-2">
-                            <dt className="w-32 shrink-0 text-muted-foreground">
-                                プロンプト版
-                            </dt>
+                        <div>
+                            <dt className="text-muted-foreground">プロンプト版</dt>
                             <dd className="font-mono text-xs">{summary.promptVersion}</dd>
                         </div>
-                        <div className="flex gap-2">
-                            <dt className="w-32 shrink-0 text-muted-foreground">ドライバ</dt>
+                        <div>
+                            <dt className="text-muted-foreground">ドライバ</dt>
                             <dd className="font-mono text-xs">{summary.driver}</dd>
                         </div>
                     </dl>

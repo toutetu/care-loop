@@ -122,21 +122,21 @@ export default function ResidentShow({
 
                         <dl className="mt-4 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
                             <div className="flex gap-2">
-                                <dt className="w-24 shrink-0 text-muted-foreground">既往歴</dt>
+                                <dt className="w-28 shrink-0 whitespace-nowrap text-muted-foreground">既往歴</dt>
                                 <dd>{resident.medicalHistory ?? '—'}</dd>
                             </div>
                             <div className="flex gap-2">
-                                <dt className="w-24 shrink-0 text-muted-foreground">ご家族</dt>
+                                <dt className="w-28 shrink-0 whitespace-nowrap text-muted-foreground">ご家族</dt>
                                 <dd>{resident.familyContact ?? '—'}</dd>
                             </div>
                             <div className="flex gap-2">
-                                <dt className="w-24 shrink-0 text-muted-foreground">
+                                <dt className="w-28 shrink-0 whitespace-nowrap text-muted-foreground">
                                     介護支援専門員
                                 </dt>
                                 <dd>{resident.careManager ?? '—'}</dd>
                             </div>
                             <div className="flex gap-2">
-                                <dt className="w-24 shrink-0 text-muted-foreground">利用開始</dt>
+                                <dt className="w-28 shrink-0 whitespace-nowrap text-muted-foreground">利用開始</dt>
                                 <dd>{resident.startedAt ?? '—'}</dd>
                             </div>
                         </dl>

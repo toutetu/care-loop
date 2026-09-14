@@ -12,7 +12,9 @@ use App\Models\ServiceRecord;
 use App\Models\User;
 use App\Models\VerbalContactTask;
 use App\Models\WeightRecord;
+use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -351,11 +353,29 @@ class ResidentController extends Controller
 
             $items[] = [
                 'recordId' => isset($entry['record_id']) ? (int) $entry['record_id'] : null,
-                'date' => isset($entry['date']) ? (string) $entry['date'] : null,
+                // 保存は ISO 形式のまま。機械が読む値と人が読む値を分ける。
+                // 画面に出すときだけ和暦の書式に整える。
+                'date' => isset($entry['date']) ? $this->displayDate((string) $entry['date']) : null,
                 'excerpt' => isset($entry['excerpt']) ? (string) $entry['excerpt'] : '',
             ];
         }
 
         return $items;
+    }
+
+    /**
+     * 根拠の日付を画面用の書式にする。
+     *
+     * 値はLLMの出力やルールベースの算出結果として入ってくるため、
+     * 日付として読めないものが混ざりうる。その場合は加工せずそのまま出す。
+     * 表示のために情報を捨てない。
+     */
+    private function displayDate(string $value): string
+    {
+        try {
+            return Date::parse($value)->translatedFormat('n月j日（D）');
+        } catch (InvalidFormatException) {
+            return $value;
+        }
     }
 }

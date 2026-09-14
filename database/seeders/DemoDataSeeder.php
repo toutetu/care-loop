@@ -298,29 +298,52 @@ class DemoDataSeeder extends Seeder
         }
 
         $total = count($dates);
+        // ご利用者ごとの固有値。同じ日の記録が全員まったく同じ数値になると、
+        // 実際に運用されているデータには見えない。乱数を使わずに散らす。
+        $seed = $this->seedOf($resident);
 
         foreach ($dates as $index => $date) {
             $fromEnd = $total - 1 - $index;
+
+            // 送迎は複数便に分かれる。到着も帰宅も全員同時にはならない。
+            $arrival = 9 * 60 + 10 + (($seed + $index) % 4) * 10;
+            $departure = 15 * 60 + 40 + (($seed + $index * 3) % 4) * 10;
 
             $record = ServiceRecord::query()->create([
                 'resident_id' => $resident->id,
                 'recorded_by' => ($index % 2 === 0 ? $staff['staff'] : $staff['staff2'])->id,
                 'service_date' => $date->toDateString(),
-                'arrival_time' => '09:30',
-                'departure_time' => '16:15',
+                'arrival_time' => $this->minutesToTime($arrival),
+                'departure_time' => $this->minutesToTime($departure),
                 'attendance_status' => 'attended',
-                'total_water_ml' => $this->water($key, $fromEnd, $index),
+                'total_water_ml' => $this->water($key, $fromEnd, $index, $seed),
                 // 入浴は利用のたびに実施するのが基本。体調等で見送る日もある
-                'bathing_performed' => $index % 7 !== 5,
+                'bathing_performed' => ($index + $seed) % 7 !== 5,
                 'record_text' => $this->note($key, $fromEnd, $index),
                 'family_text' => $this->familyNote($key, $fromEnd, $index),
                 'handover_note' => $this->handoverNote($key, $fromEnd),
                 'confirmed_at' => $date->copy()->setTime(17, 0),
             ]);
 
-            $this->createVital($record, $key, $fromEnd, $index);
-            $this->createMeal($record, $key, $fromEnd, $index);
+            $this->createVital($record, $key, $fromEnd, $index, $seed);
+            $this->createMeal($record, $key, $fromEnd, $index, $seed);
         }
+    }
+
+    /**
+     * ご利用者ごとに固定の値。氏名カナから決める。
+     *
+     * 乱数を使わないのは、実行するたびに結果が変わると
+     * 「この画面ではこう出ます」と説明できなくなるため。
+     */
+    private function seedOf(Resident $resident): int
+    {
+        return crc32((string) $resident->name_kana) % 97;
+    }
+
+    private function minutesToTime(int $minutes): string
+    {
+        return sprintf('%02d:%02d', intdiv($minutes, 60), $minutes % 60);
     }
 
     private function note(string $key, int $fromEnd, int $index): string
@@ -380,17 +403,19 @@ class DemoDataSeeder extends Seeder
         return null;
     }
 
-    private function water(string $key, int $fromEnd, int $index): int
+    private function water(string $key, int $fromEnd, int $index, int $seed): int
     {
         // 佐藤 ハナ の直近4回を目標未達にする（脱水のルールベース判定に反応させる）
         if ($key === 'sato' && $fromEnd < 4) {
             return [960, 910, 940, 980][$fromEnd];
         }
 
-        return 1150 + (($index * 70) % 300);
+        // 50ml刻みにする。現場では「コップ1杯」の単位で記録されるため、
+        // 1ml単位の端数が並ぶほうがかえって不自然になる。
+        return 1200 + ((($index * 7 + $seed) % 8) - 2) * 50;
     }
 
-    private function createVital(ServiceRecord $record, string $key, int $fromEnd, int $index): void
+    private function createVital(ServiceRecord $record, string $key, int $fromEnd, int $index, int $seed): void
     {
         $fever = $key === 'nakamura' && $fromEnd === 2;
 
@@ -398,24 +423,28 @@ class DemoDataSeeder extends Seeder
             'service_record_id' => $record->id,
             'measured_at' => $record->service_date->copy()->setTime(9, 45),
             'timing' => 'arrival',
-            'temperature' => $fever ? 37.4 : round(36.0 + (($index % 8) * 0.1), 1),
-            'systolic_bp' => 118 + (($index * 7) % 30),
-            'diastolic_bp' => 68 + (($index * 3) % 16),
-            'pulse' => 62 + (($index * 5) % 22),
-            'spo2' => 96 + ($index % 3),
+            // 平熱には個人差がある。全員が同じ体温で並ぶことはない。
+            'temperature' => $fever
+                ? 37.4
+                : round(35.9 + (($seed % 7) * 0.1) + (($index % 5) * 0.1), 1),
+            'systolic_bp' => 112 + (($seed % 5) * 6) + (($index * 7) % 14),
+            'diastolic_bp' => 66 + (($seed % 4) * 4) + (($index * 3) % 8),
+            'pulse' => 60 + (($seed % 6) * 3) + (($index * 5) % 10),
+            'spo2' => 95 + (($seed + $index) % 4),
         ]);
     }
 
-    private function createMeal(ServiceRecord $record, string $key, int $fromEnd, int $index): void
+    private function createMeal(ServiceRecord $record, string $key, int $fromEnd, int $index, int $seed): void
     {
         // 中村 みつ の直近6回を低摂取にする（低栄養のルールベース判定に反応させる）
         $low = $key === 'nakamura' && $fromEnd < 6;
+        $rates = [100, 80, 100, 80, 50, 100, 80];
 
         MealRecord::query()->create([
             'service_record_id' => $record->id,
             'meal_type' => 'lunch',
-            'staple_rate' => $low ? 30 : [80, 100, 80, 100, 50][$index % 5],
-            'side_rate' => $low ? 30 : [80, 80, 100, 100, 50][$index % 5],
+            'staple_rate' => $low ? 30 : $rates[($index + $seed) % 7],
+            'side_rate' => $low ? 30 : $rates[($index + $seed * 2) % 7],
             'meal_form' => $key === 'tanaka' ? '一口大' : '常食',
             'choking' => false,
         ]);
