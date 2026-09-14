@@ -64,12 +64,42 @@ class DemoDataSeeder extends Seeder
         'ご家族へのお便りを書かれていた。文字はしっかりしている。',
     ];
 
+    /**
+     * 上の記録と同じ出来事を、ご家族向けの文体で書いたもの。
+     * 添字は NOTES と対応している。
+     *
+     * 実運用では F-LLM-05 が生成するが、デモではAIを動かさなくても
+     * 連絡帳が完成した状態で見られるよう、あらかじめ用意しておく。
+     */
+    private const FAMILY_NOTES = [
+        '午前中は皆さんと一緒に体操に参加されました。穏やかな表情で、他の方ともお話を楽しんでおられました。',
+        '入浴では手すりを使いながら、職員がお手伝いして湯船に浸かっていただきました。「気持ちいい」とおっしゃっていました。',
+        '機能訓練に取り組まれました。立ち上がりはご自身の力でできています。',
+        '昼食のあと、塗り絵を楽しまれました。色の選び方をじっくり考えておられる姿が印象的でした。',
+        '送迎の際、玄関の段差は手すりを使ってご自身で上り下りされました。',
+        '午後は談話室で新聞を読んでお過ごしでした。お変わりなくお元気です。',
+        '昼食後の口腔ケアをおこないました。入れ歯の具合も問題ありませんでした。',
+        '歩行の練習を10分ほどおこないました。休憩を挟みながら無理のない範囲で進めています。',
+        'おやつの時間に、他の方と将棋を指されました。集中して取り組んでおられました。',
+        '午前中に軽い頭痛があるとのお話がありましたが、休憩後は良くなられました。',
+        '体操の際に右膝の痛みのお話がありましたので、無理のない範囲でおこないました。',
+        'ご家族へのお便りを書いておられました。しっかりとした文字を書かれています。',
+    ];
+
     /** 佐藤 ハナ の直近に差し込む、ふらつきに関する記述。 */
     private const UNSTEADY_NOTES = [
         '送迎車の乗降時、ステップでふらつきが見られた。職員2名で介助した。',
         '入浴時、浴槽をまたぐ際に右足の挙上が不十分であり、腰部を支持して介助を実施。',
         '立ち上がり時にふらつかれ、職員が身体を支えた。転倒には至っていない。',
         'レクリエーション中に「疲れた」と話され、20分ほどで休憩された。先月までは最後まで参加されていた。',
+    ];
+
+    /** 上のふらつき記録の、ご家族向けの文体。添字は対応している。 */
+    private const UNSTEADY_FAMILY_NOTES = [
+        '送迎車にお乗りになる際、少しふらつかれる場面がありました。職員2名でお支えし、転ばれることはありませんでした。',
+        '入浴では浴槽をまたぐ際に、右足を上げるのが少し大変そうでしたので、腰を支えてお手伝いいたしました。',
+        '立ち上がられる際にふらつかれ、職員がお支えいたしました。転ばれてはいません。お迎えの際に詳しくご説明いたします。',
+        'レクリエーションの途中で「疲れた」とおっしゃり、休憩をとられました。ご自宅でのご様子はいかがでしょうか。',
     ];
 
     /**
@@ -265,6 +295,8 @@ class DemoDataSeeder extends Seeder
                 'attendance_status' => 'attended',
                 'total_water_ml' => $this->water($key, $fromEnd, $index),
                 'record_text' => $this->note($key, $fromEnd, $index),
+                'family_text' => $this->familyNote($key, $fromEnd, $index),
+                'handover_note' => $this->handoverNote($key, $fromEnd),
                 'confirmed_at' => $date->copy()->setTime(17, 0),
             ]);
 
@@ -290,6 +322,44 @@ class DemoDataSeeder extends Seeder
         }
 
         return self::NOTES[$index % count(self::NOTES)];
+    }
+
+    /** 同じ出来事を、ご家族向けの文体で。連絡帳に載る文章。 */
+    private function familyNote(string $key, int $fromEnd, int $index): string
+    {
+        if ($key === 'sato' && $fromEnd < 4) {
+            return self::UNSTEADY_FAMILY_NOTES[3 - $fromEnd];
+        }
+
+        if ($key === 'nakamura' && $fromEnd === 2) {
+            return '午後の検温で37.4℃と、わずかに高めでした。ご本人に体調のお変わりはございませんが、'
+                .'お迎えの際に職員より詳しくお伝えいたします。';
+        }
+
+        if ($key === 'nakamura' && $fromEnd < 6) {
+            return 'お食事の進みが少しゆっくりで、主食・副菜とも半分ほどのお召し上がりでした。'
+                .'ご自宅でのご様子はいかがでしょうか。';
+        }
+
+        return self::FAMILY_NOTES[$index % count(self::FAMILY_NOTES)];
+    }
+
+    /** 申し送りは、次の担当者が取るべき行動があるときだけ書く。 */
+    private function handoverNote(string $key, int $fromEnd): ?string
+    {
+        if ($key === 'sato' && $fromEnd < 4) {
+            return 'ふらつきの訴えあり。歩行時の見守りと、送迎の2名介助を継続。';
+        }
+
+        if ($key === 'nakamura' && $fromEnd === 2) {
+            return '午後に37.4℃。翌利用日に再検温を要確認。';
+        }
+
+        if ($key === 'nakamura' && $fromEnd < 6) {
+            return '昼食の摂取量が低下。食形態と姿勢を要確認。';
+        }
+
+        return null;
     }
 
     private function water(string $key, int $fromEnd, int $index): int
@@ -387,8 +457,15 @@ class DemoDataSeeder extends Seeder
     /** @param array<string, Resident> $residents */
     private function createVerbalContactTasks(array $residents): void
     {
+        // 連絡帳に「お迎えの際にお伝えします」欄として出したいので、
+        // 直近の記録に紐づける。
+        $latest = static fn (Resident $resident): ?ServiceRecord => $resident->serviceRecords()
+            ->latest('service_date')
+            ->first();
+
         VerbalContactTask::query()->create([
             'resident_id' => $residents['sato']->id,
+            'service_record_id' => $latest($residents['sato'])?->id,
             'topic' => '食事中のむせ込み',
             'reason' => '頻度や食形態との関係によって意味が変わる事項であり、ご家族が状況を質問できる形でお伝えする必要があるため。',
             'urgency' => 'same_day',
@@ -398,6 +475,7 @@ class DemoDataSeeder extends Seeder
 
         VerbalContactTask::query()->create([
             'resident_id' => $residents['nakamura']->id,
+            'service_record_id' => $latest($residents['nakamura'])?->id,
             'topic' => '午後の微熱（37.4℃）',
             'reason' => 'ご自宅での様子とあわせて判断いただく必要があるため。',
             'urgency' => 'same_day',
