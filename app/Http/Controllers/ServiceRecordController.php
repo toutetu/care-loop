@@ -247,7 +247,11 @@ class ServiceRecordController extends Controller
 
             // 確定はチェックを入れたときだけ。保存＝確定にすると、
             // 途中まで入力して保存した記録が確定済みになってしまう。
-            if (($data['confirm'] ?? false) === true && ! $serviceRecord->isConfirmed()) {
+            //
+            // boolean() を使う。チェックボックスが送ってくるのは真偽値ではなく
+            // 文字列の "1" で、=== true では一致しない。バリデータの boolean
+            // ルールは形式を確かめるだけで、値を変換はしない。
+            if ($request->boolean('confirm') && ! $serviceRecord->isConfirmed()) {
                 $serviceRecord->confirmed_at = now();
             }
 
