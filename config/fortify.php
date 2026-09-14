@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureAuthFeatureEnabled;
 use Laravel\Fortify\Features;
 
 return [
@@ -101,7 +102,9 @@ return [
     |
     */
 
-    'middleware' => ['web'],
+    // EnsureAuthFeatureEnabled は、公開デモで閉じている機能へのアクセスを
+    // 404 にする。ルートは常に登録し、遮断は実行時に行う（上の features を参照）。
+    'middleware' => ['web', EnsureAuthFeatureEnabled::class],
 
     /*
     |--------------------------------------------------------------------------
@@ -161,19 +164,20 @@ return [
     */
 
     /*
-    | 【公開デモでは新規登録とパスワード再設定を閉じる】
+    | 【新規登録とパスワード再設定をここで外さない】
     |
-    | 誰でもアカウントを作れる状態で公開すると、実APIを無制限に呼び出せる。
-    | 月次の上限で請求は止まるが、その月のデモは動かなくなる。
+    | 公開デモではこの2つを閉じるが、それは EnsureAuthFeatureEnabled
+    | ミドルウェアが実行時に 404 を返すことで行う（config/careloop.php の
+    | features)。
     |
-    | パスワード再設定を閉じるのは、メール送信の手配がないためである。
-    | 押しても何も届かないリンクを出しておくほうが、ないよりも不親切になる。
-    |
-    | ローカルでは既定で有効。無効にするのはデプロイ先の環境変数で行う。
+    | ここから外すとルートごと登録されなくなり、Wayfinder が
+    | resources/js/routes/register.ts を生成しない。画面側はそれを
+    | import しているため、ビルドが失敗する。環境変数の値でフロントエンドの
+    | ビルドが壊れる状態は、デプロイのたびに事故を起こす。
     */
-    'features' => array_values(array_filter([
-        env('FEATURE_REGISTRATION', true) ? Features::registration() : null,
-        env('FEATURE_PASSWORD_RESET', true) ? Features::resetPasswords() : null,
+    'features' => [
+        Features::registration(),
+        Features::resetPasswords(),
         Features::emailVerification(),
         Features::twoFactorAuthentication([
             'confirm' => true,
@@ -183,6 +187,6 @@ return [
         Features::passkeys([
             'confirmPassword' => true,
         ]),
-    ])),
+    ],
 
 ];

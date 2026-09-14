@@ -11,9 +11,9 @@ use App\Models\Resident;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Sleep;
 use Inertia\Testing\AssertableInertia;
-use Laravel\Fortify\Features;
 use Mockery;
 use Tests\TestCase;
 
@@ -131,30 +131,78 @@ class PublicDemoGuardTest extends TestCase
     // 新規登録
     // ---------------------------------------------------------------
 
-    public function test_環境変数で新規登録とパスワード再設定を閉じられる(): void
+    public function test_新規登録を閉じると画面もフォームも404になる(): void
     {
         // ログイン情報を公開したまま登録も開けておくと、
         // 実APIを無制限に呼び出せる状態になる。
-        //
-        // 認証のルートは起動時に確定するため、テストの途中で config を
-        // 書き換えてもルートは変わらない。設定ファイルが環境変数から
-        // 何を組み立てるのかを直接確かめる。
-        $closed = $this->fortifyFeatures(registration: false, passwordReset: false);
+        config(['careloop.features.registration' => false]);
 
-        $this->assertNotContains(Features::registration(), $closed);
-        $this->assertNotContains(Features::resetPasswords(), $closed);
+        $this->get('/register')->assertNotFound();
 
-        // 二要素認証やパスキーは閉じない。閉じるのは公開に伴う2つだけである。
-        $this->assertContains(Features::emailVerification(), $closed);
+        $this->post('/register', [
+            'name' => '誰か',
+            'email' => 'someone@example.com',
+            'password' => 'Password!234567',
+            'password_confirmation' => 'Password!234567',
+        ])->assertNotFound();
+
+        $this->assertDatabaseMissing('users', ['email' => 'someone@example.com']);
+    }
+
+    public function test_パスワード再設定を閉じると404になる(): void
+    {
+        // メール送信の手配がないため、押しても何も届かない
+        config(['careloop.features.password_reset' => false]);
+
+        $this->get('/forgot-password')->assertNotFound();
+        $this->post('/forgot-password', ['email' => $this->staff->email])->assertNotFound();
+    }
+
+    public function test_閉じてもログイン自体は使える(): void
+    {
+        // 閉じるのは公開に伴う2つだけで、認証そのものは止めない
+        config([
+            'careloop.features.registration' => false,
+            'careloop.features.password_reset' => false,
+        ]);
+
+        $this->get('/login')->assertOk();
     }
 
     public function test_既定では新規登録を閉じない(): void
     {
         // ローカルでの開発と、この先の実運用を妨げない
-        $open = $this->fortifyFeatures(registration: true, passwordReset: true);
+        config(['careloop.features.registration' => true]);
 
-        $this->assertContains(Features::registration(), $open);
-        $this->assertContains(Features::resetPasswords(), $open);
+        $this->get('/register')->assertOk();
+    }
+
+    public function test_閉じている機能のルートは常に登録されている(): void
+    {
+        // 【今回の失敗を繰り返さないための確認】
+        // Fortify の features から外すとルートごと消え、Wayfinder が
+        // resources/js/routes/register.ts を生成しなくなる。画面側は
+        // それを import しているため、ビルドが壊れる。
+        // 遮断はミドルウェアで行い、ルートは環境に関わらず存在させる。
+        config([
+            'careloop.features.registration' => false,
+            'careloop.features.password_reset' => false,
+        ]);
+
+        foreach (['register', 'register.store', 'password.request', 'password.update'] as $name) {
+            $this->assertTrue(
+                Route::has($name),
+                "ルート {$name} が登録されていません。フロントエンドのビルドが壊れます。",
+            );
+        }
+    }
+
+    public function test_パスワード再設定が閉じていればログイン画面にリンクを出さない(): void
+    {
+        config(['careloop.features.password_reset' => false]);
+
+        $this->get('/login')
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('canResetPassword', false));
     }
 
     // ---------------------------------------------------------------
@@ -200,27 +248,5 @@ class PublicDemoGuardTest extends TestCase
         $this->artisan('careloop:reset-demo --force')->assertFailed();
 
         $this->assertDatabaseHas('users', ['id' => $this->staff->id]);
-    }
-
-    // ---------------------------------------------------------------
-
-    /**
-     * 環境変数を与えて config/fortify.php を評価し、有効な機能の一覧を得る。
-     *
-     * @return list<string>
-     */
-    private function fortifyFeatures(bool $registration, bool $passwordReset): array
-    {
-        $_ENV['FEATURE_REGISTRATION'] = $registration ? 'true' : 'false';
-        $_ENV['FEATURE_PASSWORD_RESET'] = $passwordReset ? 'true' : 'false';
-
-        try {
-            /** @var array{features: list<string>} $config */
-            $config = require base_path('config/fortify.php');
-
-            return $config['features'];
-        } finally {
-            unset($_ENV['FEATURE_REGISTRATION'], $_ENV['FEATURE_PASSWORD_RESET']);
-        }
     }
 }
