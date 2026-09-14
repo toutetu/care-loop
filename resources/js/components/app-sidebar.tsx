@@ -1,5 +1,13 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, FolderGit2, LayoutGrid, Sparkles, Users } from 'lucide-react';
+import {
+    Activity,
+    BookOpen,
+    ClipboardList,
+    FolderGit2,
+    LayoutGrid,
+    Sparkles,
+    Users,
+} from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -15,7 +23,9 @@ import {
 } from '@/components/ui/sidebar';
 import { REPOSITORY_URL, REQUIREMENTS_URL } from '@/lib/links';
 import { dashboard } from '@/routes';
+import llmJobs from '@/routes/llm-jobs';
 import llmLogs from '@/routes/llm-logs';
+import records from '@/routes/records';
 import residents from '@/routes/residents';
 import type { NavItem } from '@/types';
 
@@ -41,7 +51,9 @@ export function AppSidebar() {
 
     const mainNavItems: NavItem[] = [
         { title: 'ダッシュボード', href: dashboard(), icon: LayoutGrid },
+        { title: '記録一覧', href: records.index(), icon: ClipboardList },
         { title: '利用者一覧', href: residents.index(), icon: Users },
+        { title: 'AI処理の実行状況', href: llmJobs.index(), icon: Activity },
     ];
 
     // 費用と失敗率は運営の情報であり、日々の介護業務には要らない。

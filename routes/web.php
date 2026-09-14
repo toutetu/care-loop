@@ -3,6 +3,7 @@
 use App\Http\Controllers\DailyFamilyReportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LlmActionController;
+use App\Http\Controllers\LlmJobController;
 use App\Http\Controllers\LlmLogController;
 use App\Http\Controllers\ResidentController;
 use App\Http\Controllers\ServiceRecordController;
@@ -18,6 +19,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('residents/{resident}', [ResidentController::class, 'show'])->name('residents.show');
 
     // --- サービス提供記録 ---
+    Route::get('records', [ServiceRecordController::class, 'index'])->name('records.index');
     Route::get('records/{serviceRecord}/edit', [ServiceRecordController::class, 'edit'])->name('records.edit');
     Route::put('records/{serviceRecord}', [ServiceRecordController::class, 'update'])->name('records.update');
 
@@ -42,6 +44,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('residents/{resident}/goal-progress', [LlmActionController::class, 'goalProgress'])
             ->name('llm.goal-progress');
     });
+
+    /*
+     * AI処理の実行状況。職員全員が開ける。
+     * 押した処理が通ったのか失敗したのかを確認する場所であり、
+     * 費用とトークン数を扱う AI利用ログ（管理者のみ）とは役割が違う。
+     */
+    Route::get('llm-jobs', [LlmJobController::class, 'index'])->name('llm-jobs.index');
 
     // --- AI利用ログ（管理者のみ） ---
     Route::get('llm-logs', [LlmLogController::class, 'index'])->name('llm-logs.index');

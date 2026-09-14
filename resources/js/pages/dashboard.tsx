@@ -1,33 +1,13 @@
 import { Head, Link } from '@inertiajs/react';
-import { CalendarDays, ChevronRight, MessageSquareWarning, Printer } from 'lucide-react';
-import {
-    RecordStatusBadge,
-    SeverityBadge,
-    SourceBadge,
-} from '@/components/care/badges';
+import { CalendarDays, MessageSquareWarning } from 'lucide-react';
+import { SeverityBadge, SourceBadge } from '@/components/care/badges';
 import { EmptyState, Section, StatCard } from '@/components/care/section';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { dashboard } from '@/routes';
-import llmLogs from '@/routes/llm-logs';
+import llmJobs from '@/routes/llm-jobs';
 import records from '@/routes/records';
 import residents from '@/routes/residents';
-import type { RecordStatus, RiskSeverity, RiskSource, VerbalContact } from '@/types/care';
-
-type Attendance = {
-    recordId: number;
-    residentId: number;
-    name: string;
-    careLevel: string | null;
-    arrivalTime: string | null;
-    departureTime: string | null;
-    temperature: number | null;
-    recorder: string | null;
-    status: RecordStatus;
-    bathing: boolean | null;
-    /** 記録を編集できるか。一般職員は自分が記録したものだけ。 */
-    canEdit: boolean;
-};
+import type { RiskSeverity, RiskSource, VerbalContact } from '@/types/care';
 
 type UrgentRisk = {
     id: number;
@@ -43,19 +23,9 @@ type UrgentRisk = {
     assessedOn: string;
 };
 
-type RecentJob = {
-    id: number;
-    feature: string;
-    status: string;
-    statusLabel: string;
-    requester: string | null;
-    errorLabel: string | null;
-    finishedAt: string | null;
-};
-
 type Props = {
     day: { date: string; label: string; isToday: boolean };
-    attendance: Attendance[];
+    counts: { residents: number; unconfirmed: number };
     risks: UrgentRisk[];
     verbalContacts: VerbalContact[];
     llm: {
@@ -64,22 +34,24 @@ type Props = {
         spentUsd: number;
         budgetUsd: number;
         usageRate: number;
-        cacheHitRate: number;
-        recent: RecentJob[];
     };
-    canViewLlmLogs: boolean;
 };
 
+/**
+ * ダッシュボード。朝礼と申し送りの場面で開く画面。
+ *
+ * 【一覧を置かない】
+ * ここは全体を見る場所で、記録を埋めるのは記録一覧、AIの結果を追うのは
+ * AI処理の実行状況が担う。数字を出し、押せばその画面へ移れるようにする。
+ * 目的の違う一覧を1画面に並べると、どれも中途半端になる。
+ */
 export default function Dashboard({
     day,
-    attendance,
+    counts,
     risks,
     verbalContacts,
     llm,
-    canViewLlmLogs,
 }: Props) {
-    const unconfirmed = attendance.filter((row) => row.status !== 'confirmed').length;
-
     return (
         <>
             <Head title="ダッシュボード" />
@@ -96,14 +68,29 @@ export default function Dashboard({
                     )}
                 </div>
 
+                {/* 数字を見た職員が次にすることは「その中身を見る」である。
+                    カードから、それぞれの一覧へ直接移れるようにする。 */}
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <StatCard label="ご利用者" value={attendance.length} unit="名" />
+                    <StatCard
+                        label="ご利用者"
+                        value={counts.residents}
+                        unit="名"
+                        hint="押すと記録一覧へ"
+                        href={records.index({ query: { date: day.date } })}
+                    />
                     <StatCard
                         label="未確定の記録"
-                        value={unconfirmed}
+                        value={counts.unconfirmed}
                         unit="件"
-                        tone={unconfirmed > 0 ? 'alert' : 'default'}
-                        hint={unconfirmed > 0 ? '本日中にご確認ください' : 'すべて確定済みです'}
+                        tone={counts.unconfirmed > 0 ? 'alert' : 'default'}
+                        hint={
+                            counts.unconfirmed > 0
+                                ? '押すと未確定のみ表示します'
+                                : 'すべて確定済みです'
+                        }
+                        href={records.index({
+                            query: { date: day.date, status: 'unconfirmed' },
+                        })}
                     />
                     <StatCard
                         label="要対応のリスク"
@@ -115,9 +102,9 @@ export default function Dashboard({
                     <StatCard
                         label="今月のAI利用料"
                         value={`$${llm.spentUsd.toFixed(2)}`}
-                        hint={`上限 $${llm.budgetUsd.toFixed(2)} の ${Math.round(
-                            llm.usageRate * 100,
-                        )}%`}
+                        hint={`成功 ${llm.succeeded} 件 ／ 失敗 ${llm.failed} 件`}
+                        tone={llm.failed > 0 ? 'alert' : 'default'}
+                        href={llmJobs.index()}
                     />
                 </div>
 
@@ -181,148 +168,6 @@ export default function Dashboard({
                     )}
                 </Section>
 
-                <Section
-                    title="ご利用者と記録の状況"
-                    description={`${day.label}のご利用状況です。`}
-                    action={
-                        <Button variant="outline" size="sm" asChild>
-                            <Link href={residents.index()}>
-                                利用者一覧
-                                <ChevronRight className="size-4" aria-hidden />
-                            </Link>
-                        </Button>
-                    }
-                >
-                    {attendance.length === 0 ? (
-                        <EmptyState>この日のご利用記録はありません。</EmptyState>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full min-w-[680px] text-sm">
-                                <thead>
-                                    <tr className="border-b text-left text-xs text-muted-foreground">
-                                        <th className="pb-2 font-medium">お名前</th>
-                                        <th className="pb-2 font-medium">要介護度</th>
-                                        <th className="pb-2 font-medium">到着／帰宅</th>
-                                        <th className="pb-2 font-medium">体温</th>
-                                        <th className="pb-2 font-medium">入浴</th>
-                                        <th className="pb-2 font-medium">記録</th>
-                                        <th className="pb-2" />
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y">
-                                    {attendance.map((row) => (
-                                        <tr key={row.recordId}>
-                                            <td className="py-2">
-                                                <Link
-                                                    href={residents.show(row.residentId)}
-                                                    className="font-medium hover:underline"
-                                                >
-                                                    {row.name}
-                                                </Link>
-                                            </td>
-                                            <td className="py-2 text-muted-foreground">
-                                                {row.careLevel ?? '—'}
-                                            </td>
-                                            <td className="py-2 tabular-nums text-muted-foreground">
-                                                {row.arrivalTime ?? '—'} 〜 {row.departureTime ?? '—'}
-                                            </td>
-                                            {/* 未測定は空欄にする。0と書くと測って0だったと読めてしまう */}
-                                            <td className="py-2 tabular-nums">
-                                                {row.temperature !== null
-                                                    ? `${row.temperature.toFixed(1)} ℃`
-                                                    : '未測定'}
-                                            </td>
-                                            <td className="py-2 text-muted-foreground">
-                                                {row.bathing === null
-                                                    ? '—'
-                                                    : row.bathing
-                                                      ? 'あり'
-                                                      : 'なし'}
-                                            </td>
-                                            <td className="py-2">
-                                                <RecordStatusBadge status={row.status} />
-                                            </td>
-                                            <td className="py-2 text-right">
-                                                <div className="flex justify-end gap-1">
-                                                    {/* 他の職員の記録も開ける。ただし書き換えはできないので、
-                                                        開く前に分かるようラベルを変える。 */}
-                                                    <Button variant="ghost" size="sm" asChild>
-                                                        <Link href={records.edit(row.recordId)}>
-                                                            {row.canEdit ? '入力' : '表示'}
-                                                        </Link>
-                                                    </Button>
-                                                    <Button variant="ghost" size="sm" asChild>
-                                                        <a
-                                                            href={records.familyReport(row.recordId).url}
-                                                            target="_blank"
-                                                            rel="noreferrer"
-                                                            title="連絡帳を印刷"
-                                                        >
-                                                            <Printer className="size-4" aria-hidden />
-                                                        </a>
-                                                    </Button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </Section>
-
-                <Section
-                    title="AI処理の実行状況"
-                    description="今月の実行結果です。失敗も隠さずに表示します。"
-                    action={
-                        canViewLlmLogs && (
-                            <Button variant="outline" size="sm" asChild>
-                                <Link href={llmLogs.index()}>
-                                    AI利用ログ
-                                    <ChevronRight className="size-4" aria-hidden />
-                                </Link>
-                            </Button>
-                        )
-                    }
-                >
-                    <div className="grid gap-4 sm:grid-cols-3">
-                        <div>
-                            <p className="text-sm text-muted-foreground">成功</p>
-                            <p className="text-xl font-semibold tabular-nums">{llm.succeeded} 件</p>
-                        </div>
-                        <div>
-                            <p className="text-sm text-muted-foreground">失敗</p>
-                            <p className="text-xl font-semibold tabular-nums">{llm.failed} 件</p>
-                        </div>
-                        <div>
-                            <p className="text-sm text-muted-foreground">キャッシュ利用率</p>
-                            <p className="text-xl font-semibold tabular-nums">
-                                {Math.round(llm.cacheHitRate * 100)} %
-                            </p>
-                        </div>
-                    </div>
-
-                    {llm.recent.length > 0 && (
-                        <ul className="mt-4 divide-y border-t text-sm">
-                            {llm.recent.map((job) => (
-                                <li key={job.id} className="flex flex-wrap items-center gap-2 py-2">
-                                    <Badge
-                                        variant={job.status === 'failed' ? 'destructive' : 'secondary'}
-                                    >
-                                        {job.statusLabel}
-                                    </Badge>
-                                    <span>{job.feature}</span>
-                                    {job.errorLabel && (
-                                        <span className="text-muted-foreground">（{job.errorLabel}）</span>
-                                    )}
-                                    <span className="ml-auto text-xs text-muted-foreground">
-                                        {job.requester} ／ {job.finishedAt ?? '—'}
-                                    </span>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </Section>
             </div>
         </>
     );

@@ -3,9 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateServiceRecordRequest;
+use App\Models\Resident;
 use App\Models\ServiceRecord;
+use App\Models\User;
+use Carbon\CarbonInterface;
+use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -25,6 +31,127 @@ use Inertia\Response;
  */
 class ServiceRecordController extends Controller
 {
+    /**
+     * 記録の一覧。
+     *
+     * 【ダッシュボードから独立させた理由】
+     * ダッシュボードは朝礼で全体を見る場所で、一覧は記録を埋めていく場所である。
+     * 目的が違うものを1画面に混ぜると、どちらも中途半端になる。
+     * 独立させたことで、日付を選ぶ・未確定だけ絞るといった操作を置ける。
+     *
+     * 【未確定を上に並べる】
+     * この画面を開く動機は「まだ終わっていないものを片付ける」ことである。
+     * 確定済みが上に並んでいると、毎回スクロールして探すことになる。
+     */
+    public function index(Request $request): Response
+    {
+        Gate::authorize('viewAny', Resident::class);
+
+        /** @var User $user */
+        $user = $request->user();
+
+        $date = $this->resolveDate($request, $user->facility_id);
+        $onlyUnconfirmed = $request->string('status')->value() === 'unconfirmed';
+
+        $records = ServiceRecord::query()
+            ->whereHas('resident', fn ($query) => $query->where('facility_id', $user->facility_id))
+            ->whereDate('service_date', $date)
+            ->with(['resident.careLevel', 'recorder', 'vitalSigns'])
+            ->get();
+
+        $rows = $records
+            // 氏名カナは暗号化しているためSQLでは並べ替えられない（要件定義 9.3節）
+            ->sortBy(fn (ServiceRecord $record) => $record->resident->name_kana)
+            ->sortBy(fn (ServiceRecord $record) => $record->isConfirmed() ? 1 : 0)
+            ->values();
+
+        return Inertia::render('records/index', [
+            'day' => [
+                'date' => $date->toDateString(),
+                'label' => $date->translatedFormat('n月j日（D）'),
+                'isToday' => $date->isToday(),
+            ],
+            'counts' => [
+                'total' => $records->count(),
+                'unconfirmed' => $records->filter(fn (ServiceRecord $r) => ! $r->isConfirmed())->count(),
+                'aiDraft' => $records->filter(fn (ServiceRecord $r) => $r->hasUnconfirmedAiDraft())->count(),
+            ],
+            'onlyUnconfirmed' => $onlyUnconfirmed,
+            'records' => $this->rows(
+                $onlyUnconfirmed
+                    ? $rows->filter(fn (ServiceRecord $r) => ! $r->isConfirmed())->values()
+                    : $rows,
+                $user,
+            ),
+        ]);
+    }
+
+    /**
+     * 表示する日付を決める。
+     *
+     * 指定がなければ本日。本日に記録がなければ直近の利用日へ下がる。
+     * 通所介護は日曜や祝日に営業しないため、空の一覧を見せても
+     * 壊れているのか休みなのか区別がつかない。
+     */
+    private function resolveDate(Request $request, ?int $facilityId): CarbonInterface
+    {
+        $requested = $request->string('date')->value();
+
+        if ($requested !== '') {
+            try {
+                return Date::parse($requested)->startOfDay();
+            } catch (InvalidFormatException) {
+                // 日付として読めない指定は無視して既定の動きに戻す
+            }
+        }
+
+        $inFacility = fn ($query) => $query->where('facility_id', $facilityId);
+
+        $hasToday = ServiceRecord::query()
+            ->whereHas('resident', $inFacility)
+            ->whereDate('service_date', today())
+            ->exists();
+
+        if ($hasToday) {
+            return today();
+        }
+
+        $latest = ServiceRecord::query()
+            ->whereHas('resident', $inFacility)
+            ->max('service_date');
+
+        return is_string($latest) ? Date::parse($latest)->startOfDay() : today();
+    }
+
+    /**
+     * @param  Collection<int, ServiceRecord>  $records
+     * @return list<array<string, mixed>>
+     */
+    private function rows($records, User $user): array
+    {
+        return array_values($records->map(function (ServiceRecord $record) use ($user): array {
+            $vital = $record->vitalSigns->first();
+
+            return [
+                'recordId' => $record->id,
+                'residentId' => $record->resident_id,
+                'name' => $record->resident->name,
+                'careLevel' => $record->resident->careLevel?->name,
+                'arrivalTime' => $this->hhmm($record->arrival_time),
+                'departureTime' => $this->hhmm($record->departure_time),
+                'temperature' => $vital?->temperature !== null ? (float) $vital->temperature : null,
+                'recorder' => $record->recorder?->name,
+                'status' => match (true) {
+                    $record->hasUnconfirmedAiDraft() => 'ai_draft',
+                    $record->isConfirmed() => 'confirmed',
+                    default => 'draft',
+                },
+                'bathing' => $record->bathing_performed,
+                'canEdit' => $user->can('update', $record),
+            ];
+        })->all());
+    }
+
     /**
      * 記録を開く。
      *
