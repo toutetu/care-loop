@@ -40,18 +40,29 @@ return new class extends Migration
         /*
          * 種別ごと1件の制限を外す。おやつを2回に分けて出すこともあり、
          * 昼食の摂取量を食後に入れ直すこともある。どちらも別の事実として残す。
+         *
+         * 置き換えのインデックスを先に作る。MySQL/MariaDB は外部キーの列に
+         * インデックスを要求し、いまはこの一意インデックスがその役目を
+         * 兼ねている。先に落とすと «needed in a foreign key constraint» で
+         * 失敗する（SQLite は表を作り直すため、この順序では再現しない）。
          */
         Schema::table('meal_records', function (Blueprint $table) {
+            $table->index(['service_record_id', 'meal_type'], 'meal_records_record_type_index');
+        });
+
+        Schema::table('meal_records', function (Blueprint $table) {
             $table->dropUnique('meal_records_service_record_id_meal_type_unique');
-            $table->index(['service_record_id', 'meal_type']);
         });
     }
 
     public function down(): void
     {
         Schema::table('meal_records', function (Blueprint $table) {
-            $table->dropIndex(['service_record_id', 'meal_type']);
             $table->unique(['service_record_id', 'meal_type']);
+        });
+
+        Schema::table('meal_records', function (Blueprint $table) {
+            $table->dropIndex('meal_records_record_type_index');
             $table->dropConstrainedForeignId('recorded_by');
             $table->dropColumn('recorded_at');
         });

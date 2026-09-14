@@ -1,15 +1,19 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
     Activity,
+    Bath,
     BookOpen,
     ClipboardList,
     FolderGit2,
+    HeartPulse,
     History,
     LayoutGrid,
     Sparkles,
     UserCog,
     Users,
+    UtensilsCrossed,
 } from 'lucide-react';
+import BatchEntryController from '@/actions/App/Http/Controllers/BatchEntryController';
 import AppLogo from '@/components/app-logo';
 import { NavUser } from '@/components/nav-user';
 import {
@@ -102,12 +106,30 @@ export function AppSidebar() {
             ],
         },
         {
+            // 記録一覧はご利用者ごと、下の3つは作業ごとの入り口。
+            // 入浴介助を終えた職員は、担当した方を順に入れたい。
+            // 同じ事実をどちらからでも入れられる。
             label: '入力',
             items: [
                 {
                     title: '記録一覧',
                     href: records.index(),
                     icon: ClipboardList,
+                },
+                {
+                    title: '入浴入力',
+                    href: BatchEntryController.index.url({ kind: 'bathing' }),
+                    icon: Bath,
+                },
+                {
+                    title: '食事入力',
+                    href: BatchEntryController.index.url({ kind: 'meal' }),
+                    icon: UtensilsCrossed,
+                },
+                {
+                    title: 'バイタル入力',
+                    href: BatchEntryController.index.url({ kind: 'vital' }),
+                    icon: HeartPulse,
                 },
             ],
         },
