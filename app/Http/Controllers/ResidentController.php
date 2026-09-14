@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreResidentRequest;
+use App\Models\CareLevel;
 use App\Models\CarePlanGoal;
 use App\Models\GoalProgressItem;
 use App\Models\GoalProgressReport;
@@ -13,6 +15,7 @@ use App\Models\User;
 use App\Models\VerbalContactTask;
 use App\Models\WeightRecord;
 use Carbon\Exceptions\InvalidFormatException;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Gate;
@@ -56,6 +59,9 @@ class ResidentController extends Controller
             ->values();
 
         return Inertia::render('residents/index', [
+            // 介護職員には登録ボタンを出さない。押して403になるまで
+            // 分からない状態を作らない。
+            'canCreate' => $user->can('create', Resident::class),
             'residents' => $residents->map(fn (Resident $resident): array => [
                 'id' => $resident->id,
                 'name' => $resident->name,
@@ -72,6 +78,98 @@ class ResidentController extends Controller
         ]);
     }
 
+    /**
+     * ご利用者の登録画面。
+     */
+    public function create(): Response
+    {
+        Gate::authorize('create', Resident::class);
+
+        return Inertia::render('residents/form', [
+            'resident' => null,
+            'careLevels' => $this->careLevels(),
+        ]);
+    }
+
+    /**
+     * ご利用者を登録する。
+     *
+     * 【同姓同名を拒まない】
+     * 同じ事業所に同姓同名の方がいることは実際にある。名前で弾くと、
+     * 本当に必要な登録ができなくなる。重複の可能性は画面で知らせ、
+     * 登録するかどうかは職員が決める。
+     */
+    public function store(StoreResidentRequest $request): RedirectResponse
+    {
+        Gate::authorize('create', Resident::class);
+
+        /** @var User $user */
+        $user = $request->user();
+
+        $resident = new Resident;
+        $resident->facility_id = $user->facility_id;
+        // name_kana_hash は booted() が保存時に計算する（Resident モデル）
+        $resident->fill($request->validated())->save();
+
+        return to_route('residents.show', $resident)
+            ->with('success', "{$resident->name} 様を登録しました。");
+    }
+
+    /**
+     * ご利用者情報の編集画面。
+     */
+    public function edit(Resident $resident): Response
+    {
+        Gate::authorize('update', $resident);
+
+        return Inertia::render('residents/form', [
+            'resident' => [
+                'id' => $resident->id,
+                'name' => $resident->name,
+                'name_kana' => $resident->name_kana,
+                'care_level_id' => $resident->care_level_id,
+                'birth_date' => $resident->birth_date?->toDateString(),
+                'gender' => $resident->gender,
+                'insurance_number' => $resident->insurance_number,
+                'address' => $resident->address,
+                'phone' => $resident->phone,
+                'family_contact' => $resident->family_contact,
+                'medical_history' => $resident->medical_history,
+                'care_manager_name' => $resident->care_manager_name,
+                'started_at' => $resident->started_at?->toDateString(),
+                'ended_at' => $resident->ended_at?->toDateString(),
+                'service_weekdays' => $resident->service_weekdays ?? [],
+            ],
+            'careLevels' => $this->careLevels(),
+        ]);
+    }
+
+    public function update(StoreResidentRequest $request, Resident $resident): RedirectResponse
+    {
+        Gate::authorize('update', $resident);
+
+        $resident->fill($request->validated())->save();
+
+        return to_route('residents.show', $resident)
+            ->with('success', "{$resident->name} 様の情報を更新しました。");
+    }
+
+    /**
+     * 要介護度の選択肢。軽度から重度の順に並べる。
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function careLevels(): array
+    {
+        return array_values(CareLevel::query()
+            ->orderBy('sort_order')
+            ->get()
+            ->map(fn (CareLevel $level): array => [
+                'id' => $level->id,
+                'name' => $level->name,
+            ])->all());
+    }
+
     public function show(Request $request, Resident $resident): Response
     {
         Gate::authorize('view', $resident);
@@ -82,6 +180,7 @@ class ResidentController extends Controller
         $resident->load(['careLevel', 'facility']);
 
         return Inertia::render('residents/show', [
+            'canEdit' => $user->can('update', $resident),
             'resident' => [
                 'id' => $resident->id,
                 'name' => $resident->name,

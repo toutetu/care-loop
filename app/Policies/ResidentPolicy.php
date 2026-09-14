@@ -24,6 +24,25 @@ class ResidentPolicy
     }
 
     /**
+     * ご利用者の登録。
+     *
+     * 【介護職員には許さない】
+     * 新規のご利用者を迎えるのは契約の手続きであり、生活相談員か管理者の
+     * 仕事である。フロアの職員が登録できる必要はなく、できてしまうと
+     * 二重登録や書きかけの登録が増える（UserRole::canManageResidents）。
+     */
+    public function create(User $user): bool
+    {
+        return $user->facility_id !== null && $user->role->canManageResidents();
+    }
+
+    /** ご利用者情報の編集。登録と同じ権限で扱う。 */
+    public function update(User $user, Resident $resident): bool
+    {
+        return $this->sameFacility($user, $resident) && $user->role->canManageResidents();
+    }
+
+    /**
      * AI機能の実行。
      *
      * 閲覧できる方に対してのみ実行を許す。実行のたびに費用が発生するため、
