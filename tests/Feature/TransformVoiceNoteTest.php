@@ -222,7 +222,7 @@ class TransformVoiceNoteTest extends TestCase
                 'meal_staple_rate' => null,
                 'meal_side_rate' => null,
                 'water_ml' => 1500,
-                'bathing_performed' => true,
+                'bathing_type' => 'bath',
                 'incident_suspected' => false,
             ],
         ]));
@@ -295,7 +295,7 @@ class TransformVoiceNoteTest extends TestCase
                 'meal_staple_rate' => null,
                 'meal_side_rate' => null,
                 'water_ml' => null,
-                'bathing_performed' => true,
+                'bathing_type' => 'bath',
                 'incident_suspected' => false,
             ],
         ], $overrides);

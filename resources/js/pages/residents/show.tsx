@@ -4,6 +4,7 @@ import {
     CircleCheck,
     Info,
     MessageSquareWarning,
+    Pencil,
     Printer,
     Sparkles,
     TriangleAlert,
@@ -52,7 +53,7 @@ type ServiceRecordRow = {
     temperature: number | null;
     waterMl: number | null;
     stapleRate: number | null;
-    bathing: boolean | null;
+    bathing: string | null;
     recorder: string | null;
     confirmed: boolean;
     hasAiDraft: boolean;
@@ -76,6 +77,8 @@ type Props = {
     riskAssessment: RiskAssessment | null;
     goalProgress: GoalProgress | null;
     verbalContacts: VerbalContact[];
+    /** ご利用者情報を編集できるか。生活相談員以上（ResidentPolicy）。 */
+    canEdit: boolean;
 };
 
 export default function ResidentShow({
@@ -87,6 +90,7 @@ export default function ResidentShow({
     riskAssessment,
     goalProgress,
     verbalContacts,
+    canEdit,
 }: Props) {
     const latestLoss = weights.at(-1)?.lossRate ?? null;
 
@@ -107,7 +111,15 @@ export default function ResidentShow({
                                     {` ／ ${resident.gender}`}
                                 </p>
                             </div>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                                {canEdit && (
+                                    <Button variant="outline" size="sm" asChild>
+                                        <Link href={residentRoutes.edit(resident.id)}>
+                                            <Pencil className="size-4" aria-hidden />
+                                            情報を編集
+                                        </Link>
+                                    </Button>
+                                )}
                                 {resident.careLevel && (
                                     <Badge variant="secondary">{resident.careLevel}</Badge>
                                 )}
@@ -439,7 +451,7 @@ export default function ResidentShow({
                                         <th className="pb-2 font-medium">体温</th>
                                         <th className="pb-2 font-medium">水分</th>
                                         <th className="pb-2 font-medium">主食</th>
-                                        <th className="pb-2 font-medium">入浴</th>
+                                        <th className="pb-2 font-medium">入浴・清拭</th>
                                         <th className="pb-2 font-medium">記録</th>
                                         <th className="pb-2" />
                                     </tr>
@@ -474,11 +486,7 @@ export default function ResidentShow({
                                                 {row.stapleRate !== null ? `${row.stapleRate}%` : '—'}
                                             </td>
                                             <td className="py-2">
-                                                {row.bathing === null
-                                                    ? '—'
-                                                    : row.bathing
-                                                      ? 'あり'
-                                                      : 'なし'}
+                                                {row.bathing ?? '—'}
                                             </td>
                                             <td className="py-2">
                                                 <RecordStatusBadge

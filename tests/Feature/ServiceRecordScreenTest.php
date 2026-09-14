@@ -154,12 +154,41 @@ class ServiceRecordScreenTest extends TestCase
 
     public function test_確定にチェックを入れると確定する(): void
     {
+        // ブラウザのチェックボックスは真偽値ではなく文字列 "1" を送る。
+        // ここを true で書いていたため、厳密比較の誤りを見逃していた。
         $this->actingAs($this->staff)->put($this->updateUrl(), [
             'attendance_status' => 'attended',
-            'confirm' => true,
+            'confirm' => '1',
         ]);
 
         $this->assertNotNull($this->record->refresh()->confirmed_at);
+    }
+
+    public function test_チェックを外したままなら確定しない(): void
+    {
+        // 外したチェックボックスは項目そのものが送られてこない
+        $this->actingAs($this->staff)->put($this->updateUrl(), [
+            'attendance_status' => 'attended',
+        ]);
+
+        $this->assertNull($this->record->refresh()->confirmed_at);
+    }
+
+    public function test_確定済みの記録は保存しても確定時刻が変わらない(): void
+    {
+        // 保存のたびに確定時刻が動くと、いつ確認したのかが分からなくなる
+        $confirmedAt = now()->subDay()->startOfMinute();
+        $this->record->forceFill(['confirmed_at' => $confirmedAt])->save();
+
+        $this->actingAs($this->staff)->put($this->updateUrl(), [
+            'attendance_status' => 'attended',
+            'confirm' => '1',
+        ]);
+
+        $this->assertSame(
+            $confirmedAt->toDateTimeString(),
+            $this->record->refresh()->confirmed_at->toDateTimeString(),
+        );
     }
 
     public function test_確定済みの記録もai下書きなら未確認として画面に渡る(): void

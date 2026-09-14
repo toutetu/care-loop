@@ -35,6 +35,9 @@ class ResetDemoData extends Command
 
     /** 消す順序。外部キーの参照先を後に置く。 */
     private const TABLES = [
+        // 編集履歴も消す。残したままにすると、採番し直されたIDを指して
+        // 別のご利用者の履歴として表示されてしまう。
+        'audit_logs',
         'goal_progress_items',
         'goal_progress_reports',
         'risk_findings',

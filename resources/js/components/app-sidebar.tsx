@@ -4,8 +4,10 @@ import {
     BookOpen,
     ClipboardList,
     FolderGit2,
+    History,
     LayoutGrid,
     Sparkles,
+    UserCog,
     Users,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
@@ -22,11 +24,13 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { REPOSITORY_URL, REQUIREMENTS_URL } from '@/lib/links';
+import auditLogs from '@/routes/audit-logs';
 import { dashboard } from '@/routes';
 import llmJobs from '@/routes/llm-jobs';
 import llmLogs from '@/routes/llm-logs';
 import records from '@/routes/records';
 import residents from '@/routes/residents';
+import staff from '@/routes/staff';
 import type { NavItem } from '@/types';
 
 const footerNavItems: NavItem[] = [
@@ -56,14 +60,14 @@ export function AppSidebar() {
         { title: 'AI処理の実行状況', href: llmJobs.index(), icon: Activity },
     ];
 
-    // 費用と失敗率は運営の情報であり、日々の介護業務には要らない。
+    // 職員アカウントの管理と、費用・失敗率の参照は管理者に限る。
     // 権限のない職員にリンクだけ見せると、押して弾かれることになる。
     if (auth.user?.role === 'admin') {
-        mainNavItems.push({
-            title: 'AI利用ログ',
-            href: llmLogs.index(),
-            icon: Sparkles,
-        });
+        mainNavItems.push(
+            { title: '職員アカウント', href: staff.index(), icon: UserCog },
+            { title: '編集履歴', href: auditLogs.index(), icon: History },
+            { title: 'AI利用ログ', href: llmLogs.index(), icon: Sparkles },
+        );
     }
 
     return (

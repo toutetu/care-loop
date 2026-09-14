@@ -20,7 +20,7 @@ type Row = {
     temperature: number | null;
     recorder: string | null;
     status: RecordStatus;
-    bathing: boolean | null;
+    bathing: string | null;
     canEdit: boolean;
 };
 
@@ -158,7 +158,7 @@ export default function RecordIndex({
                                         <th className="pb-2 font-medium">要介護度</th>
                                         <th className="pb-2 font-medium">到着／帰宅</th>
                                         <th className="pb-2 font-medium">体温</th>
-                                        <th className="pb-2 font-medium">入浴</th>
+                                        <th className="pb-2 font-medium">入浴・清拭</th>
                                         <th className="pb-2 font-medium">記録</th>
                                         <th className="pb-2" />
                                     </tr>
@@ -188,11 +188,7 @@ export default function RecordIndex({
                                                     : '未測定'}
                                             </td>
                                             <td className="py-2 text-muted-foreground">
-                                                {row.bathing === null
-                                                    ? '—'
-                                                    : row.bathing
-                                                      ? 'あり'
-                                                      : 'なし'}
+                                                {row.bathing ?? '—'}
                                             </td>
                                             <td className="py-2">
                                                 <RecordStatusBadge status={row.status} />

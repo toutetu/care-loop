@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\UserRole;
+use App\Models\Concerns\Auditable;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Carbon\CarbonInterface;
 use Database\Factories\UserFactory;
@@ -40,7 +41,26 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 class User extends Authenticatable implements PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+    use Auditable, HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+
+    /**
+     * 編集履歴に出す項目名。
+     *
+     * 役割と在籍の変更は、誰が何を編集できるかを変える。
+     * 後から「いつ権限が変わったのか」を辿れる必要がある。
+     *
+     * @return array<string, string>
+     */
+    public function auditLabels(): array
+    {
+        return [
+            'name' => 'お名前',
+            'email' => 'メールアドレス',
+            'role' => '役割',
+            'is_active' => '在籍',
+            'facility_id' => '事業所',
+        ];
+    }
 
     /**
      * Get the attributes that should be cast.

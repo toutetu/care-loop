@@ -13,7 +13,17 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    /*
+     * 自分のアカウントを削除する経路は用意しない。
+     *
+     * 職員が書いた記録は法定の保存文書であり、記録者が誰かを辿れる必要がある。
+     * 本人が自分のアカウントを消せると、その手がかりが失われる。
+     *
+     * 画面からボタンを外すだけでは足りない。ルートが残っていれば、
+     * DELETE を直接投げるだけで消せてしまう。
+     *
+     * 退職時は管理者が在籍を外す（StaffController）。アカウント自体は残る。
+     */
 
     Route::get('settings/security', [SecurityController::class, 'edit'])
         ->middleware(RequirePassword::class)

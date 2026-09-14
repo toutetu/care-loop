@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use App\Support\BlindIndex;
 use Carbon\CarbonInterface;
 use Database\Factories\ResidentFactory;
@@ -55,7 +56,36 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Resident extends Model
 {
     /** @use HasFactory<ResidentFactory> */
-    use HasFactory, SoftDeletes;
+    use Auditable, HasFactory, SoftDeletes;
+
+    /**
+     * 編集履歴に出す項目名。
+     *
+     * 列名のまま出しても、誰が読んでも分かるわけではない。
+     * 「何が変わったのか」を確かめる画面なので、画面と同じ言葉で出す。
+     *
+     * @return array<string, string>
+     */
+    public function auditLabels(): array
+    {
+        return [
+            'name' => 'お名前',
+            'name_kana' => 'お名前（カナ）',
+            'care_level_id' => '要介護度',
+            'birth_date' => '生年月日',
+            'gender' => '性別',
+            'insurance_number' => '被保険者番号',
+            'address' => 'ご住所',
+            'phone' => '電話番号',
+            'family_contact' => 'ご家族の連絡先',
+            'medical_history' => '既往歴',
+            'care_manager_name' => '担当の介護支援専門員',
+            'service_weekdays' => '利用曜日',
+            'started_at' => '利用開始日',
+            'ended_at' => '利用終了日',
+            'facility_id' => '事業所',
+        ];
+    }
 
     protected function casts(): array
     {

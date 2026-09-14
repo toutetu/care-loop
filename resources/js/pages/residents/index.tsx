@@ -1,8 +1,9 @@
 import { Head, Link } from '@inertiajs/react';
-import { CircleAlert, Search } from 'lucide-react';
+import { CircleAlert, Search, UserPlus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { EmptyState } from '@/components/care/section';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { dashboard } from '@/routes';
@@ -22,6 +23,8 @@ type Resident = {
 
 type Props = {
     residents: Resident[];
+    /** 登録できるのは生活相談員以上（ResidentPolicy）。 */
+    canCreate: boolean;
 };
 
 /**
@@ -36,7 +39,7 @@ type Props = {
  * 用意してあるが（Resident::scopeWhereKana）、この画面の用途は
  * 「一覧から目的の方を探す」ことなので、部分一致のほうが合う。
  */
-export default function ResidentIndex({ residents }: Props) {
+export default function ResidentIndex({ residents, canCreate }: Props) {
     const [keyword, setKeyword] = useState('');
 
     const filtered = useMemo(() => {
@@ -67,18 +70,31 @@ export default function ResidentIndex({ residents }: Props) {
                         </span>
                     </h1>
 
-                    <div className="relative w-full sm:w-72">
-                        <Search
-                            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-                            aria-hidden
-                        />
-                        <Input
-                            value={keyword}
-                            onChange={(event) => setKeyword(event.target.value)}
-                            placeholder="お名前・カナ・要介護度で絞り込む"
-                            className="pl-9"
-                            aria-label="ご利用者の絞り込み"
-                        />
+                    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                        <div className="relative w-full sm:w-72">
+                            <Search
+                                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                                aria-hidden
+                            />
+                            <Input
+                                value={keyword}
+                                onChange={(event) => setKeyword(event.target.value)}
+                                placeholder="お名前・カナ・要介護度で絞り込む"
+                                className="pl-9"
+                                aria-label="ご利用者の絞り込み"
+                            />
+                        </div>
+
+                        {/* 介護職員には出さない。新規のご利用者を迎えるのは
+                            契約の手続きで、生活相談員以上の仕事である。 */}
+                        {canCreate && (
+                            <Button size="sm" asChild>
+                                <Link href={residentRoutes.create()}>
+                                    <UserPlus className="size-4" aria-hidden />
+                                    利用者を登録
+                                </Link>
+                            </Button>
+                        )}
                     </div>
                 </div>
 

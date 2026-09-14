@@ -44,7 +44,7 @@ type RecordProps = {
     departureTime: string | null;
     attendanceStatus: string;
     absenceReason: string | null;
-    bathingPerformed: boolean | null;
+    bathingType: string | null;
     totalWaterMl: number | null;
     rawNote: string | null;
     recordText: string | null;
@@ -73,6 +73,7 @@ type Props = {
     record: RecordProps;
     verbalContacts: { id: number; topic: string; reason: string | null }[];
     mealForms: string[];
+    bathingTypes: { value: string; label: string }[];
     /**
      * 書き換えられるか。
      *
@@ -89,9 +90,16 @@ type Props = {
  * 画面はスマートフォンの縦持ちを基準に組んでいる。記録はフロアで書くもので、
  * 事務所のパソコンまで戻ると、思い出しながら書くことになる。
  */
-export default function RecordEdit({ record, verbalContacts, mealForms, canEdit }: Props) {
+export default function RecordEdit({
+    record,
+    verbalContacts,
+    mealForms,
+    bathingTypes,
+    canEdit,
+}: Props) {
     const [rawNote, setRawNote] = useState(record.rawNote ?? '');
     const [mealForm, setMealForm] = useState(record.lunch.meal_form ?? '');
+    const [bathingType, setBathingType] = useState(record.bathingType ?? '');
 
     // 別の記録へ移ったら入力中の値を捨てる。
     // Inertia は同じ画面のあいだコンポーネントを作り直さないため、
@@ -102,6 +110,7 @@ export default function RecordEdit({ record, verbalContacts, mealForms, canEdit 
         setShownRecordId(record.id);
         setRawNote(record.rawNote ?? '');
         setMealForm(record.lunch.meal_form ?? '');
+        setBathingType(record.bathingType ?? '');
     }
 
     /**
@@ -351,17 +360,29 @@ export default function RecordEdit({ record, verbalContacts, mealForms, canEdit 
                                     value={record.attendanceStatus}
                                 />
 
-                                <div className="mt-4 flex items-center gap-2">
-                                    {/* 音声から抽出された値が入ることがある。
-                                        サーバーの値が変わったら作り直す（TextBlock と同じ理由） */}
-                                    <Checkbox
-                                        key={String(record.bathingPerformed)}
-                                        id="bathing_performed"
-                                        name="bathing_performed"
-                                        value="1"
-                                        defaultChecked={record.bathingPerformed === true}
+                                {/* 入浴を見送った日も清拭は行う。両者は別の行為なので
+                                    3択にしている。選ばないままなら「未記録」で、
+                                    実施しなかったこととは区別される。 */}
+                                <div className="mt-4 grid gap-2 sm:max-w-xs">
+                                    <Label htmlFor="bathing_type">入浴・清拭</Label>
+                                    <Select value={bathingType} onValueChange={setBathingType}>
+                                        <SelectTrigger id="bathing_type">
+                                            <SelectValue placeholder="未記録" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {bathingTypes.map((type) => (
+                                                <SelectItem key={type.value} value={type.value}>
+                                                    {type.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <input
+                                        type="hidden"
+                                        name="bathing_type"
+                                        value={bathingType}
                                     />
-                                    <Label htmlFor="bathing_performed">入浴された</Label>
+                                    <InputError message={errors.bathing_type} />
                                 </div>
                             </Section>
 

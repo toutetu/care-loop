@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\BathingType;
 use App\Http\Requests\UpdateServiceRecordRequest;
 use App\Models\Resident;
 use App\Models\ServiceRecord;
@@ -146,7 +147,7 @@ class ServiceRecordController extends Controller
                     $record->isConfirmed() => 'confirmed',
                     default => 'draft',
                 },
-                'bathing' => $record->bathing_performed,
+                'bathing' => $record->bathing_type?->label(),
                 'canEdit' => $user->can('update', $record),
             ];
         })->all());
@@ -186,7 +187,7 @@ class ServiceRecordController extends Controller
                 'departureTime' => $this->hhmm($serviceRecord->departure_time),
                 'attendanceStatus' => $serviceRecord->attendance_status,
                 'absenceReason' => $serviceRecord->absence_reason,
-                'bathingPerformed' => $serviceRecord->bathing_performed,
+                'bathingType' => $serviceRecord->bathing_type?->value,
                 'totalWaterMl' => $serviceRecord->total_water_ml,
                 'rawNote' => $serviceRecord->raw_note,
                 'recordText' => $serviceRecord->record_text,
@@ -221,6 +222,11 @@ class ServiceRecordController extends Controller
                     'reason' => $task->reason,
                 ])->all(),
             'mealForms' => ['常食', '一口大', '刻み', 'ミキサー'],
+            // 入浴を見送った日も清拭は行う。真偽値では両者の区別が消える。
+            'bathingTypes' => array_map(fn (BathingType $type): array => [
+                'value' => $type->value,
+                'label' => $type->label(),
+            ], BathingType::cases()),
         ]);
     }
 
@@ -236,7 +242,7 @@ class ServiceRecordController extends Controller
                 'departure_time' => $data['departure_time'] ?? null,
                 'attendance_status' => $data['attendance_status'],
                 'absence_reason' => $data['absence_reason'] ?? null,
-                'bathing_performed' => $data['bathing_performed'] ?? null,
+                'bathing_type' => ($data['bathing_type'] ?? '') !== '' ? $data['bathing_type'] : null,
                 'total_water_ml' => $data['total_water_ml'] ?? null,
                 'raw_note' => $data['raw_note'] ?? null,
                 'handover_note' => $data['handover_note'] ?? null,
@@ -247,7 +253,11 @@ class ServiceRecordController extends Controller
 
             // 確定はチェックを入れたときだけ。保存＝確定にすると、
             // 途中まで入力して保存した記録が確定済みになってしまう。
-            if (($data['confirm'] ?? false) === true && ! $serviceRecord->isConfirmed()) {
+            //
+            // boolean() を使う。チェックボックスが送ってくるのは真偽値ではなく
+            // 文字列の "1" で、=== true では一致しない。バリデータの boolean
+            // ルールは形式を確かめるだけで、値を変換はしない。
+            if ($request->boolean('confirm') && ! $serviceRecord->isConfirmed()) {
                 $serviceRecord->confirmed_at = now();
             }
 
