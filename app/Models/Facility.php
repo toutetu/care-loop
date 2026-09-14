@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $service_type
  * @property int|null $capacity
  */
-#[Fillable(['name', 'service_type', 'capacity'])]
+#[Fillable(['name', 'service_type', 'capacity', 'notice'])]
 class Facility extends Model
 {
     /** @use HasFactory<FacilityFactory> */

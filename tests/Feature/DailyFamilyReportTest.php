@@ -84,7 +84,76 @@ class DailyFamilyReportTest extends TestCase
         $response->assertSee('塗り絵では色を丁寧に塗っておられました。');
         $response->assertSee('36.4 ℃');
         $response->assertSee('128 / 74 mmHg');
-        $response->assertSee('1,250 ml');
+        $response->assertSee('記入者：山口 みどり');
+    }
+
+    public function test_水分摂取量は連絡帳に載せない(): void
+    {
+        // 記録としては保持し脱水リスクの判定にも使うが、提供のたびに正確な量を
+        // 把握するのは現場では難しい。不確かな数値はかえって誤解を生む。
+        $response = $this->actingAs($this->staff)->get($this->url());
+
+        $response->assertDontSee('1,250 ml');
+        $response->assertDontSee('お水・お茶');
+    }
+
+    public function test_入浴の有無が載る(): void
+    {
+        $this->record->update(['bathing_performed' => true]);
+
+        $this->actingAs($this->staff)->get($this->url())
+            ->assertSee('入浴')
+            ->assertSee('お入りになりました');
+    }
+
+    public function test_入浴の記録がなければ実施なしとは書かない(): void
+    {
+        // 記録がないことと、実施しなかったことは違う
+        $this->record->update(['bathing_performed' => null]);
+
+        $this->actingAs($this->staff)->get($this->url())
+            ->assertDontSee('本日はお休みされました');
+    }
+
+    public function test_事業所からのお知らせが載る(): void
+    {
+        $this->facility->update([
+            'notice' => "朝晩の冷え込みが増えてまいりました。\n【今月の行事】18日（木）敬老会",
+        ]);
+
+        $this->actingAs($this->staff)->get($this->url())
+            ->assertSee('事業所からのお知らせ')
+            ->assertSee('18日（木）敬老会');
+    }
+
+    public function test_お知らせが未設定なら欄ごと出さない(): void
+    {
+        $this->facility->update(['notice' => null]);
+
+        $this->actingAs($this->staff)->get($this->url())
+            ->assertDontSee('事業所からのお知らせ');
+    }
+
+    public function test_次回のご利用予定は利用曜日から算出される(): void
+    {
+        // 次回予定を別項目として管理しない。二重に持つと必ずどちらかが古くなる
+        $this->record->resident->update(['service_weekdays' => [1, 3, 5]]);
+
+        // 2026-09-11 は金曜。次の利用日は 9/14（月）
+        $this->actingAs($this->staff)->get($this->url())
+            ->assertSee('次回のご利用予定')
+            ->assertSee('9月14日（月）');
+    }
+
+    public function test_切り取り線とご家族の記入欄がある(): void
+    {
+        $response = $this->actingAs($this->staff)->get($this->url());
+
+        $response->assertSee('きりとり線');
+        $response->assertSee('ご家族からの連絡欄');
+        $response->assertSee('次回ご利用時に職員にお渡しください');
+        // 切り離された紙片だけでも、どなたのものか分かるようにする
+        $response->assertSee('2026年9月11日 分');
     }
 
     public function test_摂取割合はご家族が読める表現になる(): void

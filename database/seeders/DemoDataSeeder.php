@@ -137,6 +137,10 @@ class DemoDataSeeder extends Seeder
             'name' => 'さくら苑デイサービス',
             'service_type' => 'day_service',
             'capacity' => 20,
+            'notice' => "朝晩の冷え込みが増えてまいりました。羽織るものを1枚お持ちいただけますと安心です。\n\n"
+                ."【今月の行事】\n"
+                ."・18日（木）敬老会　お茶菓子をご用意してお祝いいたします\n"
+                .'・25日（木）お誕生日会　今月お誕生日の方をお祝いします',
         ]);
 
         $staff = $this->createUsers($facility);
@@ -294,6 +298,8 @@ class DemoDataSeeder extends Seeder
                 'departure_time' => '16:15',
                 'attendance_status' => 'attended',
                 'total_water_ml' => $this->water($key, $fromEnd, $index),
+                // 入浴は利用のたびに実施するのが基本。体調等で見送る日もある
+                'bathing_performed' => $index % 7 !== 5,
                 'record_text' => $this->note($key, $fromEnd, $index),
                 'family_text' => $this->familyNote($key, $fromEnd, $index),
                 'handover_note' => $this->handoverNote($key, $fromEnd),

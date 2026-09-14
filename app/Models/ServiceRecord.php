@@ -41,7 +41,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 #[Fillable([
     'resident_id', 'recorded_by', 'service_date', 'arrival_time', 'departure_time',
-    'attendance_status', 'absence_reason', 'total_water_ml',
+    'attendance_status', 'absence_reason', 'total_water_ml', 'bathing_performed',
     'raw_note', 'record_text', 'family_text', 'handover_note',
     'record_text_edited_by_human', 'family_text_edited_by_human',
     'llm_job_id', 'confirmed_at',
@@ -58,6 +58,7 @@ class ServiceRecord extends Model
             'confirmed_at' => 'datetime',
             'record_text_edited_by_human' => 'boolean',
             'family_text_edited_by_human' => 'boolean',
+            'bathing_performed' => 'boolean',
         ];
     }
 

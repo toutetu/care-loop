@@ -209,6 +209,38 @@ class Resident extends Model
         return $this->hasMany(GoalProgressReport::class);
     }
 
+    /**
+     * 次回のご利用予定日。
+     *
+     * 別途「次回予定」を管理する項目は設けない。利用曜日（service_weekdays）
+     * から算出できるものを二重に持つと、必ずどちらかが古くなる。
+     * 予定を登録・更新する手間を現場に負わせないための判断でもある。
+     *
+     * 祝日や臨時休業までは見ない。連絡帳に載せる目安であり、
+     * 変更があれば職員が口頭でお伝えするため。
+     */
+    public function nextServiceDate(?CarbonInterface $after = null): ?CarbonInterface
+    {
+        $weekdays = $this->service_weekdays ?? [];
+
+        if ($weekdays === []) {
+            return null;
+        }
+
+        $date = ($after ?? today())->addDay();
+
+        // 週の巡回1周ぶんだけ探す。見つからなければ利用曜日の設定が不正
+        for ($i = 0; $i < 7; $i++) {
+            if (in_array($date->dayOfWeekIso, $weekdays, true)) {
+                return $date;
+            }
+
+            $date = $date->addDay();
+        }
+
+        return null;
+    }
+
     /** 現在有効な通所介護計画書。 */
     public function activeCarePlan(): ?CarePlan
     {

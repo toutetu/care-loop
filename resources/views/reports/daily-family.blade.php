@@ -6,16 +6,25 @@
      *   1. ブラウザの印刷機能でそのまま紙にもPDFにもできる
      *   2. 日本語PDFライブラリのフォント埋め込みに依存しない
      * 現場は紙で渡す。紙に出せることが要件であり、PDF生成はその手段のひとつに過ぎない。
+     *
+     * 【水分摂取量は載せていない】
+     * 記録としては保持し、脱水リスクの判定にも使っている。
+     * ただし提供のたびに正確な量を把握するのは現場では難しく、
+     * 不確かな数値をご家族にお伝えすると、かえって誤解を生む。
+     *
+     * 【下半分は切り取って返していただく】
+     * ご家族からの連絡欄には、お名前と日付を再掲している。
+     * 切り離された紙片だけでも、どなたのものか分かるようにするため。
      */
     $rate = fn (?int $value): string => match ($value) {
         null => '—',
         0 => 'お召し上がりなし',
-        30 => '3割ほど',
         50 => '半分ほど',
-        80 => '8割ほど',
         100 => '全量',
-        default => $value . '割ほど',
+        default => intdiv($value, 10) . '割ほど',
     };
+
+    $weekday = fn ($date): string => ['日', '月', '火', '水', '木', '金', '土'][$date->dayOfWeek];
 @endphp
 <!DOCTYPE html>
 <html lang="ja">
@@ -52,6 +61,7 @@
             display: flex;
             gap: 10px;
             align-items: center;
+            flex-wrap: wrap;
         }
         .toolbar .note { font-size: 12.5px; color: #5a6b65; }
         .toolbar button {
@@ -91,6 +101,8 @@
         th, td { border: 1px solid #d5ddd9; padding: 7px 10px; text-align: left; }
         th { background: #f4f7f5; width: 26%; font-weight: 500; color: #3c4b46; white-space: nowrap; }
 
+        .writer { margin-top: 8px; text-align: right; font-size: 13px; color: #3c4b46; }
+
         .notice {
             border: 1.5px solid #9c7017;
             background: #fbf6ea;
@@ -102,20 +114,48 @@
         .notice li { margin-bottom: 3px; }
         .notice .lead { font-size: 13px; color: #7d5a12; margin-top: 6px; }
 
-        .write-in { border: 1px solid #d5ddd9; border-radius: 6px; padding: 10px 14px 14px; }
-        .write-in .line { border-bottom: 1px dotted #c3cfc9; height: 26px; }
-
-        footer {
-            margin-top: 22px;
-            padding-top: 10px;
-            border-top: 1px solid #d5ddd9;
-            display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 8px;
-            font-size: 12px;
-            color: #5a6b65;
+        .announcement {
+            border: 1px solid #cfdbd5;
+            background: #f6f9f7;
+            border-radius: 6px;
+            padding: 12px 14px;
         }
+        .announcement .body-text { font-size: 13.5px; line-height: 1.95; }
+
+        .next-visit {
+            font-size: 13.5px;
+            padding: 8px 12px;
+            background: #e4efea;
+            border-radius: 6px;
+            display: inline-block;
+        }
+        .next-visit b { font-size: 15px; }
+
+        .cut {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 26px 0 20px;
+            color: #93a29b;
+            font-size: 11.5px;
+            letter-spacing: .12em;
+        }
+        .cut::before, .cut::after {
+            content: "";
+            flex: 1;
+            border-top: 1.5px dashed #b6c3bd;
+        }
+
+        .write-in .caption { font-size: 12.5px; color: #5a6b65; margin: 0 0 9px; }
+        .write-in .slip-meta {
+            font-size: 12.5px;
+            color: #3c4b46;
+            margin-bottom: 9px;
+            padding-bottom: 7px;
+            border-bottom: 1px solid #e2e8e5;
+        }
+        .write-in .box { border: 1px solid #d5ddd9; border-radius: 6px; padding: 10px 14px 14px; }
+        .write-in .line { border-bottom: 1px dotted #c3cfc9; height: 27px; }
 
         @media print {
             body { background: #fff; padding: 0; }
@@ -136,7 +176,7 @@
         <div class="facility">{{ $facility?->name ?? '事業所' }}</div>
         <h1>ご利用連絡帳</h1>
         <div class="meta">
-            <div class="date">{{ $record->service_date->format('Y年n月j日') }}（{{ ['日','月','火','水','木','金','土'][$record->service_date->dayOfWeek] }}）</div>
+            <div class="date">{{ $record->service_date->format('Y年n月j日') }}（{{ $weekday($record->service_date) }}）</div>
             <div class="name">
                 {{ $resident->name }} 様
                 @if ($resident->careLevel)
@@ -197,6 +237,18 @@
                 </td>
             </tr>
             <tr>
+                <th>入浴</th>
+                <td>
+                    @if ($record->bathing_performed === true)
+                        お入りになりました
+                    @elseif ($record->bathing_performed === false)
+                        本日はお休みされました
+                    @else
+                        —
+                    @endif
+                </td>
+            </tr>
+            <tr>
                 <th>お食事（昼食）</th>
                 <td>
                     主食 {{ $rate($lunch?->staple_rate) }}　／　副菜 {{ $rate($lunch?->side_rate) }}
@@ -205,27 +257,39 @@
                     @endif
                 </td>
             </tr>
-            <tr>
-                <th>お水・お茶</th>
-                <td>{{ $record->total_water_ml !== null ? number_format($record->total_water_ml) . ' ml' : '—' }}</td>
-            </tr>
             </tbody>
         </table>
+        <p class="writer">記入者：{{ $record->recorder?->name ?? '—' }}</p>
     </section>
 
-    <section>
+    @if (filled($facility?->notice))
+        <section class="announcement">
+            <h2>事業所からのお知らせ</h2>
+            <p class="body-text">{{ $facility->notice }}</p>
+        </section>
+    @endif
+
+    @if ($nextVisit)
+        <section>
+            <span class="next-visit">
+                次回のご利用予定　<b>{{ $nextVisit->format('n月j日') }}（{{ $weekday($nextVisit) }}）</b>
+            </span>
+        </section>
+    @endif
+
+    <div class="cut">きりとり線</div>
+
+    <section class="write-in">
         <h2>ご家族からの連絡欄</h2>
-        <div class="write-in">
+        <p class="caption">何かあれば、こちらに記入いただき、次回ご利用時に職員にお渡しください。</p>
+        <div class="slip-meta">{{ $resident->name }} 様　／　{{ $record->service_date->format('Y年n月j日') }} 分</div>
+        <div class="box">
+            <div class="line"></div>
             <div class="line"></div>
             <div class="line"></div>
             <div class="line"></div>
         </div>
     </section>
-
-    <footer>
-        <div>担当職員：{{ $record->recorder?->name ?? '—' }}</div>
-        <div>{{ $facility?->name }}</div>
-    </footer>
 </div>
 
 </body>

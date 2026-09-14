@@ -233,8 +233,18 @@ final class TransformVoiceNote
             return;
         }
 
+        $updates = [];
+
         if ($record->total_water_ml === null && is_int($detected['water_ml'] ?? null)) {
-            $record->forceFill(['total_water_ml' => $detected['water_ml']])->save();
+            $updates['total_water_ml'] = $detected['water_ml'];
+        }
+
+        if ($record->bathing_performed === null && is_bool($detected['bathing_performed'] ?? null)) {
+            $updates['bathing_performed'] = $detected['bathing_performed'];
+        }
+
+        if ($updates !== []) {
+            $record->forceFill($updates)->save();
         }
 
         $staple = $detected['meal_staple_rate'] ?? null;

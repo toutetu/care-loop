@@ -50,6 +50,9 @@ class DailyFamilyReportController extends Controller
             // 「文書に書いたうえで、口頭でも伝える」という方針のため
             // （要件定義 7.3節 設計判断の変更履歴）。
             'verbalContacts' => $serviceRecord->verbalContactTasks()->pending()->get(),
+            // 次回予定は別項目として管理せず、利用曜日から算出する。
+            // 二重に持つと必ずどちらかが古くなるため。
+            'nextVisit' => $serviceRecord->resident->nextServiceDate($serviceRecord->service_date),
         ]);
     }
 }
