@@ -22,6 +22,8 @@ type Summary = {
 type FeatureRow = {
     code: string;
     label: string;
+    /** その機能が実際に使ったモデル。期間内に切り替えた場合は複数並ぶ。 */
+    models: string[];
     count: number;
     failed: number;
     inputTokens: number;
@@ -146,10 +148,11 @@ export default function LlmLogIndex({ summary, features, errors, requests }: Pro
                         <EmptyState>今月の実行はまだありません。</EmptyState>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-[720px] text-sm">
+                            <table className="w-full min-w-[860px] text-sm">
                                 <thead>
                                     <tr className="border-b text-left text-xs text-muted-foreground">
                                         <th className="pb-2 font-medium">機能</th>
+                                        <th className="pb-2 font-medium">モデル</th>
                                         <th className="pb-2 text-right font-medium">実行</th>
                                         <th className="pb-2 text-right font-medium">失敗</th>
                                         <th className="pb-2 text-right font-medium">入力</th>
@@ -166,6 +169,18 @@ export default function LlmLogIndex({ summary, features, errors, requests }: Pro
                                                     {row.code}
                                                 </span>
                                                 <span className="ml-2">{row.label}</span>
+                                            </td>
+                                            <td className="py-2">
+                                                {/* 期間内にモデルを切り替えると複数並ぶ。
+                                                    設定が反映されたかは、ここを見れば分かる。 */}
+                                                {row.models.map((model) => (
+                                                    <div
+                                                        key={model}
+                                                        className="font-mono text-xs whitespace-nowrap text-muted-foreground"
+                                                    >
+                                                        {model}
+                                                    </div>
+                                                ))}
                                             </td>
                                             <td className="py-2 text-right tabular-nums">
                                                 {row.count}
@@ -250,11 +265,12 @@ export default function LlmLogIndex({ summary, features, errors, requests }: Pro
                         <EmptyState>記録がありません。</EmptyState>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-[860px] text-sm">
+                            <table className="w-full min-w-[1000px] text-sm">
                                 <thead>
                                     <tr className="border-b text-left text-xs text-muted-foreground">
                                         <th className="pb-2 font-medium">日時</th>
                                         <th className="pb-2 font-medium">機能</th>
+                                        <th className="pb-2 font-medium">モデル</th>
                                         <th className="pb-2 font-medium">結果</th>
                                         <th className="pb-2 text-right font-medium">入力</th>
                                         <th className="pb-2 text-right font-medium">
@@ -273,6 +289,9 @@ export default function LlmLogIndex({ summary, features, errors, requests }: Pro
                                                 {row.createdAt ?? '—'}
                                             </td>
                                             <td className="py-2 whitespace-nowrap">{row.feature}</td>
+                                            <td className="py-2 font-mono text-xs whitespace-nowrap text-muted-foreground">
+                                                {row.model}
+                                            </td>
                                             <td className="py-2">
                                                 {row.status === 'failed' ? (
                                                     <Badge variant="destructive">
