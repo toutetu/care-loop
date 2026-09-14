@@ -31,7 +31,7 @@ export default function Welcome() {
             <div className="min-h-screen bg-[#FDFDFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC]">
                 <div className="mx-auto max-w-3xl px-6 py-12 sm:py-16">
                     <header className="flex items-center justify-between gap-4">
-                        <p className="text-sm font-medium tracking-wide text-muted-foreground">
+                        <p className="text-muted-foreground text-sm font-medium tracking-wide">
                             CareLoop
                         </p>
                         <Link
@@ -48,19 +48,22 @@ export default function Welcome() {
                             <h1 className="text-2xl font-semibold sm:text-3xl">
                                 通所介護（デイサービス）の記録アプリ
                             </h1>
-                            <p className="mt-4 leading-relaxed text-muted-foreground">
+                            <p className="text-muted-foreground mt-4 leading-relaxed">
                                 介護の現場で書かれる記録から、リスクの兆候と目標の進捗を読み取り、
                                 職員が判断するための材料として提示します。
                                 ご家族へお渡しする連絡帳も、同じ記録から作ります。
                             </p>
-                            <p className="mt-3 leading-relaxed text-muted-foreground">
-                                LaravelからClaude APIを呼び出し、プロンプト設計・構造化出力の検証・
+                            <p className="text-muted-foreground mt-3 leading-relaxed">
+                                LaravelからClaude
+                                APIを呼び出し、プロンプト設計・構造化出力の検証・
                                 エラーハンドリング・費用管理までを実装した個人開発のアプリケーションです。
                             </p>
                         </section>
 
                         <section className="space-y-4">
-                            <h2 className="text-lg font-semibold">設計で考えたこと</h2>
+                            <h2 className="text-lg font-semibold">
+                                設計で考えたこと
+                            </h2>
 
                             <Point
                                 icon={FunctionSquare}
@@ -101,8 +104,10 @@ export default function Welcome() {
                         </section>
 
                         <section>
-                            <h2 className="text-lg font-semibold">デモ用のログイン</h2>
-                            <p className="mt-2 text-sm text-muted-foreground">
+                            <h2 className="text-lg font-semibold">
+                                デモ用のログイン
+                            </h2>
+                            <p className="text-muted-foreground mt-2 text-sm">
                                 架空のご利用者20名・約3ヶ月分の記録が入っています。実在の方とは関係ありません。
                                 権限による表示の違いを見られるよう、役割ごとにアカウントを用意しています。
                             </p>
@@ -111,9 +116,15 @@ export default function Welcome() {
                                 <table className="w-full min-w-[520px] text-sm">
                                     <thead className="bg-muted/50">
                                         <tr className="text-left">
-                                            <th className="px-4 py-2 font-medium">役割</th>
-                                            <th className="px-4 py-2 font-medium">メールアドレス</th>
-                                            <th className="px-4 py-2 font-medium">見られるもの</th>
+                                            <th className="px-4 py-2 font-medium">
+                                                役割
+                                            </th>
+                                            <th className="px-4 py-2 font-medium">
+                                                メールアドレス
+                                            </th>
+                                            <th className="px-4 py-2 font-medium">
+                                                見られるもの
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y">
@@ -136,8 +147,12 @@ export default function Welcome() {
                                 </table>
                             </div>
 
-                            <p className="mt-3 text-sm text-muted-foreground">
-                                パスワードはいずれも <code className="rounded bg-muted px-1.5 py-0.5">password</code> です。
+                            <p className="text-muted-foreground mt-3 text-sm">
+                                パスワードはいずれも{' '}
+                                <code className="bg-muted rounded px-1.5 py-0.5">
+                                    password
+                                </code>{' '}
+                                です。
                             </p>
 
                             <div className="mt-5 flex flex-wrap gap-3">
@@ -145,14 +160,19 @@ export default function Welcome() {
                                     href={auth.user ? dashboard() : login()}
                                     className="inline-flex items-center gap-1.5 rounded-md bg-[#1b1b18] px-4 py-2 text-sm font-medium text-white hover:opacity-90 dark:bg-[#EDEDEC] dark:text-[#1b1b18]"
                                 >
-                                    {auth.user ? 'ダッシュボードへ' : 'デモにログイン'}
-                                    <ArrowRight className="size-4" aria-hidden />
+                                    {auth.user
+                                        ? 'ダッシュボードへ'
+                                        : 'デモにログイン'}
+                                    <ArrowRight
+                                        className="size-4"
+                                        aria-hidden
+                                    />
                                 </Link>
                                 <a
                                     href={REQUIREMENTS_URL}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="inline-flex items-center gap-1.5 rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent"
+                                    className="hover:bg-accent inline-flex items-center gap-1.5 rounded-md border px-4 py-2 text-sm font-medium"
                                 >
                                     <FileText className="size-4" aria-hidden />
                                     要件定義書を読む
@@ -161,9 +181,12 @@ export default function Welcome() {
                                     href={REPOSITORY_URL}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="inline-flex items-center gap-1.5 rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent"
+                                    className="hover:bg-accent inline-flex items-center gap-1.5 rounded-md border px-4 py-2 text-sm font-medium"
                                 >
-                                    <FolderGit2 className="size-4" aria-hidden />
+                                    <FolderGit2
+                                        className="size-4"
+                                        aria-hidden
+                                    />
                                     ソースコード
                                 </a>
                             </div>
@@ -172,17 +195,32 @@ export default function Welcome() {
                         <section>
                             <h2 className="text-lg font-semibold">技術構成</h2>
                             <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-                                <Spec label="バックエンド" value="Laravel 13 / PHP 8.4" />
-                                <Spec label="フロントエンド" value="Inertia + React 19 + TypeScript" />
-                                <Spec label="データベース" value="MariaDB（第3正規形まで正規化）" />
-                                <Spec label="LLM" value="Anthropic Claude API（構造化出力）" />
-                                <Spec label="静的解析" value="PHPStan level 7 / Laravel Pint" />
+                                <Spec
+                                    label="バックエンド"
+                                    value="Laravel 13 / PHP 8.4"
+                                />
+                                <Spec
+                                    label="フロントエンド"
+                                    value="Inertia + React 19 + TypeScript"
+                                />
+                                <Spec
+                                    label="データベース"
+                                    value="MariaDB（第3正規形まで正規化）"
+                                />
+                                <Spec
+                                    label="LLM"
+                                    value="Anthropic Claude API（構造化出力）"
+                                />
+                                <Spec
+                                    label="静的解析"
+                                    value="PHPStan level 7 / Laravel Pint"
+                                />
                                 <Spec label="テスト" value="PHPUnit 198件" />
                             </dl>
                         </section>
                     </main>
 
-                    <footer className="mt-16 border-t pt-6 text-xs text-muted-foreground">
+                    <footer className="text-muted-foreground mt-16 border-t pt-6 text-xs">
                         個人開発のポートフォリオです。表示されているご利用者・職員・記録はすべて架空のものです。
                     </footer>
                 </div>
@@ -202,21 +240,34 @@ function Point({
 }) {
     return (
         <div className="flex gap-3 rounded-lg border p-4">
-            <Icon className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden />
+            <Icon
+                className="text-muted-foreground mt-0.5 size-5 shrink-0"
+                aria-hidden
+            />
             <div>
                 <h3 className="font-medium">{title}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{body}</p>
+                <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+                    {body}
+                </p>
             </div>
         </div>
     );
 }
 
-function Account({ role, email, note }: { role: string; email: string; note: string }) {
+function Account({
+    role,
+    email,
+    note,
+}: {
+    role: string;
+    email: string;
+    note: string;
+}) {
     return (
         <tr>
             <td className="px-4 py-2 font-medium whitespace-nowrap">{role}</td>
             <td className="px-4 py-2 font-mono text-xs">{email}</td>
-            <td className="px-4 py-2 text-muted-foreground">{note}</td>
+            <td className="text-muted-foreground px-4 py-2">{note}</td>
         </tr>
     );
 }
@@ -224,7 +275,7 @@ function Account({ role, email, note }: { role: string; email: string; note: str
 function Spec({ label, value }: { label: string; value: string }) {
     return (
         <div className="flex gap-2">
-            <dt className="w-28 shrink-0 text-muted-foreground">{label}</dt>
+            <dt className="text-muted-foreground w-28 shrink-0">{label}</dt>
             <dd>{value}</dd>
         </div>
     );

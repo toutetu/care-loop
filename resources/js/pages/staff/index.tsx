@@ -38,8 +38,9 @@ export default function StaffIndex({ staff, roles }: Props) {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <h1 className="text-lg font-semibold">
                         職員アカウント
-                        <span className="ml-2 text-sm font-normal text-muted-foreground">
-                            {staff.filter((row) => row.isActive).length} 名が在籍中
+                        <span className="text-muted-foreground ml-2 text-sm font-normal">
+                            {staff.filter((row) => row.isActive).length}{' '}
+                            名が在籍中
                         </span>
                     </h1>
                     <Button size="sm" asChild>
@@ -56,9 +57,14 @@ export default function StaffIndex({ staff, roles }: Props) {
                 >
                     <dl className="grid gap-3 sm:grid-cols-3">
                         {roles.map((role) => (
-                            <div key={role.value} className="rounded-lg border p-3">
-                                <dt className="text-sm font-medium">{role.label}</dt>
-                                <dd className="mt-1 text-xs text-muted-foreground">
+                            <div
+                                key={role.value}
+                                className="rounded-lg border p-3"
+                            >
+                                <dt className="text-sm font-medium">
+                                    {role.label}
+                                </dt>
+                                <dd className="text-muted-foreground mt-1 text-xs">
                                     {role.description}
                                 </dd>
                             </div>
@@ -73,30 +79,48 @@ export default function StaffIndex({ staff, roles }: Props) {
                         <div className="overflow-x-auto">
                             <table className="w-full min-w-[640px] text-sm">
                                 <thead>
-                                    <tr className="border-b text-left text-xs text-muted-foreground">
-                                        <th className="pb-2 font-medium">お名前</th>
-                                        <th className="pb-2 font-medium">メールアドレス</th>
-                                        <th className="pb-2 font-medium">役割</th>
-                                        <th className="pb-2 font-medium">在籍</th>
+                                    <tr className="text-muted-foreground border-b text-left text-xs">
+                                        <th className="pb-2 font-medium">
+                                            お名前
+                                        </th>
+                                        <th className="pb-2 font-medium">
+                                            メールアドレス
+                                        </th>
+                                        <th className="pb-2 font-medium">
+                                            役割
+                                        </th>
+                                        <th className="pb-2 font-medium">
+                                            在籍
+                                        </th>
                                         <th className="pb-2" />
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y">
                                     {staff.map((row) => (
-                                        <tr key={row.id} className={row.isActive ? '' : 'opacity-60'}>
+                                        <tr
+                                            key={row.id}
+                                            className={
+                                                row.isActive ? '' : 'opacity-60'
+                                            }
+                                        >
                                             <td className="py-2 font-medium">
                                                 {row.name}
                                                 {row.isSelf && (
-                                                    <Badge variant="outline" className="ml-2">
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="ml-2"
+                                                    >
                                                         自分
                                                     </Badge>
                                                 )}
                                             </td>
-                                            <td className="py-2 font-mono text-xs text-muted-foreground">
+                                            <td className="text-muted-foreground py-2 font-mono text-xs">
                                                 {row.email}
                                             </td>
                                             <td className="py-2">
-                                                <Badge variant="secondary">{row.roleLabel}</Badge>
+                                                <Badge variant="secondary">
+                                                    {row.roleLabel}
+                                                </Badge>
                                             </td>
                                             <td className="py-2">
                                                 {row.isActive ? (
@@ -109,16 +133,26 @@ export default function StaffIndex({ staff, roles }: Props) {
                                             </td>
                                             <td className="py-2 text-right">
                                                 {row.canEdit ? (
-                                                    <Button variant="ghost" size="sm" asChild>
-                                                        <Link href={staffRoutes.edit(row.id)}>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        asChild
+                                                    >
+                                                        <Link
+                                                            href={staffRoutes.edit(
+                                                                row.id,
+                                                            )}
+                                                        >
                                                             編集
                                                         </Link>
                                                     </Button>
                                                 ) : (
                                                     // 自分の役割は変えられない。誤って権限を落とすと
                                                     // 誰も戻せなくなる（UserPolicy）。
-                                                    <span className="px-3 text-xs text-muted-foreground">
-                                                        {row.isSelf ? '自分の役割は変更できません' : '—'}
+                                                    <span className="text-muted-foreground px-3 text-xs">
+                                                        {row.isSelf
+                                                            ? '自分の役割は変更できません'
+                                                            : '—'}
                                                     </span>
                                                 )}
                                             </td>

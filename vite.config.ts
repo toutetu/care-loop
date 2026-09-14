@@ -68,6 +68,10 @@ export default defineConfig({
             'composer.json',
             'resources/js/components/ui/*',
             'resources/views/mail/*',
+            // 手書きの画面モック。ブラウザで開いて見る成果物であって、
+            // 1行ずつ編集するソースではない。整形すると750行が1,982行になり、
+            // 直すたびに整形が入って差分が読めなくなる。
+            'docs/mock/*.html',
         ],
         sortTailwindcss: {
             functions: ['clsx', 'cn', 'cva'],

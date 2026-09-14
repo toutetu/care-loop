@@ -67,7 +67,10 @@ export default function AuditLogIndex({ type, logs }: Props) {
             <div className="flex flex-col gap-4 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                        <History className="size-4 text-muted-foreground" aria-hidden />
+                        <History
+                            className="text-muted-foreground size-4"
+                            aria-hidden
+                        />
                         <h1 className="text-lg font-semibold">編集履歴</h1>
                     </div>
 
@@ -75,7 +78,11 @@ export default function AuditLogIndex({ type, logs }: Props) {
                         {FILTERS.map((option) => (
                             <Button
                                 key={option.value}
-                                variant={type === option.value ? 'secondary' : 'ghost'}
+                                variant={
+                                    type === option.value
+                                        ? 'secondary'
+                                        : 'ghost'
+                                }
                                 size="sm"
                                 onClick={() => filter(option.value)}
                             >
@@ -92,64 +99,83 @@ export default function AuditLogIndex({ type, logs }: Props) {
                             ご利用者情報と職員アカウントの変更を残しています。
                             変更前の値を含むため、管理者だけが閲覧できます。
                             <span className="mt-1 block">
-                                全 {logs.total.toLocaleString()} 件中 {logs.currentPage} /{' '}
-                                {logs.lastPage} ページ
+                                全 {logs.total.toLocaleString()} 件中{' '}
+                                {logs.currentPage} / {logs.lastPage} ページ
                             </span>
                         </>
                     }
                 >
                     {logs.data.length === 0 ? (
-                        <EmptyState>この条件の編集履歴はありません。</EmptyState>
+                        <EmptyState>
+                            この条件の編集履歴はありません。
+                        </EmptyState>
                     ) : (
                         <ul className="divide-y">
                             {logs.data.map((log) => (
-                                <li key={log.id} className="py-4 first:pt-0 last:pb-0">
+                                <li
+                                    key={log.id}
+                                    className="py-4 first:pt-0 last:pb-0"
+                                >
                                     <div className="flex flex-wrap items-center gap-2">
                                         <Badge
                                             variant={
-                                                log.event === 'created' ? 'secondary' : 'outline'
+                                                log.event === 'created'
+                                                    ? 'secondary'
+                                                    : 'outline'
                                             }
                                         >
                                             {log.eventLabel}
                                         </Badge>
-                                        <Badge variant="outline">{log.subjectKindLabel}</Badge>
+                                        <Badge variant="outline">
+                                            {log.subjectKindLabel}
+                                        </Badge>
                                         <SubjectLink log={log} />
                                     </div>
 
-                                    <p className="mt-1 text-xs text-muted-foreground">
+                                    <p className="text-muted-foreground mt-1 text-xs">
                                         {log.at} ／ {log.editor}
-                                        {log.ipAddress && ` ／ ${log.ipAddress}`}
+                                        {log.ipAddress &&
+                                            ` ／ ${log.ipAddress}`}
                                     </p>
 
                                     {log.changes.length > 0 && (
                                         <ul className="mt-2 space-y-1">
-                                            {log.changes.map((change, index) => (
-                                                <li
-                                                    key={`${log.id}-${change.label}-${index}`}
-                                                    className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm"
-                                                >
-                                                    <span className="w-40 shrink-0 text-muted-foreground">
-                                                        {change.label}
-                                                    </span>
-                                                    {/* 登録時は変更前がないので、値だけを出す */}
-                                                    {log.event === 'created' ? (
-                                                        <span>{change.after}</span>
-                                                    ) : (
-                                                        <>
-                                                            <span className="text-muted-foreground line-through">
-                                                                {change.before}
-                                                            </span>
-                                                            <ArrowRight
-                                                                className="size-3 shrink-0 text-muted-foreground"
-                                                                aria-hidden
-                                                            />
-                                                            <span className="font-medium">
+                                            {log.changes.map(
+                                                (change, index) => (
+                                                    <li
+                                                        key={`${log.id}-${change.label}-${index}`}
+                                                        className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm"
+                                                    >
+                                                        <span className="text-muted-foreground w-40 shrink-0">
+                                                            {change.label}
+                                                        </span>
+                                                        {/* 登録時は変更前がないので、値だけを出す */}
+                                                        {log.event ===
+                                                        'created' ? (
+                                                            <span>
                                                                 {change.after}
                                                             </span>
-                                                        </>
-                                                    )}
-                                                </li>
-                                            ))}
+                                                        ) : (
+                                                            <>
+                                                                <span className="text-muted-foreground line-through">
+                                                                    {
+                                                                        change.before
+                                                                    }
+                                                                </span>
+                                                                <ArrowRight
+                                                                    className="text-muted-foreground size-3 shrink-0"
+                                                                    aria-hidden
+                                                                />
+                                                                <span className="font-medium">
+                                                                    {
+                                                                        change.after
+                                                                    }
+                                                                </span>
+                                                            </>
+                                                        )}
+                                                    </li>
+                                                ),
+                                            )}
                                         </ul>
                                     )}
                                 </li>
