@@ -160,9 +160,20 @@ return [
     |
     */
 
-    'features' => [
-        Features::registration(),
-        Features::resetPasswords(),
+    /*
+    | 【公開デモでは新規登録とパスワード再設定を閉じる】
+    |
+    | 誰でもアカウントを作れる状態で公開すると、実APIを無制限に呼び出せる。
+    | 月次の上限で請求は止まるが、その月のデモは動かなくなる。
+    |
+    | パスワード再設定を閉じるのは、メール送信の手配がないためである。
+    | 押しても何も届かないリンクを出しておくほうが、ないよりも不親切になる。
+    |
+    | ローカルでは既定で有効。無効にするのはデプロイ先の環境変数で行う。
+    */
+    'features' => array_values(array_filter([
+        env('FEATURE_REGISTRATION', true) ? Features::registration() : null,
+        env('FEATURE_PASSWORD_RESET', true) ? Features::resetPasswords() : null,
         Features::emailVerification(),
         Features::twoFactorAuthentication([
             'confirm' => true,
@@ -172,6 +183,6 @@ return [
         Features::passkeys([
             'confirmPassword' => true,
         ]),
-    ],
+    ])),
 
 ];

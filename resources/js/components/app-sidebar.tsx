@@ -13,6 +13,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { REPOSITORY_URL, REQUIREMENTS_URL } from '@/lib/links';
 import { dashboard } from '@/routes';
 import llmLogs from '@/routes/llm-logs';
 import residents from '@/routes/residents';
@@ -21,12 +22,12 @@ import type { NavItem } from '@/types';
 const footerNavItems: NavItem[] = [
     {
         title: 'リポジトリ',
-        href: 'https://github.com/takahashi-tomoko/care-loop',
+        href: REPOSITORY_URL,
         icon: FolderGit2,
     },
     {
         title: '要件定義書',
-        href: 'https://github.com/takahashi-tomoko/care-loop/blob/main/docs/01_%E8%A6%81%E4%BB%B6%E5%AE%9A%E7%BE%A9%E6%9B%B8.md',
+        href: REQUIREMENTS_URL,
         icon: BookOpen,
     },
 ];

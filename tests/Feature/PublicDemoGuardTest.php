@@ -1,0 +1,195 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Enums\UserRole;
+use App\Llm\Contracts\LlmClient;
+use App\Llm\Exceptions\LlmException;
+use App\Models\Facility;
+use App\Models\LlmJob;
+use App\Models\Resident;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Sleep;
+use Laravel\Fortify\Features;
+use Mockery;
+use Tests\TestCase;
+
+/**
+ * 公開デモとして出すための守り。
+ *
+ * デモは誰でも開ける場所に置き、ログイン情報も画面に書いてある。
+ * その状態で実APIを呼べるようにするなら、費用が暴走しない仕組みが要る。
+ */
+class PublicDemoGuardTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private User $staff;
+
+    private Resident $resident;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $facility = Facility::factory()->create();
+        $this->staff = User::factory()->create([
+            'facility_id' => $facility->id,
+            'role' => UserRole::Staff,
+        ]);
+        $this->resident = Resident::factory()->for($facility)->create();
+
+        RateLimiter::clear('llm');
+
+        // ゲートウェイはレート制限を受けると待ってから再試行する。
+        // その待ち時間をテストで実際に消費する理由はない。
+        Sleep::fake();
+    }
+
+    // ---------------------------------------------------------------
+    // 流量制限
+    // ---------------------------------------------------------------
+
+    public function test_ai実行を連続で呼ぶと制限される(): void
+    {
+        // 月次の上限に達してから止まるのでは、その月のデモ全体が動かなくなる。
+        // デモ用アカウントは複数人で共有されるため、一人の連打で
+        // 他の人が何も試せなくなる。
+        $this->mock(LlmClient::class, function (Mockery\MockInterface $mock): void {
+            $mock->shouldReceive('send')->andThrow(LlmException::rateLimited('429'));
+        });
+
+        $url = route('llm.risk-detection', $this->resident);
+
+        for ($i = 0; $i < 3; $i++) {
+            $this->actingAs($this->staff)->post($url)->assertRedirect();
+        }
+
+        $this->actingAs($this->staff)
+            ->from(route('residents.show', $this->resident))
+            ->post($url)
+            ->assertSessionHas('error', fn (string $message) => str_contains($message, 'おいてからお試しください'));
+    }
+
+    public function test_制限に達してもエラー画面にはしない(): void
+    {
+        // 429のエラーページが出ると、入力していた記録も見えなくなる。
+        // 元の画面へ戻し、日本語で理由を伝える。
+        $this->mock(LlmClient::class, function (Mockery\MockInterface $mock): void {
+            $mock->shouldReceive('send')->andThrow(LlmException::rateLimited('429'));
+        });
+
+        $url = route('llm.risk-detection', $this->resident);
+        $from = route('residents.show', $this->resident);
+
+        // 3回までは通る。4回目が制限に当たる。
+        for ($i = 0; $i < 3; $i++) {
+            $this->actingAs($this->staff)->from($from)->post($url);
+        }
+
+        $this->actingAs($this->staff)->from($from)->post($url)
+            ->assertStatus(302)
+            ->assertRedirect($from);
+    }
+
+    public function test_制限で弾かれた実行はジョブを作らない(): void
+    {
+        // 呼び出していない実行がログに並ぶと、費用の追跡が狂う
+        $this->mock(LlmClient::class, function (Mockery\MockInterface $mock): void {
+            $mock->shouldReceive('send')->andThrow(LlmException::rateLimited('429'));
+        });
+
+        $url = route('llm.risk-detection', $this->resident);
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->actingAs($this->staff)->post($url);
+        }
+
+        // 通ったのは3回まで
+        $this->assertSame(3, LlmJob::query()->count());
+    }
+
+    public function test_ログインの試行回数制限には手を触れない(): void
+    {
+        // AI実行の制限を日本語のリダイレクトに変えたとき、認証の制限まで
+        // 巻き込むと、総当たりを試みている側に「まだ弾かれていない」と
+        // 読める応答を返すことになる。
+        for ($i = 0; $i < 6; $i++) {
+            $response = $this->post('/login', [
+                'email' => $this->staff->email,
+                'password' => 'wrong-password',
+            ]);
+        }
+
+        $response->assertStatus(429);
+    }
+
+    // ---------------------------------------------------------------
+    // 新規登録
+    // ---------------------------------------------------------------
+
+    public function test_環境変数で新規登録とパスワード再設定を閉じられる(): void
+    {
+        // ログイン情報を公開したまま登録も開けておくと、
+        // 実APIを無制限に呼び出せる状態になる。
+        //
+        // 認証のルートは起動時に確定するため、テストの途中で config を
+        // 書き換えてもルートは変わらない。設定ファイルが環境変数から
+        // 何を組み立てるのかを直接確かめる。
+        $closed = $this->fortifyFeatures(registration: false, passwordReset: false);
+
+        $this->assertNotContains(Features::registration(), $closed);
+        $this->assertNotContains(Features::resetPasswords(), $closed);
+
+        // 二要素認証やパスキーは閉じない。閉じるのは公開に伴う2つだけである。
+        $this->assertContains(Features::emailVerification(), $closed);
+    }
+
+    public function test_既定では新規登録を閉じない(): void
+    {
+        // ローカルでの開発と、この先の実運用を妨げない
+        $open = $this->fortifyFeatures(registration: true, passwordReset: true);
+
+        $this->assertContains(Features::registration(), $open);
+        $this->assertContains(Features::resetPasswords(), $open);
+    }
+
+    // ---------------------------------------------------------------
+    // デモデータの作り直し
+    // ---------------------------------------------------------------
+
+    public function test_デモ環境でなければ作り直しコマンドは動かない(): void
+    {
+        // ご利用者も記録も職員も消すコマンドである。
+        // 本物の事業所のデータベースへ向けて実行されたら取り返しがつかない。
+        config(['careloop.is_demo' => false]);
+
+        $this->artisan('careloop:reset-demo --force')->assertFailed();
+
+        $this->assertDatabaseHas('users', ['id' => $this->staff->id]);
+    }
+
+    // ---------------------------------------------------------------
+
+    /**
+     * 環境変数を与えて config/fortify.php を評価し、有効な機能の一覧を得る。
+     *
+     * @return list<string>
+     */
+    private function fortifyFeatures(bool $registration, bool $passwordReset): array
+    {
+        $_ENV['FEATURE_REGISTRATION'] = $registration ? 'true' : 'false';
+        $_ENV['FEATURE_PASSWORD_RESET'] = $passwordReset ? 'true' : 'false';
+
+        try {
+            /** @var array{features: list<string>} $config */
+            $config = require base_path('config/fortify.php');
+
+            return $config['features'];
+        } finally {
+            unset($_ENV['FEATURE_REGISTRATION'], $_ENV['FEATURE_PASSWORD_RESET']);
+        }
+    }
+}

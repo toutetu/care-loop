@@ -2,11 +2,13 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import {
     ArrowRight,
     FileText,
+    FolderGit2,
     FunctionSquare,
     ShieldCheck,
     Sparkles,
     UserCheck,
 } from 'lucide-react';
+import { REPOSITORY_URL, REQUIREMENTS_URL } from '@/lib/links';
 import { dashboard, login } from '@/routes';
 import type { Auth } from '@/types';
 
@@ -147,13 +149,22 @@ export default function Welcome() {
                                     <ArrowRight className="size-4" aria-hidden />
                                 </Link>
                                 <a
-                                    href="https://github.com/takahashi-tomoko/care-loop/blob/main/docs/01_%E8%A6%81%E4%BB%B6%E5%AE%9A%E7%BE%A9%E6%9B%B8.md"
+                                    href={REQUIREMENTS_URL}
                                     target="_blank"
                                     rel="noreferrer"
                                     className="inline-flex items-center gap-1.5 rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent"
                                 >
                                     <FileText className="size-4" aria-hidden />
                                     要件定義書を読む
+                                </a>
+                                <a
+                                    href={REPOSITORY_URL}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1.5 rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent"
+                                >
+                                    <FolderGit2 className="size-4" aria-hidden />
+                                    ソースコード
                                 </a>
                             </div>
                         </section>

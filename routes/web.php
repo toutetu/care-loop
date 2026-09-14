@@ -30,13 +30,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
      *
      * 1回ごとに費用が発生する操作なので、GET では公開しない。
      * リンクを踏んだだけ・ブラウザが先読みしただけで課金される状態を作らない。
+     *
+     * throttle:llm で流量を絞る（AppServiceProvider）。月次の上限に達してから
+     * 止まるのでは、その月のデモ全体が動かなくなるため。
      */
-    Route::post('records/{serviceRecord}/voice-transform', [LlmActionController::class, 'transformVoice'])
-        ->name('llm.voice-transform');
-    Route::post('residents/{resident}/risk-detection', [LlmActionController::class, 'detectRisks'])
-        ->name('llm.risk-detection');
-    Route::post('residents/{resident}/goal-progress', [LlmActionController::class, 'goalProgress'])
-        ->name('llm.goal-progress');
+    Route::middleware('throttle:llm')->group(function () {
+        Route::post('records/{serviceRecord}/voice-transform', [LlmActionController::class, 'transformVoice'])
+            ->name('llm.voice-transform');
+        Route::post('residents/{resident}/risk-detection', [LlmActionController::class, 'detectRisks'])
+            ->name('llm.risk-detection');
+        Route::post('residents/{resident}/goal-progress', [LlmActionController::class, 'goalProgress'])
+            ->name('llm.goal-progress');
+    });
 
     // --- AI利用ログ（管理者のみ） ---
     Route::get('llm-logs', [LlmLogController::class, 'index'])->name('llm-logs.index');
