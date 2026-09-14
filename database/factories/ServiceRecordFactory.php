@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\NoteInputMethod;
 use App\Models\Resident;
 use App\Models\ServiceRecord;
 use App\Models\User;
@@ -23,7 +24,6 @@ class ServiceRecordFactory extends Factory
             'departure_time' => '16:15',
             'attendance_status' => 'attended',
             'total_water_ml' => fake()->numberBetween(850, 1400),
-            'raw_note' => null,
             'record_text' => fake()->randomElement([
                 '入浴は手すりを使用し、一部介助で実施。レクリエーションに参加され、表情は穏やかであった。',
                 '午前中は機能訓練に参加。立ち上がり動作は自力で可能であった。',
@@ -46,15 +46,24 @@ class ServiceRecordFactory extends Factory
         ]);
     }
 
-    /** 音声入力された直後で、AI整形がまだの記録。 */
+    /**
+     * 音声入力された直後で、AI整形がまだの記録。
+     *
+     * 原文は record_notes 側に積むため、記録を作ったあとに1件足す。
+     */
     public function rawOnly(): static
     {
         return $this->state(fn (): array => [
-            'raw_note' => 'えーっと今日は入浴のとき浴槽またぐの右足あがり悪くて腰支えた あと昼ごはん半分くらい',
             'record_text' => null,
             'family_text' => null,
             'handover_note' => null,
             'confirmed_at' => null,
-        ]);
+        ])->afterCreating(function (ServiceRecord $record): void {
+            $record->notes()->create([
+                'recorded_by' => $record->recorded_by,
+                'body' => 'えーっと今日は入浴のとき浴槽またぐの右足あがり悪くて腰支えた あと昼ごはん半分くらい',
+                'input_method' => NoteInputMethod::Voice,
+            ]);
+        });
     }
 }

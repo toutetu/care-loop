@@ -186,7 +186,7 @@ class CareDomainTest extends TestCase
 
         $this->assertTrue($record->hasUnconfirmedAiDraft());
         $this->assertFalse($record->isConfirmed());
-        $this->assertNotNull($record->raw_note);
+        $this->assertNotSame('', $record->load('notes')->combinedNoteText());
         $this->assertNull($record->record_text);
     }
 }

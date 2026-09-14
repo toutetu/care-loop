@@ -41,7 +41,10 @@ final class TransformVoiceNote
      */
     public function handle(ServiceRecord $record, ?LlmJob $job = null): array
     {
-        $rawNote = trim((string) $record->raw_note);
+        // その日に入った原文をすべて材料にする。送迎担当と入浴担当が別々に
+        // メモを入れるため、最新の1件だけでは前の職員の内容が落ちる。
+        $record->loadMissing('notes');
+        $rawNote = $record->combinedNoteText();
 
         if ($rawNote === '') {
             throw new RuntimeException('音声入力された原文がありません。');
@@ -240,16 +243,29 @@ final class TransformVoiceNote
             $updates['total_water_ml'] = $detected['water_ml'];
         }
 
+        if ($updates !== []) {
+            $record->forceFill($updates)->save();
+        }
+
         $bathingType = is_string($detected['bathing_type'] ?? null)
             ? BathingType::tryFrom($detected['bathing_type'])
             : null;
 
-        if ($record->bathing_type === null && $bathingType !== null) {
-            $updates['bathing_type'] = $bathingType;
-        }
-
-        if ($updates !== []) {
-            $record->forceFill($updates)->save();
+        /*
+         * 入浴は職員がまだ1件も入れていないときだけ足す。
+         *
+         * すでに職員が入れているなら、AIが読み取った内容より職員の記録が正しい。
+         * recorded_by は null のままにする。AIが原文から読み取った推測であって、
+         * 誰かが実施を確認したわけではない。職員の名前を入れると、
+         * 確認していない事実に署名させることになる。
+         */
+        if ($bathingType !== null && $record->bathingRecords()->doesntExist()) {
+            $record->bathingRecords()->create([
+                'recorded_by' => null,
+                'bathed_at' => null,
+                'bathing_type' => $bathingType,
+                'note' => 'AIが原文から読み取りました。ご確認ください。',
+            ]);
         }
 
         $staple = $detected['meal_staple_rate'] ?? null;

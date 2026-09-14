@@ -220,7 +220,7 @@ class ServiceRecordScreenTest extends TestCase
     {
         // 0で埋めると「測って0だった」と読めてしまい、記録として誤りになる。
         // リスク判定のしきい値にも引っかかる。
-        VitalSign::factory()->for($this->record)->create([
+        $existing = VitalSign::factory()->for($this->record)->create([
             'temperature' => 36.5,
             'systolic_bp' => 120,
         ]);
@@ -230,10 +230,35 @@ class ServiceRecordScreenTest extends TestCase
             'vital' => ['temperature' => 36.8, 'systolic_bp' => null],
         ]);
 
-        $vital = $this->record->refresh()->vitalSigns()->first();
+        // 並び順ではなくIDで特定する。measured_at の前後は実行時刻で変わるため、
+        // 「先頭の1件」で取ると午前と午後で結果が入れ替わる。
+        $added = $this->record->refresh()->vitalSigns()
+            ->where('id', '<>', $existing->id)
+            ->sole();
 
-        $this->assertSame('36.8', (string) $vital->temperature);
-        $this->assertNull($vital->systolic_bp);
+        $this->assertSame('36.8', (string) $added->temperature);
+        $this->assertNull($added->systolic_bp);
+    }
+
+    public function test_バイタルは上書きせず1件ずつ積む(): void
+    {
+        // 来所時に測った体温を、入浴前に測った職員が消してはいけない。
+        $existing = VitalSign::factory()->for($this->record)->create([
+            'temperature' => 36.5,
+        ]);
+
+        $this->actingAs($this->staff)->put($this->updateUrl(), [
+            'attendance_status' => 'attended',
+            'vital' => ['temperature' => 37.2],
+        ]);
+
+        $vitals = $this->record->refresh()->vitalSigns;
+
+        $this->assertCount(2, $vitals);
+        $this->assertSame('36.5', (string) $existing->fresh()->temperature, '先に測った分が残っている');
+
+        $added = $vitals->firstWhere('id', '<>', $existing->id);
+        $this->assertSame($this->staff->id, $added->recorded_by, '測った職員が残る');
     }
 
     public function test_バイタルが未登録でも入力すれば作られる(): void
@@ -246,10 +271,10 @@ class ServiceRecordScreenTest extends TestCase
         $this->assertSame(1, $this->record->refresh()->vitalSigns()->count());
     }
 
-    public function test_昼食の記録は同じ行を更新する(): void
+    public function test_昼食の記録は上書きせず1件ずつ積む(): void
     {
-        // service_record_id と meal_type に一意制約がある。
-        // 保存のたびに行が増えると制約違反になる。
+        // 食後に摂取量を入れ直すと、以前は前の1件を書き換えていた。
+        // 最初に入れた職員の記録が消えることになるため、別の1件として残す。
         MealRecord::factory()->for($this->record)->create([
             'meal_type' => 'lunch',
             'staple_rate' => 50,
@@ -262,8 +287,10 @@ class ServiceRecordScreenTest extends TestCase
 
         $meals = $this->record->refresh()->mealRecords;
 
-        $this->assertCount(1, $meals);
-        $this->assertSame(80, $meals->first()->staple_rate);
+        $this->assertCount(2, $meals);
+        $this->assertSame(50, $meals->first()->staple_rate, '先に入れた分が残っている');
+        $this->assertSame(80, $meals->last()->staple_rate);
+        $this->assertSame($this->staff->id, $meals->last()->recorded_by, '入れた職員が残る');
     }
 
     // ---------------------------------------------------------------
@@ -297,8 +324,8 @@ class ServiceRecordScreenTest extends TestCase
 
     public function test_原文は保存できるが記録として確定はしない(): void
     {
-        // raw_note は音声入力の未加工のテキスト。AIが何を変えたのかを
-        // 後から検証できるよう、そのまま残す。
+        // 原文は音声入力の未加工のテキスト。AIが何を変えたのかを
+        // 後から検証できるよう、書き換えずに1件として積む。
         $this->actingAs($this->staff)->put($this->updateUrl(), [
             'attendance_status' => 'attended',
             'raw_note' => 'えーっと 午前中は体操に参加されて',
@@ -306,7 +333,10 @@ class ServiceRecordScreenTest extends TestCase
 
         $this->record->refresh();
 
-        $this->assertSame('えーっと 午前中は体操に参加されて', $this->record->raw_note);
+        $note = $this->record->notes()->sole();
+
+        $this->assertSame('えーっと 午前中は体操に参加されて', $note->body);
+        $this->assertSame($this->staff->id, $note->recorded_by, '誰が入れたかが残る');
         $this->assertNull($this->record->confirmed_at);
     }
 

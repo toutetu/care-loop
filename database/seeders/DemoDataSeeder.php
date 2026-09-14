@@ -318,17 +318,22 @@ class DemoDataSeeder extends Seeder
                 'departure_time' => $this->minutesToTime($departure),
                 'attendance_status' => 'attended',
                 'total_water_ml' => $this->water($key, $fromEnd, $index, $seed),
-                // 入浴は利用のたびに実施するのが基本。体調等で見送る日は
-                // 清拭に切り替える。何もしない日はほとんどない。
+                'record_text' => $this->note($key, $fromEnd, $index),
+                'family_text' => $this->familyNote($key, $fromEnd, $index),
+                'handover_note' => $this->handoverNote($key, $fromEnd),
+                'confirmed_at' => $date->copy()->setTime(17, 0),
+            ]);
+
+            // 入浴は利用のたびに実施するのが基本。体調等で見送る日は
+            // 清拭に切り替える。何もしない日はほとんどない。
+            $record->bathingRecords()->create([
+                'recorded_by' => $record->recorded_by,
+                'bathed_at' => $date->copy()->setTime(11, 0),
                 'bathing_type' => match (($index + $seed) % 7) {
                     5 => BathingType::Wipe,
                     6 => BathingType::None,
                     default => BathingType::Bath,
                 },
-                'record_text' => $this->note($key, $fromEnd, $index),
-                'family_text' => $this->familyNote($key, $fromEnd, $index),
-                'handover_note' => $this->handoverNote($key, $fromEnd),
-                'confirmed_at' => $date->copy()->setTime(17, 0),
             ]);
 
             $this->createVital($record, $key, $fromEnd, $index, $seed);

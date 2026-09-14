@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\LlmFeature;
 use App\Enums\LlmJobStatus;
+use App\Enums\NoteInputMethod;
 use App\Llm\Exceptions\LlmException;
 use App\Llm\UseCases\DetectRisks;
 use App\Llm\UseCases\SummarizeGoalProgress;
@@ -59,7 +60,9 @@ class LlmActionController extends Controller
         // 何も起きていないように見える。押した時点の内容で動くのが自然である。
         $this->storeRawNote($request, $serviceRecord);
 
-        if (trim((string) $serviceRecord->raw_note) === '') {
+        $serviceRecord->load('notes');
+
+        if ($serviceRecord->combinedNoteText() === '') {
             return back()->with('error', '先に音声入力または原文の入力を行ってください。');
         }
 
@@ -126,23 +129,41 @@ class LlmActionController extends Controller
     // ---------------------------------------------------------------
 
     /**
-     * 画面から送られた原文を記録へ反映する。
+     * 画面から送られた原文を記録へ足す。
      *
      * 【変換の前に保存する】
-     * raw_note はAIが何を変えたのかを後から検証するための原本である。
+     * 原文はAIが何を変えたのかを後から検証するための原本である。
      * 変換に使った文章が残っていなければ、検証のしようがない。
+     *
+     * 【書き換えずに積む】
+     * 同じ内容が続けて送られたときだけ捨てる。押し直しや再変換で同じ文が
+     * 二重に積まれるのを防ぐためで、内容が違えば必ず別の1件として残す。
      */
     private function storeRawNote(Request $request, ServiceRecord $record): void
     {
         $rawNote = $request->string('raw_note')->trim()->value();
 
-        if ($rawNote === '' || $rawNote === (string) $record->raw_note) {
+        if ($rawNote === '') {
+            return;
+        }
+
+        $record->loadMissing('notes');
+
+        if (trim((string) $record->notes->last()?->body) === $rawNote) {
             return;
         }
 
         // 上限は記録本文と同じ。音声入力が延々と続いた状態でそのまま
         // 送ると、トークンも費用も跳ね上がる。
-        $record->forceFill(['raw_note' => mb_substr($rawNote, 0, 5000)])->save();
+        $record->notes()->create([
+            'recorded_by' => $request->user()?->id,
+            'body' => mb_substr($rawNote, 0, 5000),
+            'input_method' => $request->string('input_method')->value() === 'voice'
+                ? NoteInputMethod::Voice
+                : NoteInputMethod::Keyboard,
+        ]);
+
+        $record->unsetRelation('notes');
     }
 
     /**
