@@ -24,7 +24,9 @@ export function Section({
                 <div className="min-w-0 space-y-1">
                     <CardTitle className="text-base">{title}</CardTitle>
                     {description && (
-                        <p className="text-sm text-muted-foreground">{description}</p>
+                        <p className="text-muted-foreground text-sm">
+                            {description}
+                        </p>
                     )}
                 </div>
                 {action}
@@ -52,6 +54,7 @@ export function StatCard({
     tone = 'default',
     href,
     onClick,
+    className,
 }: {
     label: string;
     value: ReactNode;
@@ -60,20 +63,24 @@ export function StatCard({
     tone?: 'default' | 'alert';
     href?: NonNullable<InertiaLinkProps['href']>;
     onClick?: () => void;
+    /** グリッドの中での占め方を、呼び出し側から決めたいときに使う。 */
+    className?: string;
 }) {
     const body = (
         <CardContent className="space-y-1 py-1 text-left">
-            <p className="text-sm text-muted-foreground">{label}</p>
+            <p className="text-muted-foreground text-sm">{label}</p>
             <p
                 className={cn(
                     'text-2xl font-semibold tabular-nums',
-                    tone === 'alert' && 'text-red-600 dark:text-red-400',
+                    tone === 'alert' && 'text-danger-ink',
                 )}
             >
                 {value}
-                {unit && <span className="ml-1 text-sm font-normal">{unit}</span>}
+                {unit && (
+                    <span className="ml-1 text-sm font-normal">{unit}</span>
+                )}
             </p>
-            {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+            {hint && <p className="text-muted-foreground text-xs">{hint}</p>}
         </CardContent>
     );
 
@@ -84,7 +91,10 @@ export function StatCard({
         return (
             <Link
                 href={href}
-                className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className={cn(
+                    'focus-visible:ring-ring rounded-xl outline-none focus-visible:ring-2',
+                    className,
+                )}
             >
                 <Card className={interactive}>{body}</Card>
             </Link>
@@ -98,19 +108,24 @@ export function StatCard({
             <button
                 type="button"
                 onClick={onClick}
-                className="w-full rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className={cn(
+                    'focus-visible:ring-ring w-full rounded-xl text-left outline-none focus-visible:ring-2',
+                    className,
+                )}
             >
                 <Card className={interactive}>{body}</Card>
             </button>
         );
     }
 
-    return <Card>{body}</Card>;
+    return <Card className={className}>{body}</Card>;
 }
 
 /** 一覧が空のときの表示。何もないのか、条件に合わないのかを書き分ける。 */
 export function EmptyState({ children }: { children: ReactNode }) {
     return (
-        <p className="py-6 text-center text-sm text-muted-foreground">{children}</p>
+        <p className="text-muted-foreground py-6 text-center text-sm">
+            {children}
+        </p>
     );
 }

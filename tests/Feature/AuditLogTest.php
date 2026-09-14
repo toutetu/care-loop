@@ -44,7 +44,13 @@ class AuditLogTest extends TestCase
 
     public function test_ご利用者の変更が誰の操作として残る(): void
     {
-        $resident = Resident::factory()->for($this->facility)->create(['name' => '佐藤 ハナ']);
+        // 既往歴も固定する。ファクトリは6候補からランダムに選び、そのうちの
+        // 1つがこのあと送る値と同じである。たまたま一致すると値が変わらず、
+        // 履歴に medical_history が積まれないため、6回に1回落ちていた。
+        $resident = Resident::factory()->for($this->facility)->create([
+            'name' => '佐藤 ハナ',
+            'medical_history' => '高血圧',
+        ]);
 
         $this->actingAs($this->admin)->put("/residents/{$resident->id}", [
             'name' => '佐藤 ハナ',
@@ -177,7 +183,13 @@ class AuditLogTest extends TestCase
     {
         // 氏名や既往歴は residents 側で暗号化している。その変更履歴を
         // 平文で積むと、履歴のほうが弱い漏えい経路になる。
-        $resident = Resident::factory()->for($this->facility)->create();
+        // 変更前の値を固定する。ファクトリの乱数がこのあと送る値と一致すると
+        // その項目は変わらず、履歴に積まれない。落ちはしないが、暗号化を
+        // 確かめたつもりで何も確かめていない状態になる。
+        $resident = Resident::factory()->for($this->facility)->create([
+            'name' => '佐藤 ハナ',
+            'medical_history' => '高血圧',
+        ]);
 
         $this->actingAs($this->admin)->put("/residents/{$resident->id}", [
             'name' => '田中 ハナ',

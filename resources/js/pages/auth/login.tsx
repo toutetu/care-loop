@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
 import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
@@ -28,14 +27,16 @@ type Props = {
 /** デモ用アカウントのパスワード。シーダーが作る架空の職員に共通。 */
 const DEMO_PASSWORD = 'password';
 
-export default function Login({ status, canResetPassword, demoAccounts }: Props) {
+export default function Login({
+    status,
+    canResetPassword,
+    demoAccounts,
+}: Props) {
     return (
         <>
             <Head title="ログイン" />
 
-            {demoAccounts && (
-                <DemoAccountPanel accounts={demoAccounts} />
-            )}
+            {demoAccounts && <DemoAccountPanel accounts={demoAccounts} />}
 
             <PasskeyVerify
                 label="パスキーでログイン"
@@ -91,23 +92,24 @@ export default function Login({ status, canResetPassword, demoAccounts }: Props)
                                 <InputError message={errors.password} />
                             </div>
 
-                            <div className="flex items-center space-x-3">
+                            <div className="flex min-h-11 items-center space-x-3">
                                 <Checkbox
                                     id="remember"
                                     name="remember"
                                     tabIndex={3}
                                 />
-                                <Label htmlFor="remember">ログイン状態を保持する</Label>
+                                <Label htmlFor="remember">
+                                    ログイン状態を保持する
+                                </Label>
                             </div>
 
                             <Button
                                 type="submit"
                                 className="mt-4 w-full"
                                 tabIndex={4}
-                                disabled={processing}
+                                pending={processing}
                                 data-test="login-button"
                             >
-                                {processing && <Spinner />}
                                 ログイン
                             </Button>
                         </div>
@@ -123,7 +125,7 @@ export default function Login({ status, canResetPassword, demoAccounts }: Props)
             </Form>
 
             {status && (
-                <div className="mb-4 text-center text-sm font-medium text-green-600">
+                <div className="text-success-ink mb-4 text-center text-sm font-medium">
                     {status}
                 </div>
             )}
@@ -163,9 +165,9 @@ function DemoAccountPanel({ accounts }: { accounts: DemoAccount[] }) {
     };
 
     return (
-        <div className="mb-6 rounded-lg border bg-muted/40 p-4">
+        <div className="bg-muted/40 mb-6 rounded-lg border p-4">
             <p className="text-sm font-medium">デモ用のアカウント</p>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="text-muted-foreground mt-1 text-xs">
                 権限による表示の違いを見られるよう、役割ごとに用意しています。
                 押すとそのままログインします。
             </p>
@@ -176,15 +178,17 @@ function DemoAccountPanel({ accounts }: { accounts: DemoAccount[] }) {
                         <button
                             type="button"
                             onClick={() => signIn(account.email)}
-                            className="w-full rounded-md border bg-background px-3 py-2 text-left transition-colors hover:border-primary/40 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                            className="bg-background hover:border-primary/40 hover:bg-accent focus-visible:ring-ring w-full rounded-md border px-3 py-2 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none"
                         >
                             <span className="flex flex-wrap items-baseline gap-x-2">
-                                <span className="text-sm font-medium">{account.role}</span>
-                                <span className="font-mono text-xs text-muted-foreground">
+                                <span className="text-sm font-medium">
+                                    {account.role}
+                                </span>
+                                <span className="text-muted-foreground font-mono text-xs">
                                     {account.email}
                                 </span>
                             </span>
-                            <span className="mt-0.5 block text-xs text-muted-foreground">
+                            <span className="text-muted-foreground mt-0.5 block text-xs">
                                 {account.note}
                             </span>
                         </button>
@@ -192,9 +196,9 @@ function DemoAccountPanel({ accounts }: { accounts: DemoAccount[] }) {
                 ))}
             </ul>
 
-            <p className="mt-3 text-xs text-muted-foreground">
+            <p className="text-muted-foreground mt-3 text-xs">
                 パスワードはいずれも{' '}
-                <code className="rounded bg-background px-1.5 py-0.5 font-mono">
+                <code className="bg-background rounded px-1.5 py-0.5 font-mono">
                     {DEMO_PASSWORD}
                 </code>{' '}
                 です。表示されるご利用者・職員・記録はすべて架空のものです。

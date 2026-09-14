@@ -29,7 +29,12 @@ type Job = {
 };
 
 type Props = {
-    counts: { total: number; succeeded: number; failed: number; running: number };
+    counts: {
+        total: number;
+        succeeded: number;
+        failed: number;
+        running: number;
+    };
     onlyFailed: boolean;
     canViewLlmLogs: boolean;
     jobs: {
@@ -95,8 +100,14 @@ export default function LlmJobIndex({
                         value={counts.failed}
                         unit="件"
                         tone={counts.failed > 0 ? 'alert' : 'default'}
-                        hint={counts.failed > 0 ? '押すと失敗のみ表示します' : undefined}
-                        onClick={counts.failed > 0 ? () => filter(true) : undefined}
+                        hint={
+                            counts.failed > 0
+                                ? '押すと失敗のみ表示します'
+                                : undefined
+                        }
+                        onClick={
+                            counts.failed > 0 ? () => filter(true) : undefined
+                        }
                     />
                     <StatCard label="実行中" value={counts.running} unit="件" />
                 </div>
@@ -106,7 +117,11 @@ export default function LlmJobIndex({
                     description={`全 ${jobs.total.toLocaleString()} 件中 ${jobs.currentPage} / ${jobs.lastPage} ページ`}
                     action={
                         onlyFailed && (
-                            <Button variant="secondary" size="sm" onClick={() => filter(false)}>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => filter(false)}
+                            >
                                 <X className="size-4" aria-hidden />
                                 絞り込みを解除
                             </Button>
@@ -122,7 +137,10 @@ export default function LlmJobIndex({
                     ) : (
                         <ul className="divide-y">
                             {jobs.data.map((job) => (
-                                <li key={job.id} className="py-3 first:pt-0 last:pb-0">
+                                <li
+                                    key={job.id}
+                                    className="py-3 first:pt-0 last:pb-0"
+                                >
                                     <div className="flex flex-wrap items-center gap-2">
                                         <Badge
                                             variant={
@@ -133,47 +151,68 @@ export default function LlmJobIndex({
                                         >
                                             {job.statusLabel}
                                         </Badge>
-                                        <span className="font-mono text-xs text-muted-foreground">
+                                        <span className="text-muted-foreground font-mono text-xs">
                                             {job.featureCode}
                                         </span>
-                                        <span className="font-medium">{job.feature}</span>
+                                        <span className="font-medium">
+                                            {job.feature}
+                                        </span>
                                         {job.errorLabel && (
-                                            <Badge variant="outline">{job.errorLabel}</Badge>
+                                            <Badge variant="outline">
+                                                {job.errorLabel}
+                                            </Badge>
                                         )}
                                         {/* 自動で直るものと、担当者の対応が要るものを分ける。
                                             「混み合っています」と「設定が違います」では
                                             取るべき行動が違う。 */}
                                         {job.isRetryable && (
-                                            <Badge variant="secondary" className="gap-1">
-                                                <RefreshCw className="size-3" aria-hidden />
+                                            <Badge
+                                                variant="secondary"
+                                                className="gap-1"
+                                            >
+                                                <RefreshCw
+                                                    className="size-3"
+                                                    aria-hidden
+                                                />
                                                 自動で再試行
                                             </Badge>
                                         )}
                                         {job.needsOperatorAttention && (
-                                            <Badge variant="destructive" className="gap-1">
-                                                <TriangleAlert className="size-3" aria-hidden />
+                                            <Badge
+                                                variant="destructive"
+                                                className="gap-1"
+                                            >
+                                                <TriangleAlert
+                                                    className="size-3"
+                                                    aria-hidden
+                                                />
                                                 要対応
                                             </Badge>
                                         )}
                                     </div>
 
                                     {job.errorMessage && (
-                                        <p className="mt-1 text-sm text-muted-foreground">
+                                        <p className="text-muted-foreground mt-1 text-sm">
                                             {job.errorMessage}
                                         </p>
                                     )}
 
-                                    <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                                    <p className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                                         {/* 対象が分からないと、どの記録の話なのか辿れない */}
-                                        {job.targetLabel && <TargetLink job={job} />}
+                                        {job.targetLabel && (
+                                            <TargetLink job={job} />
+                                        )}
                                         <span>{job.startedAt ?? '—'}</span>
                                         <span>{job.requester ?? '—'}</span>
                                         {job.durationSeconds !== null && (
                                             <span className="tabular-nums">
-                                                {job.durationSeconds.toFixed(1)} 秒
+                                                {job.durationSeconds.toFixed(1)}{' '}
+                                                秒
                                             </span>
                                         )}
-                                        {job.attempts > 1 && <span>試行 {job.attempts} 回</span>}
+                                        {job.attempts > 1 && (
+                                            <span>試行 {job.attempts} 回</span>
+                                        )}
                                     </p>
                                 </li>
                             ))}
@@ -191,7 +230,7 @@ function TargetLink({ job }: { job: Job }) {
         return (
             <Link
                 href={records.edit(job.targetRecordId)}
-                className="font-medium text-foreground hover:underline"
+                className="text-foreground font-medium hover:underline"
             >
                 {job.targetLabel}
             </Link>
@@ -202,7 +241,7 @@ function TargetLink({ job }: { job: Job }) {
         return (
             <Link
                 href={residents.show(job.targetResidentId)}
-                className="font-medium text-foreground hover:underline"
+                className="text-foreground font-medium hover:underline"
             >
                 {job.targetLabel}
             </Link>

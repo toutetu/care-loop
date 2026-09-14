@@ -23,7 +23,6 @@ export type RiskFinding = {
     severity: RiskSeverity;
     severityLabel: string;
     source: RiskSource;
-    sourceLabel: string;
     /** ルールベース由来か。同じ入力なら必ず同じ結果になる指摘を指す。 */
     isDeterministic: boolean;
     title: string;

@@ -27,7 +27,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Spinner } from '@/components/ui/spinner';
+import { NOTICE_SURFACE } from '@/lib/care-presentation';
+import { cn } from '@/lib/utils';
 import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
 import { dashboard } from '@/routes';
 import records from '@/routes/records';
@@ -150,7 +151,7 @@ export default function RecordEdit({
                                 {record.residentName} 様
                             </Link>
                         </h1>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-muted-foreground text-sm">
                             {record.date}
                             {record.careLevel && ` ／ ${record.careLevel}`}
                         </p>
@@ -182,12 +183,20 @@ export default function RecordEdit({
                     確定するのかをここで伝える。バッジだけでは、次にどう操作すれば
                     よいのかが分からない。 */}
                 {record.hasAiDraft && canEdit && (
-                    <div className="rounded-md border border-violet-300 bg-violet-50 px-3 py-2 dark:border-violet-900 dark:bg-violet-950">
+                    <div
+                        className={cn(
+                            'rounded-md border px-3 py-2',
+                            NOTICE_SURFACE.ai,
+                        )}
+                    >
                         <p className="flex items-start gap-2 text-sm font-medium">
-                            <Sparkles className="mt-0.5 size-4 shrink-0" aria-hidden />
+                            <Sparkles
+                                className="mt-0.5 size-4 shrink-0"
+                                aria-hidden
+                            />
                             AIが生成した下書きが未確認です
                         </p>
-                        <p className="mt-1 text-sm text-muted-foreground">
+                        <p className="text-muted-foreground mt-1 text-sm">
                             下の「記録の文章」をお読みいただき、必要なら直してください。
                             そのうえで最下部の「内容を確認したので確定する」にチェックを入れ、
                             保存すると確定します。
@@ -200,7 +209,10 @@ export default function RecordEdit({
                             onClick={() =>
                                 document
                                     .getElementById('record-texts')
-                                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                                    ?.scrollIntoView({
+                                        behavior: 'smooth',
+                                        block: 'start',
+                                    })
                             }
                         >
                             記録の文章を確認する
@@ -211,10 +223,12 @@ export default function RecordEdit({
                 {/* 書き換えられない記録は、そのことを最初に伝える。
                     保存できないと分かるのが最後では、入力した時間が無駄になる。 */}
                 {!canEdit && (
-                    <p className="flex items-start gap-2 rounded-md border bg-muted px-3 py-2 text-sm">
+                    <p className="bg-muted flex items-start gap-2 rounded-md border px-3 py-2 text-sm">
                         <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
                         この記録は
-                        {record.recorder ? `${record.recorder} さん` : '他の職員'}
+                        {record.recorder
+                            ? `${record.recorder} さん`
+                            : '他の職員'}
                         が作成したため、閲覧のみです。訂正が必要な場合は、記録者か管理者にご依頼ください。
                     </p>
                 )}
@@ -228,32 +242,41 @@ export default function RecordEdit({
                         <div className="relative">
                             <textarea
                                 value={rawNote}
-                                onChange={(event) => setRawNote(event.target.value)}
+                                onChange={(event) =>
+                                    setRawNote(event.target.value)
+                                }
                                 rows={5}
                                 form="record-form"
                                 name="raw_note"
                                 readOnly={!canEdit}
                                 placeholder="例：午前中は体操に参加されて えーっと 昼食のときに少しむせこみがあって 水分は1000mlくらい"
-                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-base shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                className="border-input bg-background focus-visible:ring-ring w-full rounded-md border px-3 py-2 text-base shadow-xs outline-none focus-visible:ring-2"
                             />
                             {/* このボタンは、対応ブラウザでのみ表示される（要件定義 7.8節 ②）。
                                 iOSではキーボードのマイクを使う想定なので出さない。 */}
                             {supported && canEdit && (
                                 <Button
                                     type="button"
-                                    variant={listening ? 'destructive' : 'outline'}
-                                    size="sm"
+                                    variant={
+                                        listening ? 'destructive' : 'outline'
+                                    }
                                     onClick={listening ? stop : start}
                                     className="absolute right-2 bottom-2"
                                 >
                                     {listening ? (
                                         <>
-                                            <MicOff className="size-4" aria-hidden />
+                                            <MicOff
+                                                className="size-4"
+                                                aria-hidden
+                                            />
                                             停止
                                         </>
                                     ) : (
                                         <>
-                                            <Mic className="size-4" aria-hidden />
+                                            <Mic
+                                                className="size-4"
+                                                aria-hidden
+                                            />
                                             音声入力
                                         </>
                                     )}
@@ -261,32 +284,48 @@ export default function RecordEdit({
                             )}
                         </div>
 
-                        <p className="flex items-start gap-2 text-xs text-muted-foreground">
-                            <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                        <p className="text-muted-foreground flex items-start gap-2 text-xs">
+                            <Info
+                                className="mt-0.5 size-3.5 shrink-0"
+                                aria-hidden
+                            />
                             この原文は書き換えません。AIが何を変えたのかを後から確認できるよう、そのまま保存します。
                             お名前などはAIへ送る前に伏せ字へ置き換えています。
                         </p>
 
                         {canEdit && (
                             <Form
-                                {...LlmActionController.transformVoice.form(record.id)}
+                                {...LlmActionController.transformVoice.form(
+                                    record.id,
+                                )}
                                 options={{ preserveScroll: true }}
                             >
                                 {({ processing }) => (
                                     <>
                                         {/* 押した時点の原文を一緒に送る。保存を忘れたまま
                                             押しても、画面に見えている内容で変換される。 */}
-                                        <input type="hidden" name="raw_note" value={rawNote} />
+                                        <input
+                                            type="hidden"
+                                            name="raw_note"
+                                            value={rawNote}
+                                        />
                                         <Button
                                             type="submit"
-                                            disabled={processing || rawNote.trim() === ''}
+                                            pending={processing}
+                                            disabled={
+                                                processing ||
+                                                rawNote.trim() === ''
+                                            }
                                         >
-                                            {processing ? (
-                                                <Spinner className="size-4" />
-                                            ) : (
-                                                <Sparkles className="size-4" aria-hidden />
+                                            {!processing && (
+                                                <Sparkles
+                                                    className="size-4"
+                                                    aria-hidden
+                                                />
                                             )}
-                                            記録・ご家族向け・申し送りに変換
+                                            {processing
+                                                ? '変換しています…'
+                                                : '記録・ご家族向け・申し送りに変換'}
                                         </Button>
                                     </>
                                 )}
@@ -304,14 +343,22 @@ export default function RecordEdit({
                             {verbalContacts.map((task) => (
                                 <li
                                     key={task.id}
-                                    className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm dark:border-amber-900 dark:bg-amber-950"
+                                    className={cn(
+                                        'rounded-md border px-3 py-2 text-sm',
+                                        NOTICE_SURFACE.warning,
+                                    )}
                                 >
                                     <p className="flex items-center gap-2 font-medium">
-                                        <MessageSquareWarning className="size-4 shrink-0" aria-hidden />
+                                        <MessageSquareWarning
+                                            className="size-4 shrink-0"
+                                            aria-hidden
+                                        />
                                         {task.topic}
                                     </p>
                                     {task.reason && (
-                                        <p className="mt-1 text-muted-foreground">{task.reason}</p>
+                                        <p className="text-muted-foreground mt-1">
+                                            {task.reason}
+                                        </p>
                                     )}
                                 </li>
                             ))}
@@ -328,29 +375,44 @@ export default function RecordEdit({
                     {({ processing, errors }) => (
                         // fieldset ごと無効にする。個々の入力に disabled を付けて回ると
                         // 必ずどれかを付け忘れる。
-                        <fieldset disabled={!canEdit} className="flex flex-col gap-4">
+                        <fieldset
+                            disabled={!canEdit}
+                            className="flex flex-col gap-4"
+                        >
                             {/* --- 利用状況 --- */}
                             <Section title="利用状況">
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <div className="grid gap-2">
-                                        <Label htmlFor="arrival_time">到着時刻</Label>
+                                        <Label htmlFor="arrival_time">
+                                            到着時刻
+                                        </Label>
                                         <Input
                                             id="arrival_time"
                                             name="arrival_time"
                                             type="time"
-                                            defaultValue={record.arrivalTime ?? ''}
+                                            defaultValue={
+                                                record.arrivalTime ?? ''
+                                            }
                                         />
-                                        <InputError message={errors.arrival_time} />
+                                        <InputError
+                                            message={errors.arrival_time}
+                                        />
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="departure_time">帰宅時刻</Label>
+                                        <Label htmlFor="departure_time">
+                                            帰宅時刻
+                                        </Label>
                                         <Input
                                             id="departure_time"
                                             name="departure_time"
                                             type="time"
-                                            defaultValue={record.departureTime ?? ''}
+                                            defaultValue={
+                                                record.departureTime ?? ''
+                                            }
                                         />
-                                        <InputError message={errors.departure_time} />
+                                        <InputError
+                                            message={errors.departure_time}
+                                        />
                                     </div>
                                 </div>
 
@@ -364,14 +426,22 @@ export default function RecordEdit({
                                     3択にしている。選ばないままなら「未記録」で、
                                     実施しなかったこととは区別される。 */}
                                 <div className="mt-4 grid gap-2 sm:max-w-xs">
-                                    <Label htmlFor="bathing_type">入浴・清拭</Label>
-                                    <Select value={bathingType} onValueChange={setBathingType}>
+                                    <Label htmlFor="bathing_type">
+                                        入浴・清拭
+                                    </Label>
+                                    <Select
+                                        value={bathingType}
+                                        onValueChange={setBathingType}
+                                    >
                                         <SelectTrigger id="bathing_type">
                                             <SelectValue placeholder="未記録" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {bathingTypes.map((type) => (
-                                                <SelectItem key={type.value} value={type.value}>
+                                                <SelectItem
+                                                    key={type.value}
+                                                    value={type.value}
+                                                >
                                                     {type.label}
                                                 </SelectItem>
                                             ))}
@@ -393,49 +463,79 @@ export default function RecordEdit({
                             >
                                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                     <div className="grid gap-2">
-                                        <Label htmlFor="temperature">体温（℃）</Label>
+                                        <Label htmlFor="temperature">
+                                            体温（℃）
+                                        </Label>
                                         <Input
                                             id="temperature"
                                             name="vital[temperature]"
                                             type="number"
                                             step="0.1"
                                             inputMode="decimal"
-                                            defaultValue={record.vital.temperature ?? ''}
+                                            defaultValue={
+                                                record.vital.temperature ?? ''
+                                            }
                                         />
-                                        <InputError message={errors['vital.temperature']} />
+                                        <InputError
+                                            message={
+                                                errors['vital.temperature']
+                                            }
+                                        />
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="systolic_bp">収縮期血圧</Label>
+                                        <Label htmlFor="systolic_bp">
+                                            収縮期血圧
+                                        </Label>
                                         <Input
                                             id="systolic_bp"
                                             name="vital[systolic_bp]"
                                             type="number"
                                             inputMode="numeric"
-                                            defaultValue={record.vital.systolic_bp ?? ''}
+                                            defaultValue={
+                                                record.vital.systolic_bp ?? ''
+                                            }
                                         />
-                                        <InputError message={errors['vital.systolic_bp']} />
+                                        <InputError
+                                            message={
+                                                errors['vital.systolic_bp']
+                                            }
+                                        />
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="diastolic_bp">拡張期血圧</Label>
+                                        <Label htmlFor="diastolic_bp">
+                                            拡張期血圧
+                                        </Label>
                                         <Input
                                             id="diastolic_bp"
                                             name="vital[diastolic_bp]"
                                             type="number"
                                             inputMode="numeric"
-                                            defaultValue={record.vital.diastolic_bp ?? ''}
+                                            defaultValue={
+                                                record.vital.diastolic_bp ?? ''
+                                            }
                                         />
-                                        <InputError message={errors['vital.diastolic_bp']} />
+                                        <InputError
+                                            message={
+                                                errors['vital.diastolic_bp']
+                                            }
+                                        />
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="pulse">脈拍（回/分）</Label>
+                                        <Label htmlFor="pulse">
+                                            脈拍（回/分）
+                                        </Label>
                                         <Input
                                             id="pulse"
                                             name="vital[pulse]"
                                             type="number"
                                             inputMode="numeric"
-                                            defaultValue={record.vital.pulse ?? ''}
+                                            defaultValue={
+                                                record.vital.pulse ?? ''
+                                            }
                                         />
-                                        <InputError message={errors['vital.pulse']} />
+                                        <InputError
+                                            message={errors['vital.pulse']}
+                                        />
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="spo2">SpO2（%）</Label>
@@ -444,9 +544,13 @@ export default function RecordEdit({
                                             name="vital[spo2]"
                                             type="number"
                                             inputMode="numeric"
-                                            defaultValue={record.vital.spo2 ?? ''}
+                                            defaultValue={
+                                                record.vital.spo2 ?? ''
+                                            }
                                         />
-                                        <InputError message={errors['vital.spo2']} />
+                                        <InputError
+                                            message={errors['vital.spo2']}
+                                        />
                                     </div>
                                 </div>
                             </Section>
@@ -455,38 +559,62 @@ export default function RecordEdit({
                             <Section title="昼食・水分">
                                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                                     <div className="grid gap-2">
-                                        <Label htmlFor="staple_rate">主食（%）</Label>
+                                        <Label htmlFor="staple_rate">
+                                            主食（%）
+                                        </Label>
                                         <Input
-                                            key={String(record.lunch.staple_rate)}
+                                            key={String(
+                                                record.lunch.staple_rate,
+                                            )}
                                             id="staple_rate"
                                             name="lunch[staple_rate]"
                                             type="number"
                                             inputMode="numeric"
-                                            defaultValue={record.lunch.staple_rate ?? ''}
+                                            defaultValue={
+                                                record.lunch.staple_rate ?? ''
+                                            }
                                         />
-                                        <InputError message={errors['lunch.staple_rate']} />
+                                        <InputError
+                                            message={
+                                                errors['lunch.staple_rate']
+                                            }
+                                        />
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="side_rate">副菜（%）</Label>
+                                        <Label htmlFor="side_rate">
+                                            副菜（%）
+                                        </Label>
                                         <Input
                                             key={String(record.lunch.side_rate)}
                                             id="side_rate"
                                             name="lunch[side_rate]"
                                             type="number"
                                             inputMode="numeric"
-                                            defaultValue={record.lunch.side_rate ?? ''}
+                                            defaultValue={
+                                                record.lunch.side_rate ?? ''
+                                            }
                                         />
-                                        <InputError message={errors['lunch.side_rate']} />
+                                        <InputError
+                                            message={errors['lunch.side_rate']}
+                                        />
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="meal_form">食形態</Label>
-                                        <Select value={mealForm} onValueChange={setMealForm}>
+                                        <Label htmlFor="meal_form">
+                                            食形態
+                                        </Label>
+                                        <Select
+                                            value={mealForm}
+                                            onValueChange={setMealForm}
+                                        >
                                             <SelectTrigger id="meal_form">
                                                 <SelectValue placeholder="選択してください" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {mealForms.map((form) => (
-                                                    <SelectItem key={form} value={form}>
+                                                    <SelectItem
+                                                        key={form}
+                                                        value={form}
+                                                    >
                                                         {form}
                                                     </SelectItem>
                                                 ))}
@@ -499,29 +627,38 @@ export default function RecordEdit({
                                         />
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="total_water_ml">水分合計（ml）</Label>
+                                        <Label htmlFor="total_water_ml">
+                                            水分合計（ml）
+                                        </Label>
                                         <Input
                                             key={String(record.totalWaterMl)}
                                             id="total_water_ml"
                                             name="total_water_ml"
                                             type="number"
                                             inputMode="numeric"
-                                            defaultValue={record.totalWaterMl ?? ''}
+                                            defaultValue={
+                                                record.totalWaterMl ?? ''
+                                            }
                                         />
-                                        <InputError message={errors.total_water_ml} />
+                                        <InputError
+                                            message={errors.total_water_ml}
+                                        />
                                     </div>
                                 </div>
 
-                                <div className="mt-4 flex items-center gap-2">
+                                <div className="mt-4 flex items-center gap-3">
                                     <Checkbox
                                         id="choking"
                                         name="lunch[choking]"
                                         value="1"
                                         defaultChecked={record.lunch.choking}
                                     />
-                                    <Label htmlFor="choking">
+                                    <Label
+                                        htmlFor="choking"
+                                        className="flex min-h-11 items-center"
+                                    >
                                         むせ込みがあった
-                                        <span className="ml-1 text-xs font-normal text-muted-foreground">
+                                        <span className="text-muted-foreground ml-1 text-xs font-normal">
                                             （誤嚥リスクの判定に使います）
                                         </span>
                                     </Label>
@@ -531,40 +668,44 @@ export default function RecordEdit({
                             {/* --- 3つの文章 --- */}
                             {/* 記録一覧の「確認して確定」から、ここへ案内する */}
                             <div id="record-texts" className="scroll-mt-4">
-                            <Section
-                                title="記録の文章"
-                                description="AIが生成した下書きです。内容をご確認のうえ、必要に応じて直してください。"
-                            >
-                                <div className="space-y-4">
-                                    <TextBlock
-                                        id="record_text"
-                                        label="記録用"
-                                        hint="サービス提供記録に残る文章です。"
-                                        defaultValue={record.recordText}
-                                        edited={record.recordTextEditedByHuman}
-                                    />
-                                    <TextBlock
-                                        id="family_text"
-                                        label="ご家族向け"
-                                        hint="連絡帳に載る文章です。"
-                                        defaultValue={record.familyText}
-                                        edited={record.familyTextEditedByHuman}
-                                    />
-                                    <TextBlock
-                                        id="handover_note"
-                                        label="申し送り"
-                                        hint="次の担当者が取るべき行動があるときだけ書きます。"
-                                        defaultValue={record.handoverNote}
-                                        rows={2}
-                                    />
-                                </div>
-                            </Section>
+                                <Section
+                                    title="記録の文章"
+                                    description="AIが生成した下書きです。内容をご確認のうえ、必要に応じて直してください。"
+                                >
+                                    <div className="space-y-4">
+                                        <TextBlock
+                                            id="record_text"
+                                            label="記録用"
+                                            hint="サービス提供記録に残る文章です。"
+                                            defaultValue={record.recordText}
+                                            edited={
+                                                record.recordTextEditedByHuman
+                                            }
+                                        />
+                                        <TextBlock
+                                            id="family_text"
+                                            label="ご家族向け"
+                                            hint="連絡帳に載る文章です。"
+                                            defaultValue={record.familyText}
+                                            edited={
+                                                record.familyTextEditedByHuman
+                                            }
+                                        />
+                                        <TextBlock
+                                            id="handover_note"
+                                            label="申し送り"
+                                            hint="次の担当者が取るべき行動があるときだけ書きます。"
+                                            defaultValue={record.handoverNote}
+                                            rows={2}
+                                        />
+                                    </div>
+                                </Section>
                             </div>
 
                             {/* --- 保存 --- */}
                             {canEdit && (
-                                <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background/95 px-4 py-3 backdrop-blur">
-                                    <label className="flex items-center gap-2 text-sm">
+                                <div className="bg-background/95 sticky bottom-0 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 backdrop-blur">
+                                    <label className="flex min-h-11 items-center gap-3 text-sm">
                                         {/* AIが文章を書き直すと確定は外れる。チェックの状態も
                                             必ず作り直す。外れたはずのチェックが入ったまま
                                             残ると、職員が読んでいないAIの下書きが
@@ -573,21 +714,28 @@ export default function RecordEdit({
                                             key={String(record.confirmedAt)}
                                             name="confirm"
                                             value="1"
-                                            defaultChecked={record.confirmedAt !== null}
-                                            disabled={record.confirmedAt !== null}
+                                            defaultChecked={
+                                                record.confirmedAt !== null
+                                            }
+                                            disabled={
+                                                record.confirmedAt !== null
+                                            }
                                         />
                                         {record.confirmedAt !== null ? (
                                             <span className="text-muted-foreground">
                                                 {record.confirmedAt} に確定済み
                                             </span>
                                         ) : (
-                                            <span>内容を確認したので確定する</span>
+                                            <span>
+                                                内容を確認したので確定する
+                                            </span>
                                         )}
                                     </label>
 
-                                    <Button type="submit" disabled={processing}>
-                                        {processing && <Spinner className="size-4" />}
-                                        保存
+                                    <Button type="submit" pending={processing}>
+                                        {processing
+                                            ? '保存しています…'
+                                            : '保存'}
                                     </Button>
                                 </div>
                             )}
@@ -630,7 +778,7 @@ function TextBlock({
                         職員が修正
                     </Badge>
                 )}
-                <span className="text-xs text-muted-foreground">{hint}</span>
+                <span className="text-muted-foreground text-xs">{hint}</span>
             </div>
             {/* サーバーの値が変わったら作り直す。
                 非制御の入力は再描画してもDOMの値が残るため、AIが書き直した文章が
@@ -643,13 +791,17 @@ function TextBlock({
                 name={id}
                 rows={rows}
                 defaultValue={defaultValue ?? ''}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-base shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="border-input bg-background focus-visible:ring-ring w-full rounded-md border px-3 py-2 text-base shadow-xs outline-none focus-visible:ring-2"
             />
         </div>
     );
 }
 
 RecordEdit.layout = {
+    // 記録の入力は1画面で終わらせる作業である。下部タブバーを出すと、
+    // 保存バーと二段になって667pxの画面が狭くなるうえ、
+    // 書きかけのまま別の画面へ移れる出口を増やすことになる。
+    mobileTabBar: false,
     breadcrumbs: [
         { title: 'ダッシュボード', href: dashboard() },
         { title: '利用者一覧', href: residentRoutes.index() },

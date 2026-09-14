@@ -15,7 +15,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Spinner } from '@/components/ui/spinner';
 import { dashboard } from '@/routes';
 import residents from '@/routes/residents';
 
@@ -68,7 +67,9 @@ export default function ResidentForm({ resident, careLevels }: Props) {
         resident?.care_level_id != null ? String(resident.care_level_id) : '',
     );
     const [gender, setGender] = useState(resident?.gender ?? '');
-    const [weekdays, setWeekdays] = useState<number[]>(resident?.service_weekdays ?? []);
+    const [weekdays, setWeekdays] = useState<number[]>(
+        resident?.service_weekdays ?? [],
+    );
 
     const toggleWeekday = (value: number) =>
         setWeekdays((current) =>
@@ -79,7 +80,9 @@ export default function ResidentForm({ resident, careLevels }: Props) {
 
     return (
         <>
-            <Head title={isNew ? 'ご利用者の登録' : `${resident.name} 様の編集`} />
+            <Head
+                title={isNew ? 'ご利用者の登録' : `${resident.name} 様の編集`}
+            />
 
             <Form
                 {...(isNew
@@ -90,7 +93,9 @@ export default function ResidentForm({ resident, careLevels }: Props) {
                 {({ processing, errors }) => (
                     <>
                         <h1 className="text-lg font-semibold">
-                            {isNew ? 'ご利用者の登録' : `${resident.name} 様の編集`}
+                            {isNew
+                                ? 'ご利用者の登録'
+                                : `${resident.name} 様の編集`}
                         </h1>
 
                         <Section
@@ -112,7 +117,9 @@ export default function ResidentForm({ resident, careLevels }: Props) {
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="name_kana">お名前（カナ） *</Label>
+                                    <Label htmlFor="name_kana">
+                                        お名前（カナ） *
+                                    </Label>
                                     <Input
                                         id="name_kana"
                                         name="name_kana"
@@ -122,7 +129,7 @@ export default function ResidentForm({ resident, careLevels }: Props) {
                                     />
                                     {/* 氏名は暗号化して保存するためSQLでは検索できない。
                                         カナの索引だけが後から探す手がかりになる。 */}
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="text-muted-foreground text-xs">
                                         全角カタカナで入力してください。
                                         お名前は暗号化して保存するため、検索はこのカナを使います。
                                     </p>
@@ -130,14 +137,22 @@ export default function ResidentForm({ resident, careLevels }: Props) {
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="care_level_id">要介護度</Label>
-                                    <Select value={careLevelId} onValueChange={setCareLevelId}>
+                                    <Label htmlFor="care_level_id">
+                                        要介護度
+                                    </Label>
+                                    <Select
+                                        value={careLevelId}
+                                        onValueChange={setCareLevelId}
+                                    >
                                         <SelectTrigger id="care_level_id">
                                             <SelectValue placeholder="選択してください" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {careLevels.map((level) => (
-                                                <SelectItem key={level.id} value={String(level.id)}>
+                                                <SelectItem
+                                                    key={level.id}
+                                                    value={String(level.id)}
+                                                >
                                                     {level.name}
                                                 </SelectItem>
                                             ))}
@@ -148,21 +163,34 @@ export default function ResidentForm({ resident, careLevels }: Props) {
                                         name="care_level_id"
                                         value={careLevelId}
                                     />
-                                    <InputError message={errors.care_level_id} />
+                                    <InputError
+                                        message={errors.care_level_id}
+                                    />
                                 </div>
 
                                 <div className="grid gap-2">
                                     <Label htmlFor="gender">性別</Label>
-                                    <Select value={gender} onValueChange={setGender}>
+                                    <Select
+                                        value={gender}
+                                        onValueChange={setGender}
+                                    >
                                         <SelectTrigger id="gender">
                                             <SelectValue placeholder="選択してください" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="female">女性</SelectItem>
-                                            <SelectItem value="male">男性</SelectItem>
+                                            <SelectItem value="female">
+                                                女性
+                                            </SelectItem>
+                                            <SelectItem value="male">
+                                                男性
+                                            </SelectItem>
                                         </SelectContent>
                                     </Select>
-                                    <input type="hidden" name="gender" value={gender} />
+                                    <input
+                                        type="hidden"
+                                        name="gender"
+                                        value={gender}
+                                    />
                                     <InputError message={errors.gender} />
                                 </div>
 
@@ -172,21 +200,29 @@ export default function ResidentForm({ resident, careLevels }: Props) {
                                         id="birth_date"
                                         name="birth_date"
                                         type="date"
-                                        defaultValue={resident?.birth_date ?? ''}
+                                        defaultValue={
+                                            resident?.birth_date ?? ''
+                                        }
                                     />
                                     {/* 年齢での絞り込みに使うため、生年月日だけは平文で持つ */}
                                     <InputError message={errors.birth_date} />
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="insurance_number">被保険者番号</Label>
+                                    <Label htmlFor="insurance_number">
+                                        被保険者番号
+                                    </Label>
                                     <Input
                                         id="insurance_number"
                                         name="insurance_number"
-                                        defaultValue={resident?.insurance_number ?? ''}
+                                        defaultValue={
+                                            resident?.insurance_number ?? ''
+                                        }
                                         inputMode="numeric"
                                     />
-                                    <InputError message={errors.insurance_number} />
+                                    <InputError
+                                        message={errors.insurance_number}
+                                    />
                                 </div>
                             </div>
                         </Section>
@@ -202,11 +238,15 @@ export default function ResidentForm({ resident, careLevels }: Props) {
                                         {WEEKDAYS.map((day) => (
                                             <label
                                                 key={day.value}
-                                                className="flex items-center gap-2 text-sm"
+                                                className="flex min-h-11 items-center gap-3 text-sm"
                                             >
                                                 <Checkbox
-                                                    checked={weekdays.includes(day.value)}
-                                                    onCheckedChange={() => toggleWeekday(day.value)}
+                                                    checked={weekdays.includes(
+                                                        day.value,
+                                                    )}
+                                                    onCheckedChange={() =>
+                                                        toggleWeekday(day.value)
+                                                    }
                                                 />
                                                 {day.label}
                                             </label>
@@ -220,29 +260,41 @@ export default function ResidentForm({ resident, careLevels }: Props) {
                                             value={day}
                                         />
                                     ))}
-                                    <InputError message={errors.service_weekdays} />
+                                    <InputError
+                                        message={errors.service_weekdays}
+                                    />
                                 </div>
 
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <div className="grid gap-2">
-                                        <Label htmlFor="started_at">利用開始日</Label>
+                                        <Label htmlFor="started_at">
+                                            利用開始日
+                                        </Label>
                                         <Input
                                             id="started_at"
                                             name="started_at"
                                             type="date"
-                                            defaultValue={resident?.started_at ?? ''}
+                                            defaultValue={
+                                                resident?.started_at ?? ''
+                                            }
                                         />
-                                        <InputError message={errors.started_at} />
+                                        <InputError
+                                            message={errors.started_at}
+                                        />
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="ended_at">利用終了日</Label>
+                                        <Label htmlFor="ended_at">
+                                            利用終了日
+                                        </Label>
                                         <Input
                                             id="ended_at"
                                             name="ended_at"
                                             type="date"
-                                            defaultValue={resident?.ended_at ?? ''}
+                                            defaultValue={
+                                                resident?.ended_at ?? ''
+                                            }
                                         />
-                                        <p className="text-xs text-muted-foreground">
+                                        <p className="text-muted-foreground text-xs">
                                             ご利用が続いている間は空欄のままにしてください。
                                         </p>
                                         <InputError message={errors.ended_at} />
@@ -268,14 +320,20 @@ export default function ResidentForm({ resident, careLevels }: Props) {
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="family_contact">ご家族の連絡先</Label>
+                                    <Label htmlFor="family_contact">
+                                        ご家族の連絡先
+                                    </Label>
                                     <Input
                                         id="family_contact"
                                         name="family_contact"
-                                        defaultValue={resident?.family_contact ?? ''}
+                                        defaultValue={
+                                            resident?.family_contact ?? ''
+                                        }
                                         placeholder="佐藤 一郎（長男）"
                                     />
-                                    <InputError message={errors.family_contact} />
+                                    <InputError
+                                        message={errors.family_contact}
+                                    />
                                 </div>
 
                                 <div className="grid gap-2 sm:col-span-2">
@@ -295,37 +353,53 @@ export default function ResidentForm({ resident, careLevels }: Props) {
                                     <Input
                                         id="care_manager_name"
                                         name="care_manager_name"
-                                        defaultValue={resident?.care_manager_name ?? ''}
+                                        defaultValue={
+                                            resident?.care_manager_name ?? ''
+                                        }
                                     />
-                                    <InputError message={errors.care_manager_name} />
+                                    <InputError
+                                        message={errors.care_manager_name}
+                                    />
                                 </div>
 
                                 <div className="grid gap-2 sm:col-span-2">
-                                    <Label htmlFor="medical_history">既往歴</Label>
+                                    <Label htmlFor="medical_history">
+                                        既往歴
+                                    </Label>
                                     <textarea
                                         id="medical_history"
                                         name="medical_history"
                                         rows={3}
-                                        defaultValue={resident?.medical_history ?? ''}
+                                        defaultValue={
+                                            resident?.medical_history ?? ''
+                                        }
                                         placeholder="変形性膝関節症・高血圧"
-                                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-base shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                        className="border-input bg-background focus-visible:ring-ring w-full rounded-md border px-3 py-2 text-base shadow-xs outline-none focus-visible:ring-2"
                                     />
                                     {/* 嚥下障害の既往があるかどうかで、むせ込み1回の重みが変わる。
                                         氏名を伏せたうえで健康状態を送ることがこの設計の前提。 */}
-                                    <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                                        <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                                    <p className="text-muted-foreground flex items-start gap-1.5 text-xs">
+                                        <Info
+                                            className="mt-0.5 size-3.5 shrink-0"
+                                            aria-hidden
+                                        />
                                         リスク判定の材料になります。嚥下障害の有無などは、
                                         むせ込みの記録をどう受け止めるかに影響します。
                                     </p>
-                                    <InputError message={errors.medical_history} />
+                                    <InputError
+                                        message={errors.medical_history}
+                                    />
                                 </div>
                             </div>
                         </Section>
 
-                        <div className="sticky bottom-0 flex flex-wrap items-center justify-end gap-3 rounded-lg border bg-background/95 px-4 py-3 backdrop-blur">
-                            <Button type="submit" disabled={processing}>
-                                {processing && <Spinner className="size-4" />}
-                                {isNew ? '登録する' : '保存する'}
+                        <div className="bg-background/95 sticky bottom-0 flex flex-wrap items-center justify-end gap-3 rounded-lg border px-4 py-3 backdrop-blur">
+                            <Button type="submit" pending={processing}>
+                                {processing
+                                    ? '保存しています…'
+                                    : isNew
+                                      ? '登録する'
+                                      : '保存する'}
                             </Button>
                         </div>
                     </>

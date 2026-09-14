@@ -53,7 +53,9 @@ function getConstructor(): SpeechRecognitionConstructor | null {
         webkitSpeechRecognition?: SpeechRecognitionConstructor;
     };
 
-    return candidate.SpeechRecognition ?? candidate.webkitSpeechRecognition ?? null;
+    return (
+        candidate.SpeechRecognition ?? candidate.webkitSpeechRecognition ?? null
+    );
 }
 
 export function useSpeechRecognition(onTranscript: (text: string) => void) {
@@ -91,7 +93,11 @@ export function useSpeechRecognition(onTranscript: (text: string) => void) {
         recognition.onresult = (event) => {
             let text = '';
 
-            for (let index = event.resultIndex; index < event.results.length; index += 1) {
+            for (
+                let index = event.resultIndex;
+                index < event.results.length;
+                index += 1
+            ) {
                 const result = event.results[index];
 
                 if (result.isFinal) {

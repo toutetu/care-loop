@@ -3,6 +3,8 @@ import { CalendarDays, MessageSquareWarning } from 'lucide-react';
 import { SeverityBadge, SourceBadge } from '@/components/care/badges';
 import { EmptyState, Section, StatCard } from '@/components/care/section';
 import { Badge } from '@/components/ui/badge';
+import { NOTICE_SURFACE } from '@/lib/care-presentation';
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import llmJobs from '@/routes/llm-jobs';
 import records from '@/routes/records';
@@ -17,7 +19,6 @@ type UrgentRisk = {
     category: string;
     severityLabel: string;
     source: RiskSource;
-    sourceLabel: string;
     isDeterministic: boolean;
     evidenceCount: number;
     assessedOn: string;
@@ -58,7 +59,10 @@ export default function Dashboard({
 
             <div className="flex flex-col gap-4 p-4">
                 <div className="flex flex-wrap items-center gap-2">
-                    <CalendarDays className="size-4 text-muted-foreground" aria-hidden />
+                    <CalendarDays
+                        className="text-muted-foreground size-4"
+                        aria-hidden
+                    />
                     <h1 className="text-lg font-semibold">{day.label}</h1>
                     {/* 休業日に開くと一覧が空になるため、いつの分を見ているのかを必ず書く */}
                     {!day.isToday && (
@@ -70,7 +74,7 @@ export default function Dashboard({
 
                 {/* 数字を見た職員が次にすることは「その中身を見る」である。
                     カードから、それぞれの一覧へ直接移れるようにする。 */}
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                     <StatCard
                         label="ご利用者"
                         value={counts.residents}
@@ -113,24 +117,41 @@ export default function Dashboard({
                     description="重要度が高く、まだ職員が確認していない指摘です。根拠の記録を確認してからご判断ください。"
                 >
                     {risks.length === 0 ? (
-                        <EmptyState>未確認の重要な指摘はありません。</EmptyState>
+                        <EmptyState>
+                            未確認の重要な指摘はありません。
+                        </EmptyState>
                     ) : (
                         <ul className="divide-y">
                             {risks.map((risk) => (
-                                <li key={risk.id} className="py-3 first:pt-0 last:pb-0">
+                                <li
+                                    key={risk.id}
+                                    className="py-3 first:pt-0 last:pb-0"
+                                >
                                     <Link
                                         href={residents.show(risk.residentId)}
-                                        className="-mx-2 block rounded px-2 py-1 hover:bg-accent"
+                                        className="hover:bg-accent -mx-2 block rounded px-2 py-1"
                                     >
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <span className="font-medium">{risk.residentName} 様</span>
-                                            <SeverityBadge severity={'high' as RiskSeverity} label={risk.severityLabel} />
-                                            <SourceBadge source={risk.source} label={risk.sourceLabel} />
-                                            <Badge variant="outline">{risk.category}</Badge>
+                                            <span className="font-medium">
+                                                {risk.residentName} 様
+                                            </span>
+                                            <SeverityBadge
+                                                severity={
+                                                    'high' as RiskSeverity
+                                                }
+                                                label={risk.severityLabel}
+                                            />
+                                            <SourceBadge source={risk.source} />
+                                            <Badge variant="outline">
+                                                {risk.category}
+                                            </Badge>
                                         </div>
-                                        <p className="mt-1 text-sm">{risk.title}</p>
-                                        <p className="mt-0.5 text-xs text-muted-foreground">
-                                            {risk.assessedOn} 抽出 ／ 根拠 {risk.evidenceCount} 件
+                                        <p className="mt-1 text-sm">
+                                            {risk.title}
+                                        </p>
+                                        <p className="text-muted-foreground mt-0.5 text-xs">
+                                            {risk.assessedOn} 抽出 ／ 根拠{' '}
+                                            {risk.evidenceCount} 件
                                             {risk.isDeterministic
                                                 ? ' ／ 数値から算出'
                                                 : ' ／ 記述から検出（要確認）'}
@@ -153,21 +174,27 @@ export default function Dashboard({
                             {verbalContacts.map((task) => (
                                 <li
                                     key={task.id}
-                                    className="flex flex-wrap items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm dark:border-amber-900 dark:bg-amber-950"
+                                    className={cn(
+                                        'flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm',
+                                        NOTICE_SURFACE.warning,
+                                    )}
                                 >
                                     <MessageSquareWarning
-                                        className="size-4 shrink-0 text-amber-700 dark:text-amber-400"
+                                        className="size-4 shrink-0"
                                         aria-hidden
                                     />
-                                    <span className="font-medium">{task.residentName} 様</span>
+                                    <span className="font-medium">
+                                        {task.residentName} 様
+                                    </span>
                                     <span>{task.topic}</span>
-                                    <Badge variant="outline">{task.urgencyLabel}</Badge>
+                                    <Badge variant="outline">
+                                        {task.urgencyLabel}
+                                    </Badge>
                                 </li>
                             ))}
                         </ul>
                     )}
                 </Section>
-
             </div>
         </>
     );

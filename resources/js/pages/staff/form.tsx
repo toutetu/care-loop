@@ -9,7 +9,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import PasswordInput from '@/components/password-input';
-import { Spinner } from '@/components/ui/spinner';
 import { dashboard } from '@/routes';
 import staffRoutes from '@/routes/staff';
 
@@ -73,7 +72,9 @@ export default function StaffForm({ staff, roles }: Props) {
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="email">メールアドレス *</Label>
+                                    <Label htmlFor="email">
+                                        メールアドレス *
+                                    </Label>
                                     <Input
                                         id="email"
                                         name="email"
@@ -83,7 +84,7 @@ export default function StaffForm({ staff, roles }: Props) {
                                     />
                                     {/* 同じメールで2つのアカウントがあると、
                                         記録の書き手を追えなくなる */}
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="text-muted-foreground text-xs">
                                         ログインに使います。記録の書き手を一意に辿るため、
                                         他の職員と同じものは使えません。
                                     </p>
@@ -100,28 +101,33 @@ export default function StaffForm({ staff, roles }: Props) {
                                 {roles.map((option) => (
                                     <label
                                         key={option.value}
-                                        className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent/40 has-[:checked]:border-primary/50 has-[:checked]:bg-accent/40"
+                                        className="hover:bg-accent/40 has-[:checked]:border-primary/50 has-[:checked]:bg-accent/40 flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors"
                                     >
                                         <input
                                             type="radio"
                                             name="role"
                                             value={option.value}
                                             checked={role === option.value}
-                                            onChange={() => setRole(option.value)}
+                                            onChange={() =>
+                                                setRole(option.value)
+                                            }
                                             className="mt-1"
                                         />
                                         <span>
                                             <span className="block text-sm font-medium">
                                                 {option.label}
                                             </span>
-                                            <span className="block text-xs text-muted-foreground">
+                                            <span className="text-muted-foreground block text-xs">
                                                 {option.description}
                                             </span>
                                         </span>
                                     </label>
                                 ))}
                             </div>
-                            <InputError message={errors.role} className="mt-2" />
+                            <InputError
+                                message={errors.role}
+                                className="mt-2"
+                            />
                         </Section>
 
                         <Section
@@ -159,8 +165,11 @@ export default function StaffForm({ staff, roles }: Props) {
                                 </div>
                             </div>
 
-                            <p className="mt-3 flex items-start gap-1.5 text-xs text-muted-foreground">
-                                <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                            <p className="text-muted-foreground mt-3 flex items-start gap-1.5 text-xs">
+                                <Info
+                                    className="mt-0.5 size-3.5 shrink-0"
+                                    aria-hidden
+                                />
                                 本来は招待メールから本人が設定するのが望ましい方式です。
                                 このデモではメール送信を用意していないため、管理者が設定しています。
                             </p>
@@ -171,7 +180,7 @@ export default function StaffForm({ staff, roles }: Props) {
                                 title="在籍"
                                 description="退職された方もアカウントは残します。削除すると、その職員が書いた記録の記録者が辿れなくなるためです。"
                             >
-                                <label className="flex items-center gap-2 text-sm">
+                                <label className="flex min-h-11 items-center gap-3 text-sm">
                                     <Checkbox
                                         name="is_active"
                                         value="1"
@@ -182,10 +191,13 @@ export default function StaffForm({ staff, roles }: Props) {
                             </Section>
                         )}
 
-                        <div className="sticky bottom-0 flex flex-wrap items-center justify-end gap-3 rounded-lg border bg-background/95 px-4 py-3 backdrop-blur">
-                            <Button type="submit" disabled={processing}>
-                                {processing && <Spinner className="size-4" />}
-                                {isNew ? '追加する' : '保存する'}
+                        <div className="bg-background/95 sticky bottom-0 flex flex-wrap items-center justify-end gap-3 rounded-lg border px-4 py-3 backdrop-blur">
+                            <Button type="submit" pending={processing}>
+                                {processing
+                                    ? '保存しています…'
+                                    : isNew
+                                      ? '追加する'
+                                      : '保存する'}
                             </Button>
                         </div>
                     </>

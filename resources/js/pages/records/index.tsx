@@ -66,7 +66,10 @@ export default function RecordIndex({
             <div className="flex flex-col gap-4 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-2">
-                        <CalendarDays className="size-4 text-muted-foreground" aria-hidden />
+                        <CalendarDays
+                            className="text-muted-foreground size-4"
+                            aria-hidden
+                        />
                         <h1 className="text-lg font-semibold">{day.label}</h1>
                         {/* 休業日に開くと一覧が空になるため、いつの分かを必ず書く */}
                         {!day.isToday && (
@@ -90,13 +93,21 @@ export default function RecordIndex({
                     />
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
                     <StatCard
                         label="ご利用者"
                         value={counts.total}
                         unit="名"
-                        hint={onlyUnconfirmed ? '押すとすべて表示します' : undefined}
-                        onClick={onlyUnconfirmed ? () => go({ status: null }) : undefined}
+                        hint={
+                            onlyUnconfirmed
+                                ? '押すとすべて表示します'
+                                : undefined
+                        }
+                        onClick={
+                            onlyUnconfirmed
+                                ? () => go({ status: null })
+                                : undefined
+                        }
                     />
                     <StatCard
                         label="未確定の記録"
@@ -115,6 +126,7 @@ export default function RecordIndex({
                         }
                     />
                     <StatCard
+                        className="max-sm:col-span-2"
                         label="AI下書き・未確認"
                         value={counts.aiDraft}
                         unit="件"
@@ -150,76 +162,171 @@ export default function RecordIndex({
                                 : 'この日のご利用記録はありません。'}
                         </EmptyState>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full min-w-[820px] text-sm">
-                                <thead>
-                                    <tr className="border-b text-left text-xs text-muted-foreground">
-                                        <th className="pb-2 font-medium">お名前</th>
-                                        <th className="pb-2 font-medium">要介護度</th>
-                                        <th className="pb-2 font-medium">到着／帰宅</th>
-                                        <th className="pb-2 font-medium">体温</th>
-                                        <th className="pb-2 font-medium">入浴・清拭</th>
-                                        <th className="pb-2 font-medium">記録</th>
-                                        <th className="pb-2" />
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y">
-                                    {rows.map((row) => (
-                                        <tr key={row.recordId}>
-                                            <td className="py-2">
-                                                <Link
-                                                    href={residents.show(row.residentId)}
-                                                    className="font-medium hover:underline"
-                                                >
-                                                    {row.name}
-                                                </Link>
-                                            </td>
-                                            <td className="py-2 text-muted-foreground">
-                                                {row.careLevel ?? '—'}
-                                            </td>
-                                            <td className="py-2 tabular-nums text-muted-foreground">
-                                                {row.arrivalTime ?? '—'} 〜{' '}
-                                                {row.departureTime ?? '—'}
-                                            </td>
-                                            {/* 未測定は空欄にする。0と書くと測って0だったと読める */}
-                                            <td className="py-2 tabular-nums">
-                                                {row.temperature !== null
-                                                    ? `${row.temperature.toFixed(1)} ℃`
-                                                    : '未測定'}
-                                            </td>
-                                            <td className="py-2 text-muted-foreground">
-                                                {row.bathing ?? '—'}
-                                            </td>
-                                            <td className="py-2">
-                                                <RecordStatusBadge status={row.status} />
-                                            </td>
-                                            <td className="py-2 text-right">
-                                                <div className="flex justify-end gap-1">
-                                                    <ConfirmAction row={row} />
-                                                    <Button variant="ghost" size="sm" asChild>
-                                                        <a
-                                                            href={
-                                                                records.familyReport(row.recordId)
-                                                                    .url
-                                                            }
-                                                            target="_blank"
-                                                            rel="noreferrer"
-                                                            title="連絡帳を印刷"
-                                                        >
-                                                            <Printer className="size-4" aria-hidden />
-                                                        </a>
-                                                    </Button>
-                                                </div>
-                                            </td>
+                        <>
+                            {/* スマートフォンではカード、タブレット以上では表。
+                                820px の表を375pxの画面で横スクロールさせると、
+                                送迎の合間に片手で追えない。現場がいちばん開く画面なので、
+                                ここだけは見せ方を分けている。 */}
+                            <ul className="flex flex-col gap-3 md:hidden">
+                                {rows.map((row) => (
+                                    <RecordCard key={row.recordId} row={row} />
+                                ))}
+                            </ul>
+
+                            <div className="hidden overflow-x-auto md:block">
+                                <table className="w-full min-w-[820px] text-sm">
+                                    <thead>
+                                        <tr className="text-muted-foreground border-b text-left text-xs">
+                                            <th className="pb-2 font-medium">
+                                                お名前
+                                            </th>
+                                            <th className="pb-2 font-medium">
+                                                要介護度
+                                            </th>
+                                            <th className="pb-2 font-medium">
+                                                到着／帰宅
+                                            </th>
+                                            <th className="pb-2 font-medium">
+                                                体温
+                                            </th>
+                                            <th className="pb-2 font-medium">
+                                                入浴・清拭
+                                            </th>
+                                            <th className="pb-2 font-medium">
+                                                記録
+                                            </th>
+                                            <th className="pb-2" />
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                        {rows.map((row) => (
+                                            <tr key={row.recordId}>
+                                                <td className="py-2">
+                                                    <Link
+                                                        href={residents.show(
+                                                            row.residentId,
+                                                        )}
+                                                        className="font-medium hover:underline"
+                                                    >
+                                                        {row.name}
+                                                    </Link>
+                                                </td>
+                                                <td className="text-muted-foreground py-2">
+                                                    {row.careLevel ?? '—'}
+                                                </td>
+                                                <td className="text-muted-foreground py-2 tabular-nums">
+                                                    {row.arrivalTime ?? '—'} 〜{' '}
+                                                    {row.departureTime ?? '—'}
+                                                </td>
+                                                {/* 未測定は空欄にする。0と書くと測って0だったと読める */}
+                                                <td className="py-2 tabular-nums">
+                                                    {row.temperature !== null
+                                                        ? `${row.temperature.toFixed(1)} ℃`
+                                                        : '未測定'}
+                                                </td>
+                                                <td className="text-muted-foreground py-2">
+                                                    {row.bathing ?? '—'}
+                                                </td>
+                                                <td className="py-2">
+                                                    <RecordStatusBadge
+                                                        status={row.status}
+                                                    />
+                                                </td>
+                                                <td className="py-2 text-right">
+                                                    <div className="flex justify-end gap-1">
+                                                        <ConfirmAction
+                                                            row={row}
+                                                        />
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            asChild
+                                                        >
+                                                            <a
+                                                                href={
+                                                                    records.familyReport(
+                                                                        row.recordId,
+                                                                    ).url
+                                                                }
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                title="連絡帳を印刷"
+                                                            >
+                                                                <Printer
+                                                                    className="size-4"
+                                                                    aria-hidden
+                                                                />
+                                                            </a>
+                                                        </Button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
                     )}
                 </Section>
             </div>
         </>
+    );
+}
+
+/**
+ * スマートフォン用の1件ぶんのカード。
+ *
+ * 【ボタンを並べず、カードごと押せるようにする】
+ * 表では「確定」「編集」「連絡帳」の3つのボタンが行の右端に並ぶ。
+ * 手袋をした指で、幅375pxの画面の右端にある小さなボタンを
+ * 撃ち分けさせるのは無理がある。スマートフォンでは、この画面で
+ * やることを「その人の記録を開く」1つに絞り、カード全体を押せる
+ * ようにしてある。連絡帳の印刷は事務所の作業なので、記録を開いた先
+ * とタブレット以上の表に残す。
+ */
+function RecordCard({ row }: { row: Row }) {
+    const unconfirmed = row.status !== 'confirmed';
+
+    return (
+        <li>
+            <Link
+                href={
+                    unconfirmed
+                        ? `${records.edit(row.recordId).url}#confirm`
+                        : records.edit(row.recordId)
+                }
+                className="focus-visible:ring-ring hover:bg-accent block rounded-lg border p-4 outline-none focus-visible:ring-[3px]"
+            >
+                <div className="flex items-start justify-between gap-2">
+                    <span className="font-semibold">{row.name} 様</span>
+                    <RecordStatusBadge status={row.status} />
+                </div>
+
+                <p className="text-muted-foreground mt-1 text-sm">
+                    {row.careLevel ?? '—'} ／ {row.arrivalTime ?? '—'} 〜{' '}
+                    {row.departureTime ?? '—'}
+                </p>
+
+                <p className="text-muted-foreground mt-0.5 text-sm">
+                    {/* 未測定は空欄にせず、測っていないと書く。
+                        0と書くと測って0だったと読める。 */}
+                    体温{' '}
+                    {row.temperature !== null
+                        ? `${row.temperature.toFixed(1)} ℃`
+                        : '未測定'}
+                    {row.bathing ? ` ／ ${row.bathing}` : ''}
+                </p>
+
+                {unconfirmed && (
+                    <p className="mt-2 flex items-center gap-1.5 text-sm font-medium">
+                        <CircleCheck className="size-4" aria-hidden />
+                        {row.status === 'ai_draft'
+                            ? '確認して確定する'
+                            : '入力して確定する'}
+                    </p>
+                )}
+            </Link>
+        </li>
     );
 }
 

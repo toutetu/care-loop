@@ -31,7 +31,7 @@ export function TrendChart({
 
     if (points.length === 0) {
         return (
-            <p className="py-8 text-center text-sm text-muted-foreground">
+            <p className="text-muted-foreground py-8 text-center text-sm">
                 記録がありません。
             </p>
         );
@@ -63,7 +63,10 @@ export function TrendChart({
         padding.top + innerHeight - ((value - min) / (max - min)) * innerHeight;
 
     const line = points
-        .map((point, index) => `${index === 0 ? 'M' : 'L'} ${x(index)} ${y(point.value)}`)
+        .map(
+            (point, index) =>
+                `${index === 0 ? 'M' : 'L'} ${x(index)} ${y(point.value)}`,
+        )
         .join(' ');
 
     const area = `${line} L ${x(points.length - 1)} ${padding.top + innerHeight} L ${x(0)} ${
@@ -80,8 +83,16 @@ export function TrendChart({
             >
                 <defs>
                     <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="currentColor" stopOpacity="0.18" />
-                        <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+                        <stop
+                            offset="0%"
+                            stopColor="currentColor"
+                            stopOpacity="0.18"
+                        />
+                        <stop
+                            offset="100%"
+                            stopColor="currentColor"
+                            stopOpacity="0"
+                        />
                     </linearGradient>
                 </defs>
 

@@ -5,7 +5,6 @@ import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
 import { login } from '@/routes';
 import { store } from '@/routes/register';
 
@@ -95,8 +94,8 @@ export default function Register({ passwordRules }: Props) {
                                 className="mt-2 w-full"
                                 tabIndex={5}
                                 data-test="register-user-button"
+                                pending={processing}
                             >
-                                {processing && <Spinner />}
                                 Create account
                             </Button>
                         </div>

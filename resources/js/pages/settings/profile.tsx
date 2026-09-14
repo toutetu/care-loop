@@ -67,11 +67,14 @@ export default function Profile({
                                 />
 
                                 {/* 記録の「記入者」として連絡帳にも印刷される */}
-                                <p className="text-xs text-muted-foreground">
+                                <p className="text-muted-foreground text-xs">
                                     記録の記入者として、ご家族へお渡しする連絡帳にも表示されます。
                                 </p>
 
-                                <InputError className="mt-2" message={errors.name} />
+                                <InputError
+                                    className="mt-2"
+                                    message={errors.name}
+                                />
                             </div>
 
                             <div className="grid gap-2">
@@ -88,33 +91,38 @@ export default function Profile({
                                     placeholder="staff@example.com"
                                 />
 
-                                <p className="text-xs text-muted-foreground">
+                                <p className="text-muted-foreground text-xs">
                                     ログインに使います。
                                 </p>
 
-                                <InputError className="mt-2" message={errors.email} />
+                                <InputError
+                                    className="mt-2"
+                                    message={errors.email}
+                                />
                             </div>
 
-                            {mustVerifyEmail && auth.user.email_verified_at === null && (
-                                <div>
-                                    <p className="-mt-4 text-sm text-muted-foreground">
-                                        メールアドレスの確認が済んでいません。{' '}
-                                        <Link
-                                            href={send()}
-                                            as="button"
-                                            className="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
-                                        >
-                                            確認メールを再送する
-                                        </Link>
-                                    </p>
+                            {mustVerifyEmail &&
+                                auth.user.email_verified_at === null && (
+                                    <div>
+                                        <p className="text-muted-foreground -mt-4 text-sm">
+                                            メールアドレスの確認が済んでいません。{' '}
+                                            <Link
+                                                href={send()}
+                                                as="button"
+                                                className="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
+                                            >
+                                                確認メールを再送する
+                                            </Link>
+                                        </p>
 
-                                    {status === 'verification-link-sent' && (
-                                        <div className="mt-2 text-sm font-medium text-green-600">
-                                            確認用のリンクをメールでお送りしました。
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                                        {status ===
+                                            'verification-link-sent' && (
+                                            <div className="text-success-ink mt-2 text-sm font-medium">
+                                                確認用のリンクをメールでお送りしました。
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
                             <div className="flex items-center gap-4">
                                 <Button
