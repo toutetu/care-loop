@@ -60,12 +60,19 @@ return [
     |--------------------------------------------------------------------------
     |
     | Here you may specify the default timezone for your application, which
-    | will be used by the PHP date and date-time functions. The timezone
-    | is set to "UTC" by default as it is suitable for most use cases.
+    | will be used by the PHP date and date-time functions.
+    |
+    | 【既定を Asia/Tokyo にしている理由】
+    | 日本の介護事業所でのみ使うアプリケーションであり、UTC で動いて
+    | 得をする場面がない。既定が UTC のままだと、環境変数を設定し忘れた
+    | 環境で記録の時刻が9時間ずれる。ずれていても画面は普通に表示されるため、
+    | 誰も気づかないまま legal な記録として残ってしまう。
+    |
+    | 既定値は「設定し忘れたときに最も害の少ない値」にする。
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'Asia/Tokyo'),
 
     /*
     |--------------------------------------------------------------------------
