@@ -47,6 +47,12 @@ class ResetDemoData extends Command
         'weight_records',
         'meal_records',
         'vital_signs',
+        // 記録にぶら下がる表は、記録より先に消す。外部キー制約を外して
+        // truncate するため、消し忘れても失敗せずに残ってしまう。
+        // service_records は1から採番し直されるので、残った行は別の
+        // ご利用者の記録を指すことになる。
+        'bathing_records',
+        'record_notes',
         'service_records',
         'care_plan_goals',
         'care_plans',
