@@ -57,9 +57,12 @@ final class BlindIndex
         $key = (string) config('careloop.blind_index_key');
 
         if ($key === '') {
+            // 「.env に設定」とだけ書くと、ホスティング環境で詰まる。
+            // デプロイ先では .env ファイルではなく環境変数として設定するため。
             throw new RuntimeException(
                 'BLIND_INDEX_KEY が設定されていません。'
-                .'php artisan careloop:blind-index-key で生成し、.env に設定してください。'
+                .'php artisan careloop:blind-index-key で生成し、環境変数 BLIND_INDEX_KEY に'
+                .'設定してください（ローカルは .env、デプロイ先は管理画面の環境変数）。'
             );
         }
 

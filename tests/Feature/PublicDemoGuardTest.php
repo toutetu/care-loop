@@ -12,6 +12,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Sleep;
+use Inertia\Testing\AssertableInertia;
 use Laravel\Fortify\Features;
 use Mockery;
 use Tests\TestCase;
@@ -154,6 +155,36 @@ class PublicDemoGuardTest extends TestCase
 
         $this->assertContains(Features::registration(), $open);
         $this->assertContains(Features::resetPasswords(), $open);
+    }
+
+    // ---------------------------------------------------------------
+    // ログイン画面のデモ用アカウント
+    // ---------------------------------------------------------------
+
+    public function test_デモ環境ではログイン画面にアカウントを出す(): void
+    {
+        // 見に来た人はこのアプリのことも介護の業務も知らない。
+        // ログイン情報を探しに別の画面へ戻らせると、そこで離脱する。
+        config(['careloop.is_demo' => true]);
+
+        $this->get('/login')
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('auth/login')
+                ->has('demoAccounts', 3)
+                ->where('demoAccounts.0.email', 'admin@example.com')
+            );
+    }
+
+    public function test_デモ環境でなければアカウントを渡さない(): void
+    {
+        // 本物の事業所で動かすときに、同じ画面が出てはならない。
+        // 画面側で出し分けるのではなく、そもそもサーバーから渡さない。
+        config(['careloop.is_demo' => false]);
+
+        $this->get('/login')
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('demoAccounts', null)
+            );
     }
 
     // ---------------------------------------------------------------

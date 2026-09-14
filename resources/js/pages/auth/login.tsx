@@ -12,20 +12,40 @@ import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 import PasskeyVerify from '@/components/passkey-verify';
 
+type DemoAccount = {
+    role: string;
+    email: string;
+    note: string;
+};
+
 type Props = {
     status?: string;
     canResetPassword: boolean;
+    /** デモ環境でのみ届く。本番相当の環境ではサーバーから渡されない。 */
+    demoAccounts: DemoAccount[] | null;
 };
 
-export default function Login({ status, canResetPassword }: Props) {
+/** デモ用アカウントのパスワード。シーダーが作る架空の職員に共通。 */
+const DEMO_PASSWORD = 'password';
+
+export default function Login({ status, canResetPassword, demoAccounts }: Props) {
     return (
         <>
             <Head title="ログイン" />
 
-            <PasskeyVerify />
+            {demoAccounts && (
+                <DemoAccountPanel accounts={demoAccounts} />
+            )}
+
+            <PasskeyVerify
+                label="パスキーでログイン"
+                loadingLabel="確認しています"
+                separator="または メールアドレスでログイン"
+            />
 
             <Form
                 {...store.form()}
+                id="login-form"
                 resetOnSuccess={['password']}
                 className="flex flex-col gap-6"
             >
@@ -108,6 +128,78 @@ export default function Login({ status, canResetPassword }: Props) {
                 </div>
             )}
         </>
+    );
+}
+
+/**
+ * デモ用アカウントの一覧。
+ *
+ * 【ログイン画面に直接書く】
+ * 見に来た人は、このアプリのことも介護の業務のことも知らない。
+ * ログイン情報を探すために別の画面へ戻らせると、そこで離脱する。
+ * 押せば入れる状態にしておく。
+ *
+ * この一覧はデモ環境でしかサーバーから渡ってこない（FortifyServiceProvider）。
+ * 本物の事業所で動かすときに、同じ画面が出ることはない。
+ */
+function DemoAccountPanel({ accounts }: { accounts: DemoAccount[] }) {
+    // 入力欄は非制御のため、値を直接入れてからフォームを送信する。
+    const signIn = (email: string) => {
+        const form = document.getElementById('login-form');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+
+        if (
+            !(form instanceof HTMLFormElement) ||
+            !(emailInput instanceof HTMLInputElement) ||
+            !(passwordInput instanceof HTMLInputElement)
+        ) {
+            return;
+        }
+
+        emailInput.value = email;
+        passwordInput.value = DEMO_PASSWORD;
+        form.requestSubmit();
+    };
+
+    return (
+        <div className="mb-6 rounded-lg border bg-muted/40 p-4">
+            <p className="text-sm font-medium">デモ用のアカウント</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+                権限による表示の違いを見られるよう、役割ごとに用意しています。
+                押すとそのままログインします。
+            </p>
+
+            <ul className="mt-3 space-y-2">
+                {accounts.map((account) => (
+                    <li key={account.email}>
+                        <button
+                            type="button"
+                            onClick={() => signIn(account.email)}
+                            className="w-full rounded-md border bg-background px-3 py-2 text-left transition-colors hover:border-primary/40 hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                        >
+                            <span className="flex flex-wrap items-baseline gap-x-2">
+                                <span className="text-sm font-medium">{account.role}</span>
+                                <span className="font-mono text-xs text-muted-foreground">
+                                    {account.email}
+                                </span>
+                            </span>
+                            <span className="mt-0.5 block text-xs text-muted-foreground">
+                                {account.note}
+                            </span>
+                        </button>
+                    </li>
+                ))}
+            </ul>
+
+            <p className="mt-3 text-xs text-muted-foreground">
+                パスワードはいずれも{' '}
+                <code className="rounded bg-background px-1.5 py-0.5 font-mono">
+                    {DEMO_PASSWORD}
+                </code>{' '}
+                です。表示されるご利用者・職員・記録はすべて架空のものです。
+            </p>
+        </div>
     );
 }
 
