@@ -4,6 +4,7 @@ import {
     BookOpen,
     ClipboardList,
     FolderGit2,
+    History,
     LayoutGrid,
     Sparkles,
     UserCog,
@@ -23,6 +24,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { REPOSITORY_URL, REQUIREMENTS_URL } from '@/lib/links';
+import auditLogs from '@/routes/audit-logs';
 import { dashboard } from '@/routes';
 import llmJobs from '@/routes/llm-jobs';
 import llmLogs from '@/routes/llm-logs';
@@ -63,6 +65,7 @@ export function AppSidebar() {
     if (auth.user?.role === 'admin') {
         mainNavItems.push(
             { title: '職員アカウント', href: staff.index(), icon: UserCog },
+            { title: '編集履歴', href: auditLogs.index(), icon: History },
             { title: 'AI利用ログ', href: llmLogs.index(), icon: Sparkles },
         );
     }

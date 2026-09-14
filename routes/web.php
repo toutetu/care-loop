@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\DailyFamilyReportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LlmActionController;
@@ -77,6 +78,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
      * 費用とトークン数を扱う AI利用ログ（管理者のみ）とは役割が違う。
      */
     Route::get('llm-jobs', [LlmJobController::class, 'index'])->name('llm-jobs.index');
+
+    /*
+     * --- 編集履歴（管理者のみ） ---
+     *
+     * 履歴には変更前の値が含まれる。ご利用者の旧住所や旧連絡先まで見えるため、
+     * 日々の介護業務で開く必要はない。
+     *
+     * 書き換える経路は用意しない。後から都合よく直せる履歴は監査の役に立たない。
+     */
+    Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
 
     // --- AI利用ログ（管理者のみ） ---
     Route::get('llm-logs', [LlmLogController::class, 'index'])->name('llm-logs.index');
