@@ -110,6 +110,10 @@ class LlmLogController extends Controller
             $rows[] = [
                 'code' => $feature->value,
                 'label' => $feature->label(),
+                // 機能ごとにモデルを変えられる設計なので、実際に何で動いたのかを出す。
+                // 設定を変えた直後は、反映されたかどうかがここでしか分からない。
+                // 期間内に切り替えた場合は複数並ぶ。
+                'models' => $requests->pluck('model')->unique()->sort()->values()->all(),
                 'count' => $requests->count(),
                 'failed' => $failed,
                 'inputTokens' => (int) $requests->sum('input_tokens'),
