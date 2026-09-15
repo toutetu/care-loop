@@ -183,8 +183,31 @@ class LlmJobIndexTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('jobs.data.0.status', 'failed')
                 ->where('jobs.data.0.isDelayed', false)
-                ->where('jobs.data.0.errorLabel', 'キュー停止')
+                ->where('jobs.data.0.errorLabel', '未処理のまま時間切れ')
                 ->where('jobs.data.0.needsOperatorAttention', true)
+                // 一覧では失敗なのに件数では実行中、という食い違いを作らない。
+                // 実行中に数えると画面が読み直しを止められない。
+                ->where('counts.failed', 1)
+                ->where('counts.running', 0)
+            );
+
+        // 失敗だけの絞り込みにも入る
+        $this->actingAs($this->staff)->get('/llm-jobs?status=failed')
+            ->assertInertia(fn (AssertableInertia $page) => $page->has('jobs.data', 1));
+    }
+
+    public function test_待機が長引いただけのジョブはまだ実行中に数える(): void
+    {
+        LlmJob::factory()->create([
+            'requested_by' => $this->staff->id,
+            'status' => LlmJobStatus::Queued,
+            'created_at' => now()->subSeconds(LlmJob::DELAYED_AFTER_SECONDS + 1),
+        ]);
+
+        $this->actingAs($this->staff)->get('/llm-jobs')
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('counts.running', 1)
+                ->where('counts.failed', 0)
             );
     }
 

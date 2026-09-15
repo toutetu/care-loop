@@ -46,12 +46,18 @@ class LlmJobController extends Controller
         $counts = [
             'total' => (clone $base)->count(),
             'succeeded' => (clone $base)->where('status', LlmJobStatus::Succeeded)->count(),
-            'failed' => (clone $base)->where('status', LlmJobStatus::Failed)->count(),
-            'running' => (clone $base)->whereIn('status', [LlmJobStatus::Queued, LlmJobStatus::Running])->count(),
+            // 見捨てたジョブは行の値が queued のままでも失敗として数える。
+            // 一覧の表示（effectiveStatus）と件数が食い違ってはいけない。
+            'failed' => (clone $base)->failed()->count() + (clone $base)->abandoned()->count(),
+            // 動いている、または動く見込みのあるものだけ。見捨てたジョブまで
+            // 数えると「実行中」が減らず、画面が読み直しを止められない。
+            'running' => (clone $base)->blocking()->count(),
         ];
 
         $paginator = (clone $base)
-            ->when($onlyFailed, fn ($query) => $query->where('status', LlmJobStatus::Failed))
+            ->when($onlyFailed, fn ($query) => $query->where(
+                fn ($inner) => $inner->failed()->orWhere(fn ($abandoned) => $abandoned->abandoned()),
+            ))
             ->with(['requester', 'target'])
             ->latest('created_at')
             ->paginate(self::PER_PAGE)
