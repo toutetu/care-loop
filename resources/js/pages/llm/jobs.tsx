@@ -1,5 +1,12 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { ChevronRight, RefreshCw, TriangleAlert, X } from 'lucide-react';
+import {
+    Activity,
+    ChevronRight,
+    RefreshCw,
+    TriangleAlert,
+    X,
+} from 'lucide-react';
+import { useEffect } from 'react';
 import { EmptyState, Section, StatCard } from '@/components/care/section';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,16 +16,22 @@ import llmLogs from '@/routes/llm-logs';
 import records from '@/routes/records';
 import residents from '@/routes/residents';
 
+/** 実行中のジョブがあるあいだの読み直し間隔。 */
+const POLL_INTERVAL_MS = 5000;
+
 type Job = {
     id: number;
     feature: string;
     featureCode: string;
     status: string;
     statusLabel: string;
+    /** 待機が長引いている。ワーカーが止まっている疑い。 */
+    isDelayed: boolean;
     requester: string | null;
     attempts: number;
     durationSeconds: number | null;
     startedAt: string | null;
+    requestedAt: string;
     errorLabel: string | null;
     errorMessage: string | null;
     isRetryable: boolean;
@@ -37,6 +50,11 @@ type Props = {
     };
     onlyFailed: boolean;
     canViewLlmLogs: boolean;
+    /** キューワーカーの生存。止まっていると待機中が増えるだけで何も起きない。 */
+    worker: {
+        connection: string;
+        lastSeenAt: string | null;
+    };
     jobs: {
         data: Job[];
         currentPage: number;
@@ -54,11 +72,16 @@ type Props = {
  *
  * 職員にとって必要なのは、押した処理が通ったのか失敗したのか、
  * 失敗したなら次に何をすればよいのかである。
+ *
+ * 【ワーカーの生存を出す】
+ * AI処理はキューで動く。ワーカーが止まっていると、待機中が増えるだけで
+ * エラーは出ない。最終稼働時刻を出しておけば、止まっていることに気づける。
  */
 export default function LlmJobIndex({
     counts,
     onlyFailed,
     canViewLlmLogs,
+    worker,
     jobs,
 }: Props) {
     const filter = (failedOnly: boolean) => {
@@ -69,13 +92,41 @@ export default function LlmJobIndex({
         );
     };
 
+    // 実行中があるあいだだけ読み直す。終わったジョブしかない画面で
+    // 読み直し続けても、サーバーに負荷をかけるだけになる。
+    const hasActive = counts.running > 0;
+
+    useEffect(() => {
+        if (!hasActive) {
+            return;
+        }
+
+        const timer = window.setInterval(() => {
+            router.reload();
+        }, POLL_INTERVAL_MS);
+
+        return () => window.clearInterval(timer);
+    }, [hasActive]);
+
     return (
         <>
             <Head title="AI処理の実行状況" />
 
             <div className="flex flex-col gap-4 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                    <h1 className="text-lg font-semibold">AI処理の実行状況</h1>
+                    <div>
+                        <h1 className="text-lg font-semibold">
+                            AI処理の実行状況
+                        </h1>
+                        <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                            <Activity className="size-3.5" aria-hidden />
+                            処理する仕組みの最終稼働：
+                            {worker.lastSeenAt ?? 'まだ一度も動いていません'}
+                            <span className="font-mono">
+                                （{worker.connection}）
+                            </span>
+                        </p>
+                    </div>
                     {canViewLlmLogs && (
                         <Button variant="outline" size="sm" asChild>
                             <Link href={llmLogs.index()}>
@@ -109,7 +160,12 @@ export default function LlmJobIndex({
                             counts.failed > 0 ? () => filter(true) : undefined
                         }
                     />
-                    <StatCard label="実行中" value={counts.running} unit="件" />
+                    <StatCard
+                        label="実行中"
+                        value={counts.running}
+                        unit="件"
+                        hint={hasActive ? '自動で更新しています' : undefined}
+                    />
                 </div>
 
                 <Section
@@ -157,6 +213,20 @@ export default function LlmJobIndex({
                                         <span className="font-medium">
                                             {job.feature}
                                         </span>
+                                        {/* 待機が長引いている。「待てば終わる」と
+                                            「待っても終わらない」を同じ見た目にしない。 */}
+                                        {job.isDelayed && (
+                                            <Badge
+                                                variant="destructive"
+                                                className="gap-1"
+                                            >
+                                                <TriangleAlert
+                                                    className="size-3"
+                                                    aria-hidden
+                                                />
+                                                処理が始まっていません
+                                            </Badge>
+                                        )}
                                         {job.errorLabel && (
                                             <Badge variant="outline">
                                                 {job.errorLabel}
@@ -202,7 +272,11 @@ export default function LlmJobIndex({
                                         {job.targetLabel && (
                                             <TargetLink job={job} />
                                         )}
-                                        <span>{job.startedAt ?? '—'}</span>
+                                        {/* まだ動いていないジョブは、受け付けた時刻を出す */}
+                                        <span>
+                                            {job.startedAt ??
+                                                `${job.requestedAt} 受付`}
+                                        </span>
                                         <span>{job.requester ?? '—'}</span>
                                         {job.durationSeconds !== null && (
                                             <span className="tabular-nums">

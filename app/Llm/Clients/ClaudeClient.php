@@ -58,7 +58,8 @@ final class ClaudeClient implements LlmClient
                     'text' => $request->systemPrompt,
                     'cacheControl' => ['type' => 'ephemeral'],
                 ]],
-                requestOptions: ['timeout' => $this->timeoutSeconds],
+                // 締切が近いときは、ゲートウェイが送信ごとに短い上限を指定してくる
+                requestOptions: ['timeout' => $request->timeoutSeconds ?? $this->timeoutSeconds],
             );
         } catch (APITimeoutException $e) {
             throw LlmException::timeout('応答が時間内に返りませんでした。', $e);

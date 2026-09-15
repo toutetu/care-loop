@@ -2,13 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\LlmErrorType;
 use App\Enums\LlmFeature;
 use App\Enums\LlmJobStatus;
 use App\Enums\NoteInputMethod;
-use App\Llm\Exceptions\LlmException;
-use App\Llm\UseCases\DetectRisks;
-use App\Llm\UseCases\SummarizeGoalProgress;
-use App\Llm\UseCases\TransformVoiceNote;
+use App\Jobs\RunLlmFeature;
 use App\Models\LlmJob;
 use App\Models\Resident;
 use App\Models\ServiceRecord;
@@ -16,27 +14,29 @@ use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
-use RuntimeException;
 use Throwable;
 
 /**
  * 画面からAI機能を実行する入口。
  *
- * 【失敗しても画面を壊さない】
- * LLMは失敗する。混み合っていることも、こちらの求める形で返ってこないことも
- * ある。どの失敗も、職員には「次に何をすればよいか」が分かる日本語で返す。
- * 例外の種別ごとの文面は LlmErrorType が持っており、ここでは分岐しない
- * （要件定義 7.4節）。
+ * 【受け付けて、すぐ戻る】
+ * 実行はキューのジョブ（RunLlmFeature）が行う。ここでは llm_jobs に行を
+ * 作って積むだけで、結果を待たない。LLMの応答は数十秒かかり、リクエストの
+ * 中で待つと手前のゲートウェイに切られて英語のエラーページだけが残る。
+ * 画面は行の状態をポーリングして、完了したときに結果を描く（F-LLM-06）。
+ *
+ * 【同じ処理を二重に積まない】
+ * 同期実行のころは処理中にボタンを押せなかった。非同期にすると押した回数
+ * だけ積まれ、その数だけAPIに課金される。同じ対象・同じ機能で待機中か
+ * 実行中のジョブがあれば、新しい実行を受け付けない。
  *
  * 【実行者を必ず残す】
  * 1回ごとに費用が発生する。誰がどのご利用者に対して呼び出したのかを
- * llm_jobs に残し、AI利用ログの画面から追えるようにしている。
- *
- * 【同期実行である】
- * 本来はキューに積むべきで、その設計は F-LLM-06 として定義してある。
- * 現時点では実行の結果をその場で画面に返すことを優先し、同期で呼んでいる。
+ * llm_jobs に残し、AI処理の実行状況の画面から追えるようにしている。
  */
 class LlmActionController extends Controller
 {
@@ -48,11 +48,8 @@ class LlmActionController extends Controller
      *
      * 音声の原文から、記録用・ご家族向け・申し送り用の3つの文体を一度に作る。
      */
-    public function transformVoice(
-        Request $request,
-        ServiceRecord $serviceRecord,
-        TransformVoiceNote $useCase,
-    ): RedirectResponse {
+    public function transformVoice(Request $request, ServiceRecord $serviceRecord): RedirectResponse
+    {
         Gate::authorize('update', $serviceRecord);
 
         // 画面で入力した原文をそのまま受け取る。
@@ -66,13 +63,7 @@ class LlmActionController extends Controller
             return back()->with('error', '先に音声入力または原文の入力を行ってください。');
         }
 
-        return $this->run(
-            LlmFeature::VoiceTransform,
-            $serviceRecord,
-            $request,
-            fn (LlmJob $job) => $useCase->handle($serviceRecord, $job),
-            '記録・ご家族向け・申し送りの3つの文章を生成しました。内容をご確認ください。',
-        );
+        return $this->enqueue(LlmFeature::VoiceTransform, $serviceRecord, $request);
     }
 
     /**
@@ -81,49 +72,31 @@ class LlmActionController extends Controller
      * 数値で判定できるものはルールベースで先に算出し、記述からしか分からない
      * 変化だけをLLMに任せる（要件定義 7.1節）。
      */
-    public function detectRisks(
-        Request $request,
-        Resident $resident,
-        DetectRisks $useCase,
-    ): RedirectResponse {
+    public function detectRisks(Request $request, Resident $resident): RedirectResponse
+    {
         Gate::authorize('runLlm', $resident);
 
         [$from, $to] = $this->period();
 
-        return $this->run(
-            LlmFeature::RiskDetection,
-            $resident,
-            $request,
-            fn (LlmJob $job) => $useCase->handle($resident, $from, $to, $job),
-            'リスク兆候を抽出しました。根拠の記録を確認してから対応をご判断ください。',
-        );
+        return $this->enqueue(LlmFeature::RiskDetection, $resident, $request, $from, $to);
     }
 
     /**
      * F-LLM-01 目標進捗要約。
      */
-    public function goalProgress(
-        Request $request,
-        Resident $resident,
-        SummarizeGoalProgress $useCase,
-    ): RedirectResponse {
+    public function goalProgress(Request $request, Resident $resident): RedirectResponse
+    {
         Gate::authorize('runLlm', $resident);
 
-        $plan = $resident->activeCarePlan();
-
-        if ($plan === null) {
+        // 材料が無いことは積む前に分かる。積んでから失敗させると、
+        // 職員は数秒待たされたうえで同じことを知らされる。
+        if ($resident->activeCarePlan() === null) {
             return back()->with('error', '有効な通所介護計画書がありません。先に計画書を作成してください。');
         }
 
         [$from, $to] = $this->period();
 
-        return $this->run(
-            LlmFeature::GoalProgress,
-            $resident,
-            $request,
-            fn (LlmJob $job) => $useCase->handle($resident, $plan, $from, $to, $job),
-            '目標進捗の要約を作成しました。モニタリング記録へ転記する前にご確認ください。',
-        );
+        return $this->enqueue(LlmFeature::GoalProgress, $resident, $request, $from, $to);
     }
 
     // ---------------------------------------------------------------
@@ -167,63 +140,62 @@ class LlmActionController extends Controller
     }
 
     /**
-     * 実行を包む共通処理。ジョブの記録と、失敗時の画面表示をここに集約する。
+     * ジョブの行を作ってキューへ積む。
      *
-     * @param  callable(LlmJob): mixed  $callback
+     * 行の作成と重複の確認は1つのトランザクションで行い、確認した行に
+     * ロックを取る。同じボタンが同時に2回押されても、片方だけが通る。
      */
-    private function run(
+    private function enqueue(
         LlmFeature $feature,
         Model $target,
         Request $request,
-        callable $callback,
-        string $successMessage,
+        ?CarbonInterface $from = null,
+        ?CarbonInterface $to = null,
     ): RedirectResponse {
-        $job = LlmJob::query()->create([
-            'feature' => $feature,
-            'target_type' => $target->getMorphClass(),
-            'target_id' => $target->getKey(),
-            'status' => LlmJobStatus::Queued,
-            'requested_by' => $request->user()?->id,
-        ]);
+        $job = DB::transaction(function () use ($feature, $target, $request, $from, $to): ?LlmJob {
+            $running = LlmJob::query()
+                ->forTarget($target)
+                ->where('feature', $feature)
+                ->blocking()
+                ->lockForUpdate()
+                ->first();
+
+            if ($running !== null) {
+                return null;
+            }
+
+            return LlmJob::query()->create([
+                'feature' => $feature,
+                'target_type' => $target->getMorphClass(),
+                'target_id' => $target->getKey(),
+                'period_from' => $from,
+                'period_to' => $to,
+                'status' => LlmJobStatus::Queued,
+                'requested_by' => $request->user()?->id,
+            ]);
+        });
+
+        if ($job === null) {
+            return back()->with('error', "{$feature->label()}はすでに実行中です。完了までお待ちください。");
+        }
 
         try {
-            $callback($job);
-
-            return back()->with('success', $successMessage);
-        } catch (LlmException $exception) {
-            // 種別ごとの文面は列挙型が持っている。ここで分岐すると、
-            // 判断基準が2か所に散らばる。
-            $this->markFailed($job, $exception->errorType->value, $exception);
-
-            return back()->with('error', $exception->userMessage());
-        } catch (RuntimeException $exception) {
-            $this->markFailed($job, 'invalid_request_error', $exception);
-
-            return back()->with('error', $exception->getMessage());
+            Bus::dispatch(new RunLlmFeature($job->id));
         } catch (Throwable $exception) {
-            // 想定していない失敗。職員に技術的な内容を見せても対処できないので、
-            // 画面には定型文を出し、詳細はログへ送る。
-            $this->markFailed($job, 'api_error', $exception);
+            // キューそのものに届かなかった。行を待機中のまま残すと、画面は
+            // いつまでも「実行中」を出し続ける。失敗として確定させる。
+            $job->markFailed(LlmErrorType::QueueUnavailable->value, $exception);
 
-            Log::error('LLMの実行に失敗しました。', [
+            Log::error('AI処理をキューへ積めませんでした。', [
                 'job_id' => $job->id,
                 'feature' => $feature->value,
                 'exception' => $exception,
             ]);
 
-            return back()->with('error', '処理に失敗しました。時間をおいてお試しください。');
-        }
-    }
-
-    private function markFailed(LlmJob $job, string $errorType, Throwable $exception): void
-    {
-        // ゲートウェイ側ですでに失敗を記録している場合は上書きしない。
-        // 再試行の回数など、より詳しい情報が入っているため。
-        if ($job->fresh()?->status === LlmJobStatus::Failed) {
-            return;
+            return back()->with('error', LlmErrorType::QueueUnavailable->userMessage());
         }
 
-        $job->markFailed($errorType, $exception);
+        return back()->with('success', $feature->acceptedMessage());
     }
 
     /**

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\LlmFeature;
+use App\Http\Presenters\LlmJobSummary;
 use App\Http\Requests\StoreResidentRequest;
 use App\Models\CareLevel;
 use App\Models\CarePlanGoal;
@@ -202,6 +204,12 @@ class ResidentController extends Controller
             'riskAssessment' => $this->latestRiskAssessment($resident),
             'goalProgress' => $this->latestGoalProgress($resident),
             'verbalContacts' => $this->verbalContacts($resident),
+            // AI処理はキューで動く。押したあとの進捗と、完了・失敗の通知に使う。
+            // 画面は実行中のあいだだけ、この項目と結果をポーリングする。
+            'llmJobs' => [
+                'riskDetection' => LlmJobSummary::latestFor($resident, LlmFeature::RiskDetection),
+                'goalProgress' => LlmJobSummary::latestFor($resident, LlmFeature::GoalProgress),
+            ],
         ]);
     }
 

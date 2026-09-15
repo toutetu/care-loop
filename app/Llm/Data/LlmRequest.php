@@ -18,6 +18,7 @@ final readonly class LlmRequest
 {
     /**
      * @param  array<string, mixed>|null  $jsonSchema  構造化出力に使う JSON Schema
+     * @param  int|null  $timeoutSeconds  この送信だけの応答待ち上限。null なら設定値
      */
     public function __construct(
         public LlmFeature $feature,
@@ -26,6 +27,7 @@ final readonly class LlmRequest
         public string $userMessage,
         public int $maxTokens,
         public ?array $jsonSchema = null,
+        public ?int $timeoutSeconds = null,
     ) {}
 
     /**
@@ -40,6 +42,7 @@ final readonly class LlmRequest
             $this->userMessage,
             $maxTokens,
             $this->jsonSchema,
+            $this->timeoutSeconds,
         );
     }
 
@@ -59,6 +62,23 @@ final readonly class LlmRequest
             $this->userMessage."\n\n---\n【修正依頼】\n".$instruction,
             $this->maxTokens,
             $this->jsonSchema,
+            $this->timeoutSeconds,
+        );
+    }
+
+    /**
+     * 応答待ちの上限を、締切までの残り時間に合わせて縮めるために使う。
+     */
+    public function withTimeout(int $timeoutSeconds): self
+    {
+        return new self(
+            $this->feature,
+            $this->model,
+            $this->systemPrompt,
+            $this->userMessage,
+            $this->maxTokens,
+            $this->jsonSchema,
+            max(1, $timeoutSeconds),
         );
     }
 }

@@ -163,6 +163,31 @@ class LlmGatewayTest extends TestCase
         }
     }
 
+    public function test_各送信の応答待ちは締切までの残り時間を超えない(): void
+    {
+        // 締切は「これ以上は送らない」という判断でしかない。送った直後に締切が
+        // 来ても、応答待ちの60秒はそのまま続く。残り時間より長く待たない。
+        $this->freezeTime();
+        Sleep::fake(syncWithCarbon: true);
+
+        config([
+            'llm.timeout' => 60,
+            'llm.deadline' => 10,
+            'llm.max_retry_wait' => 6,
+        ]);
+
+        $this->fake
+            ->queueFailure(LlmErrorType::RateLimit, retryAfterSeconds: 6)
+            ->queueDefaultFor(LlmFeature::VoiceTransform);
+
+        $this->gateway->send($this->request(), $this->schema());
+
+        [$first, $second] = $this->fake->received();
+
+        $this->assertSame(10, $first->timeoutSeconds, '設定の60秒ではなく、締切までの10秒');
+        $this->assertSame(4, $second->timeoutSeconds, '6秒待ったあとの残りは4秒');
+    }
+
     public function test_再送の上限を超えたら諦めて例外になる(): void
     {
         config(['llm.max_retries' => 2]);
