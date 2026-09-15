@@ -41,6 +41,19 @@ enum UserRole: string
         return $this !== self::Staff;
     }
 
+    /**
+     * AI処理の実行状況を参照できるか。
+     *
+     * 一覧には事業所ぜんぶの実行が並ぶ。誰がいつ何にAIを使ったかを見て回るのは
+     * 運用を預かる側の仕事であり、日々の介護業務には要らない。
+     * 介護職員が自分で押した音声整形の結果は、その記録の編集画面に出る
+     * （LlmJobNotice）ので、この一覧を閉じても失敗に気づく導線は残る。
+     */
+    public function canViewLlmJobs(): bool
+    {
+        return $this !== self::Staff;
+    }
+
     /** LLM利用ログとコストを参照できるか。 */
     public function canViewLlmLogs(): bool
     {

@@ -47,6 +47,9 @@ class DashboardController extends Controller
             'risks' => $notices->urgentRisks(),
             'verbalContacts' => $notices->pendingVerbalContacts(),
             'llm' => $this->llmStatus($facilityId),
+            // 費用は全員に見せるが、明細（AI処理の実行状況）へ送れるのは
+            // 生活相談員以上。押しても403になるリンクを出さないため。
+            'canViewLlmJobs' => $user->role->canViewLlmJobs(),
             'canViewLlmLogs' => $user->role->canViewLlmLogs(),
         ]);
     }

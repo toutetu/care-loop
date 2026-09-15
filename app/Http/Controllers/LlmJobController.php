@@ -11,18 +11,21 @@ use App\Support\QueueHeartbeat;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 /**
  * AI処理の実行状況。
  *
  * 【AI利用ログとの違い】
- * こちらは「自分が動かしたAIがどうなったか」を見る画面で、職員全員が開ける。
+ * こちらは実行が通ったのか失敗したのかを見る画面で、生活相談員以上が開ける。
  * AI利用ログ（LlmLogController）は費用とトークン数を扱う運営の画面で、
  * 管理者に限っている。
  *
- * 職員にとって必要なのは、押した処理が通ったのか失敗したのか、
- * 失敗したなら次に何をすればよいのかである。1件あたりの単価やキャッシュ率は
- * 日々の介護業務には要らない。
+ * 【介護職員に開かせない理由】
+ * 一覧には事業所ぜんぶの実行が並ぶ。誰がいつ何にAIを使ったかを見て回るのは
+ * 運用を預かる側の仕事である（UserRole::canViewLlmJobs）。
+ * 介護職員も音声整形は押せるが、その結果は記録の編集画面にそのまま出る
+ * （LlmJobNotice）ので、この一覧を閉じても失敗に気づく導線は残る。
  *
  * 【事業所で絞る】
  * 実行者の所属で絞る。他の事業所の職員が何を実行したかは見えてはいけない。
@@ -37,6 +40,10 @@ class LlmJobController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
+
+        if (! $user->role->canViewLlmJobs()) {
+            throw new AccessDeniedHttpException('AI処理の実行状況は生活相談員以上が参照できます。');
+        }
 
         $onlyFailed = $request->string('status')->value() === 'failed';
 
