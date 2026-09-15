@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { CalendarDays, CircleCheck, Printer, X } from 'lucide-react';
 import { RecordStatusBadge } from '@/components/care/badges';
+import { PageHeader } from '@/components/care/page-header';
 import { EmptyState, Section, StatCard } from '@/components/care/section';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -64,34 +65,34 @@ export default function RecordIndex({
             <Head title="記録一覧" />
 
             <div className="flex flex-col gap-4 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <CalendarDays
-                            className="text-muted-foreground size-4"
-                            aria-hidden
-                        />
-                        <h1 className="text-lg font-semibold">{day.label}</h1>
-                        {/* 休業日に開くと一覧が空になるため、いつの分かを必ず書く */}
-                        {!day.isToday && (
+                {/* 休業日に開くと一覧が空になるため、いつの分かを必ず書く */}
+                <PageHeader
+                    icon={CalendarDays}
+                    title={day.label}
+                    meta={
+                        !day.isToday && (
                             <Badge variant="secondary">
                                 本日はご利用がないため、直近の利用日を表示しています
                             </Badge>
-                        )}
-                    </div>
-
-                    <Input
-                        type="date"
-                        value={day.date}
-                        onChange={(event) =>
-                            go({
-                                date: event.target.value,
-                                status: onlyUnconfirmed ? 'unconfirmed' : null,
-                            })
-                        }
-                        className="w-auto"
-                        aria-label="表示する日付"
-                    />
-                </div>
+                        )
+                    }
+                    actions={
+                        <Input
+                            type="date"
+                            value={day.date}
+                            onChange={(event) =>
+                                go({
+                                    date: event.target.value,
+                                    status: onlyUnconfirmed
+                                        ? 'unconfirmed'
+                                        : null,
+                                })
+                            }
+                            className="w-auto"
+                            aria-label="表示する日付"
+                        />
+                    }
+                />
 
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
                     <StatCard
@@ -113,7 +114,7 @@ export default function RecordIndex({
                         label="未確定の記録"
                         value={counts.unconfirmed}
                         unit="件"
-                        tone={counts.unconfirmed > 0 ? 'alert' : 'default'}
+                        tone={counts.unconfirmed > 0 ? 'warning' : 'default'}
                         hint={
                             counts.unconfirmed > 0
                                 ? '押すと未確定のみ表示します'
@@ -130,7 +131,7 @@ export default function RecordIndex({
                         label="AI下書き・未確認"
                         value={counts.aiDraft}
                         unit="件"
-                        tone={counts.aiDraft > 0 ? 'alert' : 'default'}
+                        tone={counts.aiDraft > 0 ? 'ai' : 'default'}
                         hint="職員がまだ読んでいない生成文です"
                     />
                 </div>

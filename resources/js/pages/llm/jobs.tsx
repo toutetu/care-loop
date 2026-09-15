@@ -7,6 +7,7 @@ import {
     X,
 } from 'lucide-react';
 import { useEffect } from 'react';
+import { PageHeader } from '@/components/care/page-header';
 import { EmptyState, Section, StatCard } from '@/components/care/section';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -113,29 +114,32 @@ export default function LlmJobIndex({
             <Head title="AI処理の実行状況" />
 
             <div className="flex flex-col gap-4 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <h1 className="text-lg font-semibold">
-                            AI処理の実行状況
-                        </h1>
-                        <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
-                            <Activity className="size-3.5" aria-hidden />
+                <PageHeader
+                    icon={Activity}
+                    title="AI処理の実行状況"
+                    description={
+                        <>
                             処理する仕組みの最終稼働：
                             {worker.lastSeenAt ?? 'まだ一度も動いていません'}
                             <span className="font-mono">
                                 （{worker.connection}）
                             </span>
-                        </p>
-                    </div>
-                    {canViewLlmLogs && (
-                        <Button variant="outline" size="sm" asChild>
-                            <Link href={llmLogs.index()}>
-                                AI利用ログ（費用）
-                                <ChevronRight className="size-4" aria-hidden />
-                            </Link>
-                        </Button>
-                    )}
-                </div>
+                        </>
+                    }
+                    actions={
+                        canViewLlmLogs && (
+                            <Button variant="outline" size="sm" asChild>
+                                <Link href={llmLogs.index()}>
+                                    AI利用ログ（費用）
+                                    <ChevronRight
+                                        className="size-4"
+                                        aria-hidden
+                                    />
+                                </Link>
+                            </Button>
+                        )
+                    }
+                />
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <StatCard
@@ -150,7 +154,7 @@ export default function LlmJobIndex({
                         label="失敗"
                         value={counts.failed}
                         unit="件"
-                        tone={counts.failed > 0 ? 'alert' : 'default'}
+                        tone={counts.failed > 0 ? 'warning' : 'default'}
                         hint={
                             counts.failed > 0
                                 ? '押すと失敗のみ表示します'

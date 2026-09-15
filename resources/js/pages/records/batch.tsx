@@ -1,6 +1,7 @@
 import { Form, Head, Link, router } from '@inertiajs/react';
 import { CalendarDays } from 'lucide-react';
 import BatchEntryController from '@/actions/App/Http/Controllers/BatchEntryController';
+import { PageHeader } from '@/components/care/page-header';
 import { EmptyState, Section } from '@/components/care/section';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -90,28 +91,26 @@ export default function BatchEntry({
             <Head title={title} />
 
             <div className="flex flex-col gap-4 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <CalendarDays
-                            className="text-muted-foreground size-4"
-                            aria-hidden
-                        />
-                        <h1 className="text-lg font-semibold">{day.label}</h1>
-                        {!day.isToday && (
+                <PageHeader
+                    icon={CalendarDays}
+                    title={day.label}
+                    meta={
+                        !day.isToday && (
                             <Badge variant="secondary">
                                 本日はご利用がないため、直近の利用日を表示しています
                             </Badge>
-                        )}
-                    </div>
-
-                    <Input
-                        type="date"
-                        value={day.date}
-                        onChange={(event) => goToDate(event.target.value)}
-                        className="w-auto"
-                        aria-label="表示する日付"
-                    />
-                </div>
+                        )
+                    }
+                    actions={
+                        <Input
+                            type="date"
+                            value={day.date}
+                            onChange={(event) => goToDate(event.target.value)}
+                            className="w-auto"
+                            aria-label="表示する日付"
+                        />
+                    }
+                />
 
                 <Section title={title} description={description}>
                     {rows.length === 0 ? (

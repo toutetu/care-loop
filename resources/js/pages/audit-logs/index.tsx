@@ -1,5 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { ArrowRight, History } from 'lucide-react';
+import { PageHeader } from '@/components/care/page-header';
 import { EmptyState, Section } from '@/components/care/section';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -65,32 +66,22 @@ export default function AuditLogIndex({ type, logs }: Props) {
             <Head title="編集履歴" />
 
             <div className="flex flex-col gap-4 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                        <History
-                            className="text-muted-foreground size-4"
-                            aria-hidden
-                        />
-                        <h1 className="text-lg font-semibold">編集履歴</h1>
-                    </div>
-
-                    <div className="flex flex-wrap gap-1">
-                        {FILTERS.map((option) => (
-                            <Button
-                                key={option.value}
-                                variant={
-                                    type === option.value
-                                        ? 'secondary'
-                                        : 'ghost'
-                                }
-                                size="sm"
-                                onClick={() => filter(option.value)}
-                            >
-                                {option.label}
-                            </Button>
-                        ))}
-                    </div>
-                </div>
+                <PageHeader
+                    icon={History}
+                    title="編集履歴"
+                    actions={FILTERS.map((option) => (
+                        <Button
+                            key={option.value}
+                            variant={
+                                type === option.value ? 'secondary' : 'ghost'
+                            }
+                            size="sm"
+                            onClick={() => filter(option.value)}
+                        >
+                            {option.label}
+                        </Button>
+                    ))}
+                />
 
                 <Section
                     title="変更の記録"

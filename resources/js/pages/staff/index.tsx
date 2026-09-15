@@ -1,5 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
-import { UserPlus } from 'lucide-react';
+import { UserCog, UserPlus } from 'lucide-react';
+import { PageHeader } from '@/components/care/page-header';
 import { EmptyState, Section } from '@/components/care/section';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -35,21 +36,24 @@ export default function StaffIndex({ staff, roles }: Props) {
             <Head title="職員アカウント" />
 
             <div className="flex flex-col gap-4 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <h1 className="text-lg font-semibold">
-                        職員アカウント
-                        <span className="text-muted-foreground ml-2 text-sm font-normal">
+                <PageHeader
+                    icon={UserCog}
+                    title="職員アカウント"
+                    meta={
+                        <span className="text-muted-foreground text-sm">
                             {staff.filter((row) => row.isActive).length}{' '}
                             名が在籍中
                         </span>
-                    </h1>
-                    <Button size="sm" asChild>
-                        <Link href={staffRoutes.create()}>
-                            <UserPlus className="size-4" aria-hidden />
-                            職員を追加
-                        </Link>
-                    </Button>
-                </div>
+                    }
+                    actions={
+                        <Button size="sm" asChild>
+                            <Link href={staffRoutes.create()}>
+                                <UserPlus className="size-4" aria-hidden />
+                                職員を追加
+                            </Link>
+                        </Button>
+                    }
+                />
 
                 <Section
                     title="役割でできること"
