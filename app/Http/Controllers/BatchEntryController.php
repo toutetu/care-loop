@@ -77,9 +77,12 @@ class BatchEntryController extends Controller
                 'entries' => $this->entriesOf($record, $kind),
             ])->values()->all(),
             'mealForms' => ['常食', '一口大', '刻み', 'ミキサー'],
+            // 表のボタンには短い表記を、読み上げと確認には正式な表記を渡す。
+            // 「実施なし」だけでは、入力しなかった行との違いが伝わらない。
             'bathingTypes' => array_map(fn (BathingType $type): array => [
                 'value' => $type->value,
                 'label' => $type->label(),
+                'short' => $type->shortLabel(),
             ], BathingType::cases()),
         ]);
     }
@@ -103,7 +106,16 @@ class BatchEntryController extends Controller
         $userId = $request->user()?->id;
         $saved = 0;
 
-        DB::transaction(function () use ($entries, $kind, $userId, &$saved): void {
+        /*
+         * 食事の区分は表ぜんぶで1つ。
+         *
+         * 昼食は全員ぶんを入れ、そのあとおやつを全員ぶん入れる、という順で
+         * 回る。行ごとに選ばせると、20回同じ値を選ぶことになるうえ、
+         * 1つだけ選び忘れた行がおやつのまま昼食に混ざる。
+         */
+        $mealType = $this->mealType($request->string('meal_type')->value());
+
+        DB::transaction(function () use ($entries, $kind, $userId, $mealType, &$saved): void {
             foreach ($entries as $recordId => $values) {
                 $record = ServiceRecord::query()->find($recordId);
 
@@ -117,7 +129,7 @@ class BatchEntryController extends Controller
 
                 $saved += match ($kind) {
                     'bathing' => $this->storeBathing($record, $values, $userId),
-                    'meal' => $this->storeMeal($record, $values, $userId),
+                    'meal' => $this->storeMeal($record, $values, $userId, $mealType),
                     default => $this->storeVital($record, $values, $userId),
                 };
             }
@@ -155,8 +167,9 @@ class BatchEntryController extends Controller
 
     /**
      * @param  array<string, mixed>  $values
+     * @param  'lunch'|'snack'  $sheetMealType  表ぜんぶに適用する区分
      */
-    private function storeMeal(ServiceRecord $record, array $values, ?int $userId): int
+    private function storeMeal(ServiceRecord $record, array $values, ?int $userId, string $sheetMealType): int
     {
         $staple = $this->rate($values['staple_rate'] ?? null);
         $side = $this->rate($values['side_rate'] ?? null);
@@ -166,12 +179,16 @@ class BatchEntryController extends Controller
             return 0;
         }
 
-        $mealType = $values['meal_type'] ?? 'lunch';
+        // 行ごとの指定があればそちらを優先する。記録入力の画面から
+        // 1件だけ送る経路が、表とは関係なく区分を決められるようにしておく。
+        $mealType = isset($values['meal_type'])
+            ? $this->mealType(is_string($values['meal_type']) ? $values['meal_type'] : '')
+            : $sheetMealType;
 
         $record->mealRecords()->create([
             'recorded_by' => $userId,
             'recorded_at' => now(),
-            'meal_type' => in_array($mealType, ['lunch', 'snack'], true) ? $mealType : 'lunch',
+            'meal_type' => $mealType,
             'staple_rate' => $staple,
             'side_rate' => $side,
             'meal_form' => is_string($values['meal_form'] ?? null) && $values['meal_form'] !== ''
@@ -212,6 +229,16 @@ class BatchEntryController extends Controller
         ]);
 
         return 1;
+    }
+
+    /**
+     * 昼食かおやつか。読めない値は昼食として扱う。
+     *
+     * @return 'lunch'|'snack'
+     */
+    private function mealType(string $value): string
+    {
+        return $value === 'snack' ? 'snack' : 'lunch';
     }
 
     /** 0〜100 に収まる整数だけ通す。範囲外は未入力として扱う。 */
