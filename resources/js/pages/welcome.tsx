@@ -400,9 +400,17 @@ export default function Welcome() {
                         />
                         <div className="relative mx-auto grid max-w-5xl gap-12 px-6 pt-16 pb-20 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:pt-24">
                             <div>
+                                {/* 2つの句は、それぞれの途中では折り返させない。
+                                    「個人開発ポート／フォリオ」のように語の
+                                    真ん中で切れると、読み手がそこでつまずく。 */}
                                 <p className="text-primary text-sm font-bold tracking-wide">
-                                    通所介護（デイサービス）向け 記録・AI
-                                    支援システム ／ 個人開発ポートフォリオ
+                                    <span className="whitespace-nowrap">
+                                        通所介護（デイサービス）向け
+                                        記録・AI支援システム
+                                    </span>{' '}
+                                    <span className="whitespace-nowrap">
+                                        ／ 個人開発ポートフォリオ
+                                    </span>
                                 </p>
                                 <h1 className="mt-4 text-3xl leading-tight font-bold tracking-tight text-balance sm:text-4xl">
                                     話した一言が、記録にも、ご家族へのお便りにも、申し送りにもなる。
@@ -455,19 +463,35 @@ export default function Welcome() {
                                 </div>
                             </div>
 
+                            {/*
+                             * 画面写真の出し分け。
+                             *
+                             * PC の画面写真をスマートフォン幅に縮めると、中の
+                             * 文字が完全に読めなくなる。狭い画面では端末の写真
+                             * だけを出し、広い画面でのみ PC の写真に端末を重ねる。
+                             */}
                             <div className="relative lg:pr-12 lg:pb-10">
                                 <Screenshot
-                                    src="/images/intro/dashboard.webp"
-                                    alt="ダッシュボード。本日のご利用者、未確定の記録、要対応のリスク、今月の AI 利用料を数字で示し、その下に重要度の高い指摘を検出元のバッジつきで並べている"
+                                    src="/images/intro/record-edit-mobile.webp"
+                                    alt="スマートフォンの記録入力画面。音声入力欄と、記録・ご家族向け・申し送りに変換するボタン"
+                                    kind="mobile"
                                     priority
+                                    className="lg:hidden"
                                 />
-                                <div className="absolute right-0 bottom-0 hidden w-36 lg:block">
+                                <div className="hidden lg:block">
                                     <Screenshot
-                                        src="/images/intro/record-edit-mobile.webp"
-                                        alt="スマートフォンの記録入力画面。音声入力欄と、記録・ご家族向け・申し送りに変換するボタン"
-                                        kind="mobile"
+                                        src="/images/intro/dashboard.webp"
+                                        alt="ダッシュボード。本日のご利用者、未確定の記録、要対応のリスク、今月の AI 利用料を数字で示し、その下に重要度の高い指摘を検出元のバッジつきで並べている"
                                         priority
                                     />
+                                    <div className="absolute right-0 bottom-0 w-36">
+                                        <Screenshot
+                                            src="/images/intro/record-edit-mobile.webp"
+                                            alt=""
+                                            kind="mobile"
+                                            priority
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -658,35 +682,37 @@ export default function Welcome() {
                             ))}
                         </div>
 
-                        <div className="mt-12 grid gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-start">
-                            <div>
-                                <h3 className="text-lg font-bold">
-                                    現場の制約と、画面での解決
-                                </h3>
-                                <p className="text-muted-foreground mt-1 mb-6 text-sm">
-                                    要件定義の
-                                    F-18「スマートフォン向け記録画面」で決めた制約を、そのまま画面の仕様にしています。
-                                </p>
-                                <ChallengeSolutionList
-                                    items={UI_CHALLENGES}
-                                    solutionLabel="解決"
-                                />
-                            </div>
+                        {/* 端末の写真は横に2枚並べ、課題と解決の対はページ幅
+                            いっぱいを使う。以前は写真を右の列に置いていたが、
+                            左が半分の幅になり、1つの升が230pxまで痩せて
+                            読みにくかった。 */}
+                        <div className="mt-10 grid gap-8 sm:grid-cols-2">
+                            <Screenshot
+                                src="/images/intro/record-edit-mobile.webp"
+                                alt="スマートフォンの記録入力画面。音声入力欄、原文を書き換えないという説明、変換ボタン、画面下に固定された保存ボタン"
+                                kind="mobile"
+                                caption="記録入力。音声入力を起点に、AI が 3 つの文体へ書き分ける。保存は画面下に固定。"
+                            />
+                            <Screenshot
+                                src="/images/intro/dashboard-mobile.webp"
+                                alt="スマートフォンのダッシュボード。数値カードと要対応のリスク、画面下にホーム・記録・ご利用者・その他のタブバー"
+                                kind="mobile"
+                                caption="ダッシュボード。主要な操作は下部タブバーに集め、親指だけで届く範囲に置く。"
+                            />
+                        </div>
 
-                            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-1">
-                                <Screenshot
-                                    src="/images/intro/record-edit-mobile.webp"
-                                    alt="スマートフォンの記録入力画面。音声入力欄、原文を書き換えないという説明、変換ボタン、画面下に固定された保存ボタン"
-                                    kind="mobile"
-                                    caption="記録入力。音声入力を起点に、AI が 3 つの文体へ書き分ける。保存は画面下に固定。"
-                                />
-                                <Screenshot
-                                    src="/images/intro/dashboard-mobile.webp"
-                                    alt="スマートフォンのダッシュボード。数値カードと要対応のリスク、画面下にホーム・記録・ご利用者・その他のタブバー"
-                                    kind="mobile"
-                                    caption="ダッシュボード。主要な操作は下部タブバーに集め、親指だけで届く範囲に置く。"
-                                />
-                            </div>
+                        <div className="mt-12">
+                            <h3 className="text-lg font-bold">
+                                現場の制約と、画面での解決
+                            </h3>
+                            <p className="text-muted-foreground mt-1 mb-6 text-sm">
+                                要件定義の
+                                F-18「スマートフォン向け記録画面」で決めた制約を、そのまま画面の仕様にしています。
+                            </p>
+                            <ChallengeSolutionList
+                                items={UI_CHALLENGES}
+                                solutionLabel="解決"
+                            />
                         </div>
                     </IntroSection>
 

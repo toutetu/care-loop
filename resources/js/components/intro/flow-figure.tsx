@@ -72,8 +72,10 @@ export function FlowFigure() {
                     </span>
                     <div>
                         <p className="text-ai-ink font-bold">AI が書き分ける</p>
+                        {/* 3列が横に並ぶ幅では、ここが長いと1文字だけ
+                            次の行へこぼれる。短い言い切りにしてある。 */}
                         <p className="text-ai-ink/80 text-sm">
-                            原文は書き換えずに残す
+                            原文はそのまま残す
                         </p>
                     </div>
                 </div>
