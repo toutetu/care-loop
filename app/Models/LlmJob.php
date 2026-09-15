@@ -129,6 +129,28 @@ class LlmJob extends Model
     }
 
     /**
+     * 見捨てたジョブ。行の値は待機中・実行中のままだが、もう動かない。
+     *
+     * blocking() の裏返し。画面ではこれを失敗として数える。実行中に数えると
+     * 「実行中」が減らず、画面が読み直しを止められない。
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeAbandoned(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query): void {
+            $query
+                ->where(fn (Builder $queued) => $queued
+                    ->where('status', LlmJobStatus::Queued)
+                    ->where('created_at', '<=', now()->subSeconds(self::ABANDON_QUEUED_AFTER_SECONDS)))
+                ->orWhere(fn (Builder $running) => $running
+                    ->where('status', LlmJobStatus::Running)
+                    ->where('started_at', '<=', now()->subSeconds(self::abandonRunningAfterSeconds())));
+        });
+    }
+
+    /**
      * @param  Builder<static>  $query
      * @return Builder<static>
      */

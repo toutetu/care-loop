@@ -124,7 +124,7 @@ enum LlmErrorType: string
             self::NotConfigured => 'デモモードで動作しています。実際のAIは呼び出されていません。',
             self::UnknownModel => 'システム設定に問題があります。管理者にご連絡ください。',
             self::Precondition => '実行に必要な情報が足りませんでした。画面の内容をご確認のうえ、もう一度お試しください。',
-            self::QueueUnavailable => 'AI処理を実行する仕組みが止まっています。管理者にご連絡ください。',
+            self::QueueUnavailable => 'AI処理が実行されないまま時間切れになりました。時間をおいてもう一度お試しください。繰り返す場合は、処理する仕組みが止まっている可能性があるため管理者にご連絡ください。',
         };
     }
 
@@ -145,7 +145,7 @@ enum LlmErrorType: string
             self::NotConfigured => 'APIキー未設定',
             self::UnknownModel => '料金表にないモデル',
             self::Precondition => '前提条件の不足',
-            self::QueueUnavailable => 'キュー停止',
+            self::QueueUnavailable => '未処理のまま時間切れ',
         };
     }
 
