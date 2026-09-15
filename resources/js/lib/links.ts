@@ -7,5 +7,16 @@
 
 export const REPOSITORY_URL = 'https://github.com/toutetu/care-loop';
 
-/** 要件定義書。URLに日本語が含まれるため、エンコードした形で持つ。 */
-export const REQUIREMENTS_URL = `${REPOSITORY_URL}/blob/main/docs/01_%E8%A6%81%E4%BB%B6%E5%AE%9A%E7%BE%A9%E6%9B%B8.md`;
+/**
+ * docs/ 配下の文書を GitHub 上で開く URL。
+ * ファイル名に日本語が含まれるため、エンコードして組み立てる。
+ */
+export function docUrl(fileName: string): string {
+    return `${REPOSITORY_URL}/blob/main/docs/${encodeURIComponent(fileName)}`;
+}
+
+export const REQUIREMENTS_URL = docUrl('01_要件定義書.md');
+export const DEPLOY_GUIDE_URL = docUrl('02_デプロイ手順.md');
+export const SCALE_POLICY_URL = docUrl('03_スケール対応方針.md');
+export const DATABASE_DESIGN_URL = docUrl('04_データベース設計.md');
+export const DESIGN_GUIDE_URL = docUrl('05_デザインガイド.md');
