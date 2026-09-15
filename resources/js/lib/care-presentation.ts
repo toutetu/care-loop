@@ -6,6 +6,7 @@ import type {
     RiskSeverity,
     RiskSource,
 } from '@/types/care';
+import type { UserRole } from '@/types/auth';
 
 /**
  * 業務上の状態を、画面上の見た目へ変換する対応表。
@@ -154,6 +155,39 @@ export const PROGRESS_STATUS: Record<ProgressStatus, BadgeStyle> = {
     insufficient_data: {
         className:
             'border-dashed border-foreground/50 bg-background text-foreground',
+    },
+};
+
+/* ------------------------------------------------------------------ *
+ * 軸の外 — 今ログインしている人の役割
+ * ------------------------------------------------------------------ */
+
+/**
+ * 権限ロールのバッジ。
+ *
+ * 【なぜ常に出すか】
+ * 同じ画面でも、役割によって押せるボタンとサイドバーの項目が変わる。
+ * デモでは役割を切り替えて見てもらうため、「今どれで入っているか」が
+ * 分からないと、項目が無いのか権限が無いのか区別できない。
+ *
+ * 【意味色を与えない】
+ * 上の2軸（対応が要るか／誰が出したか）とブランド色（押せるもの）に
+ * 使っている色は、どれも「今その場で何かせよ」の合図である。役割は
+ * 状態ではなく、見るたびに手を動かす対象でもない。色相を持たせると
+ * 合図の数が増えるだけなので、濃さだけで権限の広さを表す。
+ */
+export const USER_ROLE: Record<UserRole, BadgePresentation> = {
+    admin: {
+        label: '管理者',
+        className: 'border-transparent bg-foreground text-background',
+    },
+    manager: {
+        label: '相談員',
+        className: 'border-foreground/25 bg-foreground/10 text-foreground',
+    },
+    staff: {
+        label: '介護職員',
+        className: NEUTRAL,
     },
 };
 

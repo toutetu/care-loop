@@ -9,8 +9,10 @@ import {
     RECORD_STATUS,
     RISK_SEVERITY,
     riskSourceBadges,
+    USER_ROLE,
 } from '@/lib/care-presentation';
 import { cn } from '@/lib/utils';
+import type { UserRole } from '@/types/auth';
 import type {
     ProgressStatus,
     RecordStatus,
@@ -100,6 +102,31 @@ export function RecordStatusBadge({ status }: { status: RecordStatus }) {
     return (
         <Badge variant="outline" className={cn(SHAPE, style.className)}>
             {Icon && <Icon className="size-4" aria-hidden />}
+            {style.label}
+        </Badge>
+    );
+}
+
+/**
+ * 今ログインしている人の役割。文言も色も care-presentation が持つ。
+ *
+ * サイドバー下部の名前の左に置く。役割ごとに項目の出方が変わるため、
+ * 「何で入っているか」が名前と同じ視線の高さに無いと確かめようがない。
+ */
+export function RoleBadge({
+    role,
+    className,
+}: {
+    role: UserRole;
+    className?: string;
+}) {
+    const style = USER_ROLE[role];
+
+    return (
+        <Badge
+            variant="outline"
+            className={cn(SHAPE, style.className, className)}
+        >
             {style.label}
         </Badge>
     );
