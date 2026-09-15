@@ -36,6 +36,9 @@
     --radius-md: calc(var(--radius) - 2px);
     --radius-sm: calc(var(--radius) - 4px);
 
+    /* shadow-card クラスとして使う。実体は :root / .dark にある。 */
+    --shadow-card: var(--card-shadow);
+
     --color-background: var(--background);
     --color-foreground: var(--foreground);
 
@@ -126,40 +129,65 @@
     --color-deterministic-line: var(--deterministic-line);
 }
 
+/*
+ * ブランド色は青緑（色相 195）。
+ *
+ * ロゴ（resources/js/components/brand-mark.tsx）の淡い青緑をそのまま画面の
+ * 基調にしている。色相 195 を選んだのは、意味を持つ5色（danger 27 /
+ * warning 85 / success 152 / ai 305 / deterministic 無彩色）のどれとも
+ * 隣り合わないため。緑寄りにすると success と、青寄りにすると ai と
+ * 見分けがつきにくくなる。
+ *
+ * 面は3段。枠（sidebar）＞ 紙面（background）＞ カード（card）の順に
+ * 明るくし、色味も薄くなる。枠線だけで区切っていた頃は全部が同じ白で、
+ * どこが操作の単位なのかが見えなかった。
+ *
+ * ベタ塗りの primary は白文字で 7:1 以上を確保する。50〜60代の職員が
+ * 押すボタンなので AA（4.5:1）では足りない。値を変えるときは
+ * scripts/contrast.mjs で測り直すこと。
+ */
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
+    --background: oklch(0.97 0.01 195);
+    --foreground: oklch(0.2 0.012 195);
     --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
+    --card-foreground: oklch(0.2 0.012 195);
     --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.44 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.2 0.012 195);
+    --primary: oklch(0.44 0.09 195); /* 白文字 7.26:1 */
+    --primary-foreground: oklch(1 0 0);
+    --secondary: oklch(0.945 0.02 195);
+    --secondary-foreground: oklch(0.2 0.012 195);
+    --muted: oklch(0.955 0.015 195);
+    --muted-foreground: oklch(0.45 0.025 195); /* 白地 7.35:1 */
+    --accent: oklch(0.945 0.02 195);
+    --accent-foreground: oklch(0.2 0.012 195);
     --destructive: oklch(0.577 0.245 27.325);
     --destructive-foreground: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.45 0 0); /* 白地 7.44:1 */
+    --border: oklch(0.9 0.02 195);
+    --input: oklch(0.88 0.022 195);
+    --ring: oklch(0.44 0.09 195);
     --chart-1: oklch(0.646 0.222 41.116);
     --chart-2: oklch(0.6 0.118 184.704);
     --chart-3: oklch(0.398 0.07 227.392);
     --chart-4: oklch(0.828 0.189 84.429);
     --chart-5: oklch(0.769 0.188 70.08);
     --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.45 0 0);
+    --sidebar: oklch(0.945 0.022 195);
+    --sidebar-foreground: oklch(0.2 0.012 195);
+    --sidebar-primary: oklch(0.44 0.09 195);
+    --sidebar-primary-foreground: oklch(1 0 0);
+    --sidebar-accent: oklch(0.88 0.045 195);
+    --sidebar-accent-foreground: oklch(0.2 0.012 195);
+    --sidebar-border: oklch(0.88 0.03 195);
+    --sidebar-ring: oklch(0.44 0.09 195);
+
+    /*
+     * カードの影。枠線に頼らず紙面から浮かせるための薄い影で、
+     * 色味を青緑に寄せて灰色に濁らないようにしてある。
+     */
+    --card-shadow:
+        0 1px 2px oklch(0.3 0.03 195 / 0.06),
+        0 4px 12px -4px oklch(0.3 0.03 195 / 0.1);
 
     /* 明モード。括弧内は白地でのコントラスト比。 */
     --danger: oklch(0.5 0.195 27); /* 白文字を載せて 6.64:1 */
@@ -185,39 +213,47 @@
     --deterministic-line: oklch(0.85 0 0);
 }
 
+/*
+ * 暗モード。面の順序は明モードと同じ（枠 ＜ 紙面 ＜ カード の順に明るい）。
+ * primary は明るい青緑にして濃い文字を載せる。暗い青緑に白文字では
+ * 暗モードで沈んで見える。
+ */
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.145 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.145 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.985 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
+    --background: oklch(0.17 0.012 195);
+    --foreground: oklch(0.97 0.005 195);
+    --card: oklch(0.21 0.012 195);
+    --card-foreground: oklch(0.97 0.005 195);
+    --popover: oklch(0.21 0.012 195);
+    --popover-foreground: oklch(0.97 0.005 195);
+    --primary: oklch(0.8 0.1 190); /* 濃い文字 10.05:1 */
+    --primary-foreground: oklch(0.2 0.02 195);
+    --secondary: oklch(0.27 0.015 195);
+    --secondary-foreground: oklch(0.97 0.005 195);
+    --muted: oklch(0.27 0.015 195);
+    --muted-foreground: oklch(0.74 0.02 195); /* カード面 7.72:1 */
+    --accent: oklch(0.27 0.015 195);
+    --accent-foreground: oklch(0.97 0.005 195);
     --destructive: oklch(0.396 0.141 25.723);
     --destructive-foreground: oklch(0.637 0.237 25.331);
-    --border: oklch(0.269 0 0);
-    --input: oklch(0.269 0 0);
-    --ring: oklch(0.75 0 0); /* カード面 8.90:1 */
+    --border: oklch(0.3 0.015 195);
+    --input: oklch(0.32 0.015 195);
+    --ring: oklch(0.8 0.1 190);
     --chart-1: oklch(0.488 0.243 264.376);
     --chart-2: oklch(0.696 0.17 162.48);
     --chart-3: oklch(0.769 0.188 70.08);
     --chart-4: oklch(0.627 0.265 303.9);
     --chart-5: oklch(0.645 0.246 16.439);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.985 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(0.269 0 0);
-    --sidebar-ring: oklch(0.75 0 0);
+    --sidebar: oklch(0.15 0.012 195);
+    --sidebar-foreground: oklch(0.97 0.005 195);
+    --sidebar-primary: oklch(0.8 0.1 190);
+    --sidebar-primary-foreground: oklch(0.2 0.02 195);
+    --sidebar-accent: oklch(0.3 0.03 195);
+    --sidebar-accent-foreground: oklch(0.97 0.005 195);
+    --sidebar-border: oklch(0.26 0.015 195);
+    --sidebar-ring: oklch(0.8 0.1 190);
+
+    --card-shadow:
+        0 1px 2px oklch(0 0 0 / 0.4), 0 4px 12px -4px oklch(0 0 0 / 0.5);
 
     /* 暗モード。括弧内はカード面 oklch(0.145) でのコントラスト比。 */
     --danger: oklch(0.55 0.2 27); /* 白文字を載せて 5.15:1 */

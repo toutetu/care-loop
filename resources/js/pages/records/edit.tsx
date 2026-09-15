@@ -14,6 +14,7 @@ import LlmActionController from '@/actions/App/Http/Controllers/LlmActionControl
 import ServiceRecordController from '@/actions/App/Http/Controllers/ServiceRecordController';
 import { RecordStatusBadge } from '@/components/care/badges';
 import { LlmJobNotice } from '@/components/care/llm-job-notice';
+import { PageHeader } from '@/components/care/page-header';
 import { Section } from '@/components/care/section';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
@@ -182,43 +183,45 @@ export default function RecordEdit({
             <Head title={`${record.residentName} 様 ${record.date}`} />
 
             <div className="flex flex-col gap-4 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <h1 className="text-lg font-semibold">
-                            <Link
-                                href={residentRoutes.show(record.residentId)}
-                                className="hover:underline"
-                            >
-                                {record.residentName} 様
-                            </Link>
-                        </h1>
-                        <p className="text-muted-foreground text-sm">
+                <PageHeader
+                    title={
+                        <Link
+                            href={residentRoutes.show(record.residentId)}
+                            className="hover:underline"
+                        >
+                            {record.residentName} 様
+                        </Link>
+                    }
+                    description={
+                        <>
                             {record.date}
                             {record.careLevel && ` ／ ${record.careLevel}`}
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <RecordStatusBadge
-                            status={
-                                record.hasAiDraft
-                                    ? 'ai_draft'
-                                    : record.confirmedAt
-                                      ? 'confirmed'
-                                      : 'draft'
-                            }
-                        />
-                        <Button variant="outline" size="sm" asChild>
-                            <a
-                                href={records.familyReport(record.id).url}
-                                target="_blank"
-                                rel="noreferrer"
-                            >
-                                <Printer className="size-4" aria-hidden />
-                                連絡帳
-                            </a>
-                        </Button>
-                    </div>
-                </div>
+                        </>
+                    }
+                    actions={
+                        <>
+                            <RecordStatusBadge
+                                status={
+                                    record.hasAiDraft
+                                        ? 'ai_draft'
+                                        : record.confirmedAt
+                                          ? 'confirmed'
+                                          : 'draft'
+                                }
+                            />
+                            <Button variant="outline" size="sm" asChild>
+                                <a
+                                    href={records.familyReport(record.id).url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    <Printer className="size-4" aria-hidden />
+                                    連絡帳
+                                </a>
+                            </Button>
+                        </>
+                    }
+                />
 
                 {/* AIが書いた文章が未確認のまま残っている記録では、何をすれば
                     確定するのかをここで伝える。バッジだけでは、次にどう操作すれば

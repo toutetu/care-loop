@@ -28,7 +28,7 @@ export default function Welcome() {
             {/* アプリ名はタイトルの末尾に自動で付く（app.tsx）。ここでは重ねない */}
             <Head title="通所介護の記録とAI活用" />
 
-            <div className="min-h-screen bg-[#FDFDFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC]">
+            <div className="bg-background text-foreground min-h-screen">
                 <div className="mx-auto max-w-3xl px-6 py-12 sm:py-16">
                     <header className="flex items-center justify-between gap-4">
                         <p className="text-muted-foreground text-sm font-medium tracking-wide">
@@ -36,7 +36,7 @@ export default function Welcome() {
                         </p>
                         <Link
                             href={auth.user ? dashboard() : login()}
-                            className="inline-flex items-center gap-1.5 rounded-md bg-[#1b1b18] px-4 py-2 text-sm font-medium text-white hover:opacity-90 dark:bg-[#EDEDEC] dark:text-[#1b1b18]"
+                            className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-medium"
                         >
                             {auth.user ? 'ダッシュボードへ' : 'デモにログイン'}
                             <ArrowRight className="size-4" aria-hidden />
@@ -158,7 +158,7 @@ export default function Welcome() {
                             <div className="mt-5 flex flex-wrap gap-3">
                                 <Link
                                     href={auth.user ? dashboard() : login()}
-                                    className="inline-flex items-center gap-1.5 rounded-md bg-[#1b1b18] px-4 py-2 text-sm font-medium text-white hover:opacity-90 dark:bg-[#EDEDEC] dark:text-[#1b1b18]"
+                                    className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-medium"
                                 >
                                     {auth.user
                                         ? 'ダッシュボードへ'

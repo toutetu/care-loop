@@ -36,6 +36,30 @@ export function Section({
     );
 }
 
+/** 数値カードの色。default 以外は app.css の意味色に対応する。 */
+export type StatTone = 'default' | 'danger' | 'warning' | 'ai';
+
+const STAT_TONE: Record<
+    Exclude<StatTone, 'default'>,
+    { surface: string; hover: string; value: string }
+> = {
+    danger: {
+        surface: 'border-danger-line bg-danger-soft',
+        hover: 'hover:bg-danger-soft/70',
+        value: 'text-danger-ink',
+    },
+    warning: {
+        surface: 'border-warning-line bg-warning-soft',
+        hover: 'hover:bg-warning-soft/70',
+        value: 'text-warning-ink',
+    },
+    ai: {
+        surface: 'border-ai-line bg-ai-soft',
+        hover: 'hover:bg-ai-soft/70',
+        value: 'text-ai-ink',
+    },
+};
+
 /**
  * 数値ひとつを大きく見せる小さなカード。
  *
@@ -60,7 +84,7 @@ export function StatCard({
     value: ReactNode;
     unit?: string;
     hint?: ReactNode;
-    tone?: 'default' | 'alert';
+    tone?: StatTone;
     href?: NonNullable<InertiaLinkProps['href']>;
     onClick?: () => void;
     /** グリッドの中での占め方を、呼び出し側から決めたいときに使う。 */
@@ -71,8 +95,8 @@ export function StatCard({
             <p className="text-muted-foreground text-sm">{label}</p>
             <p
                 className={cn(
-                    'text-2xl font-semibold tabular-nums',
-                    tone === 'alert' && 'text-danger-ink',
+                    'text-3xl font-bold tracking-tight tabular-nums',
+                    tone !== 'default' && STAT_TONE[tone].value,
                 )}
             >
                 {value}
@@ -84,8 +108,22 @@ export function StatCard({
         </CardContent>
     );
 
-    const interactive =
-        'h-full transition-colors hover:border-primary/40 hover:bg-accent/40';
+    /*
+     * 色つきの tone は面ごと淡く塗る。数字の色を変えるだけでは、
+     * 4枚並んだカードの中で目に入らなかった。
+     *
+     * 色の意味は app.css の意味色と同じ。danger は今日中に見るもの、
+     * warning は放置しないもの、ai は人が目で確かめるもの。
+     * 以前は全部を赤にしていたが、未確定の記録やAIの失敗まで赤だと
+     * 4枚中3枚が赤くなり、本当に急ぐものが埋もれた。
+     */
+    const surface = tone === 'default' ? undefined : STAT_TONE[tone].surface;
+
+    const interactive = cn(
+        'hover:border-primary/40 h-full transition-colors',
+        tone === 'default' ? 'hover:bg-accent/40' : STAT_TONE[tone].hover,
+        surface,
+    );
 
     if (href !== undefined) {
         return (
@@ -118,7 +156,7 @@ export function StatCard({
         );
     }
 
-    return <Card className={className}>{body}</Card>;
+    return <Card className={cn(surface, className)}>{body}</Card>;
 }
 
 /** 一覧が空のときの表示。何もないのか、条件に合わないのかを書き分ける。 */

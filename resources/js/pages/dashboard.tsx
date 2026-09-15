@@ -1,6 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { CalendarDays, MessageSquareWarning } from 'lucide-react';
 import { SeverityBadge, SourceBadge } from '@/components/care/badges';
+import { PageHeader } from '@/components/care/page-header';
 import { EmptyState, Section, StatCard } from '@/components/care/section';
 import { Badge } from '@/components/ui/badge';
 import { NOTICE_SURFACE } from '@/lib/care-presentation';
@@ -58,19 +59,18 @@ export default function Dashboard({
             <Head title="ダッシュボード" />
 
             <div className="flex flex-col gap-4 p-4">
-                <div className="flex flex-wrap items-center gap-2">
-                    <CalendarDays
-                        className="text-muted-foreground size-4"
-                        aria-hidden
-                    />
-                    <h1 className="text-lg font-semibold">{day.label}</h1>
-                    {/* 休業日に開くと一覧が空になるため、いつの分を見ているのかを必ず書く */}
-                    {!day.isToday && (
-                        <Badge variant="secondary">
-                            本日はご利用がないため、直近の利用日を表示しています
-                        </Badge>
-                    )}
-                </div>
+                {/* 休業日に開くと一覧が空になるため、いつの分を見ているのかを必ず書く */}
+                <PageHeader
+                    icon={CalendarDays}
+                    title={day.label}
+                    meta={
+                        !day.isToday && (
+                            <Badge variant="secondary">
+                                本日はご利用がないため、直近の利用日を表示しています
+                            </Badge>
+                        )
+                    }
+                />
 
                 {/* 数字を見た職員が次にすることは「その中身を見る」である。
                     カードから、それぞれの一覧へ直接移れるようにする。 */}
@@ -86,7 +86,7 @@ export default function Dashboard({
                         label="未確定の記録"
                         value={counts.unconfirmed}
                         unit="件"
-                        tone={counts.unconfirmed > 0 ? 'alert' : 'default'}
+                        tone={counts.unconfirmed > 0 ? 'warning' : 'default'}
                         hint={
                             counts.unconfirmed > 0
                                 ? '押すと未確定のみ表示します'
@@ -100,14 +100,14 @@ export default function Dashboard({
                         label="要対応のリスク"
                         value={risks.length}
                         unit="件"
-                        tone={risks.length > 0 ? 'alert' : 'default'}
+                        tone={risks.length > 0 ? 'danger' : 'default'}
                         hint="重要度 高・未確認のもの"
                     />
                     <StatCard
                         label="今月のAI利用料"
                         value={`$${llm.spentUsd.toFixed(2)}`}
                         hint={`成功 ${llm.succeeded} 件 ／ 失敗 ${llm.failed} 件`}
-                        tone={llm.failed > 0 ? 'alert' : 'default'}
+                        tone={llm.failed > 0 ? 'warning' : 'default'}
                         href={llmJobs.index()}
                     />
                 </div>

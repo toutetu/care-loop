@@ -1,17 +1,28 @@
 import { Form, Head } from '@inertiajs/react';
+import {
+    ArrowRight,
+    ClipboardList,
+    HeartHandshake,
+    ShieldCheck,
+    UserRound,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import InputError from '@/components/input-error';
+import PasskeyVerify from '@/components/passkey-verify';
 import PasswordInput from '@/components/password-input';
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
-import PasskeyVerify from '@/components/passkey-verify';
 
 type DemoAccount = {
+    /** admin / manager / staff。絵柄を選ぶためだけに使う。 */
+    key: string;
     role: string;
     email: string;
     note: string;
@@ -20,6 +31,8 @@ type DemoAccount = {
 type Props = {
     status?: string;
     canResetPassword: boolean;
+    /** 公開デモでは false。新規登録の導線そのものを出さない。 */
+    canRegister: boolean;
     /** デモ環境でのみ届く。本番相当の環境ではサーバーから渡されない。 */
     demoAccounts: DemoAccount[] | null;
 };
@@ -30,13 +43,19 @@ const DEMO_PASSWORD = 'password';
 export default function Login({
     status,
     canResetPassword,
+    canRegister,
     demoAccounts,
 }: Props) {
     return (
         <>
             <Head title="ログイン" />
 
-            {demoAccounts && <DemoAccountPanel accounts={demoAccounts} />}
+            {demoAccounts && (
+                <>
+                    <DemoAccountPanel accounts={demoAccounts} />
+                    <Divider>アカウントでログイン</Divider>
+                </>
+            )}
 
             <PasskeyVerify
                 label="パスキーでログイン"
@@ -60,7 +79,9 @@ export default function Login({
                                     type="email"
                                     name="email"
                                     required
-                                    autoFocus
+                                    // デモ環境では役割のボタンが主役なので、
+                                    // 入力欄へ勝手にフォーカスを移さない。
+                                    autoFocus={!demoAccounts}
                                     tabIndex={1}
                                     autoComplete="email"
                                     placeholder="email@example.com"
@@ -105,7 +126,9 @@ export default function Login({
 
                             <Button
                                 type="submit"
-                                className="mt-4 w-full"
+                                className="mt-2 w-full"
+                                // デモのボタンが主役のときは、こちらは控えめにする。
+                                variant={demoAccounts ? 'outline' : 'default'}
                                 tabIndex={4}
                                 pending={processing}
                                 data-test="login-button"
@@ -114,12 +137,14 @@ export default function Login({
                             </Button>
                         </div>
 
-                        <div className="text-muted-foreground text-center text-sm">
-                            アカウントをお持ちでない方は{' '}
-                            <TextLink href={register()} tabIndex={5}>
-                                新規登録
-                            </TextLink>
-                        </div>
+                        {canRegister && (
+                            <div className="text-muted-foreground text-center text-sm">
+                                アカウントをお持ちでない方は{' '}
+                                <TextLink href={register()} tabIndex={5}>
+                                    新規登録
+                                </TextLink>
+                            </div>
+                        )}
                     </>
                 )}
             </Form>
@@ -133,6 +158,13 @@ export default function Login({
     );
 }
 
+/** 役割ごとの絵柄。文言はサーバーが持つので、ここは絵だけを決める。 */
+const ROLE_ICONS: Record<string, LucideIcon> = {
+    admin: ShieldCheck,
+    manager: ClipboardList,
+    staff: HeartHandshake,
+};
+
 /**
  * デモ用アカウントの一覧。
  *
@@ -140,6 +172,11 @@ export default function Login({
  * 見に来た人は、このアプリのことも介護の業務のことも知らない。
  * ログイン情報を探すために別の画面へ戻らせると、そこで離脱する。
  * 押せば入れる状態にしておく。
+ *
+ * 【役割のボタンを主役にする】
+ * 以前は灰色の箱に灰色のボタンが3つ並び、その下の入力欄と同じ重さに
+ * 見えた。見に来た人が最初に押すのはこの3つなので、大きく、絵柄つきで、
+ * カードとして浮かせる。通常のログインは下に控えめに置く。
  *
  * この一覧はデモ環境でしかサーバーから渡ってこない（FortifyServiceProvider）。
  * 本物の事業所で動かすときに、同じ画面が出ることはない。
@@ -165,49 +202,80 @@ function DemoAccountPanel({ accounts }: { accounts: DemoAccount[] }) {
     };
 
     return (
-        <div className="bg-muted/40 mb-6 rounded-lg border p-4">
-            <p className="text-sm font-medium">デモ用のアカウント</p>
-            <p className="text-muted-foreground mt-1 text-xs">
-                権限による表示の違いを見られるよう、役割ごとに用意しています。
-                押すとそのままログインします。
-            </p>
+        <section aria-labelledby="demo-accounts-heading" className="space-y-3">
+            <div className="space-y-1">
+                <h2 id="demo-accounts-heading" className="font-bold">
+                    役割を選んでデモを見る
+                </h2>
+                <p className="text-muted-foreground text-sm">
+                    押すとそのままログインします。役割によって見えるものが変わります。
+                </p>
+            </div>
 
-            <ul className="mt-3 space-y-2">
-                {accounts.map((account) => (
-                    <li key={account.email}>
-                        <button
-                            type="button"
-                            onClick={() => signIn(account.email)}
-                            className="bg-background hover:border-primary/40 hover:bg-accent focus-visible:ring-ring w-full rounded-md border px-3 py-2 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none"
-                        >
-                            <span className="flex flex-wrap items-baseline gap-x-2">
-                                <span className="text-sm font-medium">
-                                    {account.role}
+            <ul className="grid gap-2">
+                {accounts.map((account) => {
+                    const Icon = ROLE_ICONS[account.key] ?? UserRound;
+
+                    return (
+                        <li key={account.email}>
+                            <button
+                                type="button"
+                                onClick={() => signIn(account.email)}
+                                className="group bg-card hover:border-primary hover:bg-accent/50 focus-visible:ring-ring shadow-card flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                            >
+                                <span
+                                    className="bg-primary/10 text-primary flex size-11 shrink-0 items-center justify-center rounded-lg"
+                                    aria-hidden
+                                >
+                                    <Icon className="size-6" />
                                 </span>
-                                <span className="text-muted-foreground font-mono text-xs">
-                                    {account.email}
+                                <span className="min-w-0 flex-1">
+                                    <span className="block font-bold">
+                                        {account.role}
+                                    </span>
+                                    <span className="text-muted-foreground block text-sm">
+                                        {account.note}
+                                    </span>
                                 </span>
-                            </span>
-                            <span className="text-muted-foreground mt-0.5 block text-xs">
-                                {account.note}
-                            </span>
-                        </button>
-                    </li>
-                ))}
+                                <ArrowRight
+                                    className="text-muted-foreground group-hover:text-primary size-5 shrink-0 transition-colors"
+                                    aria-hidden
+                                />
+                            </button>
+                        </li>
+                    );
+                })}
             </ul>
 
-            <p className="text-muted-foreground mt-3 text-xs">
+            <p className="text-muted-foreground text-xs">
+                表示されるご利用者・職員・記録はすべて架空のものです。
                 パスワードはいずれも{' '}
-                <code className="bg-background rounded px-1.5 py-0.5 font-mono">
+                <code className="bg-muted rounded px-1.5 py-0.5 font-mono">
                     {DEMO_PASSWORD}
                 </code>{' '}
-                です。表示されるご利用者・職員・記録はすべて架空のものです。
+                です。
             </p>
+        </section>
+    );
+}
+
+/** 「または」の区切り線。PasskeyVerify が持つものと同じ見た目。 */
+function Divider({ children }: { children: string }) {
+    return (
+        <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+                <Separator className="w-full" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+                <span className="bg-background text-muted-foreground px-2">
+                    {children}
+                </span>
+            </div>
         </div>
     );
 }
 
 Login.layout = {
-    title: 'CareLoop にログイン',
-    description: 'メールアドレスとパスワードを入力してください',
+    title: 'CareLoop',
+    description: '通所介護（デイサービス）の記録・AI支援システム',
 };

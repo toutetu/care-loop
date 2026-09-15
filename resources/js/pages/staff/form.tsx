@@ -2,6 +2,7 @@ import { Form, Head } from '@inertiajs/react';
 import { Info } from 'lucide-react';
 import { useState } from 'react';
 import StaffController from '@/actions/App/Http/Controllers/StaffController';
+import { PageHeader } from '@/components/care/page-header';
 import { Section } from '@/components/care/section';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -52,9 +53,13 @@ export default function StaffForm({ staff, roles }: Props) {
             >
                 {({ processing, errors }) => (
                     <>
-                        <h1 className="text-lg font-semibold">
-                            {isNew ? '職員の追加' : `${staff.name} さんの編集`}
-                        </h1>
+                        <PageHeader
+                            title={
+                                isNew
+                                    ? '職員の追加'
+                                    : `${staff.name} さんの編集`
+                            }
+                        />
 
                         <Section title="基本情報">
                             <div className="grid gap-4 sm:grid-cols-2">

@@ -1,6 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
-import { CircleAlert, Search, UserPlus } from 'lucide-react';
+import { CircleAlert, Search, UserPlus, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { PageHeader } from '@/components/care/page-header';
 import { EmptyState } from '@/components/care/section';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -62,43 +63,48 @@ export default function ResidentIndex({ residents, canCreate }: Props) {
             <Head title="利用者一覧" />
 
             <div className="flex flex-col gap-4 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <h1 className="text-lg font-semibold">
-                        利用者一覧
-                        <span className="text-muted-foreground ml-2 text-sm font-normal">
+                <PageHeader
+                    icon={Users}
+                    title="利用者一覧"
+                    meta={
+                        <span className="text-muted-foreground text-sm">
                             {filtered.length} 名
                         </span>
-                    </h1>
+                    }
+                    actions={
+                        <>
+                            <div className="relative w-full sm:w-72">
+                                <Search
+                                    className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+                                    aria-hidden
+                                />
+                                <Input
+                                    value={keyword}
+                                    onChange={(event) =>
+                                        setKeyword(event.target.value)
+                                    }
+                                    placeholder="お名前・カナ・要介護度で絞り込む"
+                                    className="pl-9"
+                                    aria-label="ご利用者の絞り込み"
+                                />
+                            </div>
 
-                    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-                        <div className="relative w-full sm:w-72">
-                            <Search
-                                className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-                                aria-hidden
-                            />
-                            <Input
-                                value={keyword}
-                                onChange={(event) =>
-                                    setKeyword(event.target.value)
-                                }
-                                placeholder="お名前・カナ・要介護度で絞り込む"
-                                className="pl-9"
-                                aria-label="ご利用者の絞り込み"
-                            />
-                        </div>
-
-                        {/* 介護職員には出さない。新規のご利用者を迎えるのは
-                            契約の手続きで、生活相談員以上の仕事である。 */}
-                        {canCreate && (
-                            <Button size="sm" asChild>
-                                <Link href={residentRoutes.create()}>
-                                    <UserPlus className="size-4" aria-hidden />
-                                    利用者を登録
-                                </Link>
-                            </Button>
-                        )}
-                    </div>
-                </div>
+                            {/* 介護職員には出さない。新規のご利用者を迎えるのは
+                                契約の手続きで、生活相談員以上の仕事である。 */}
+                            {canCreate && (
+                                <Button size="sm" asChild>
+                                    <Link href={residentRoutes.create()}>
+                                        <UserPlus
+                                            className="size-4"
+                                            aria-hidden
+                                        />
+                                        利用者を登録
+                                    </Link>
+                                </Button>
+                            )}
+                        </>
+                    }
+                />
 
                 {filtered.length === 0 ? (
                     <Card>

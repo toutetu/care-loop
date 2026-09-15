@@ -129,7 +129,7 @@ export default function ResidentShow({
                     <CardContent className="py-1">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                             <div>
-                                <h1 className="text-lg font-semibold">
+                                <h1 className="text-xl font-bold tracking-tight">
                                     {resident.name} 様
                                 </h1>
                                 <p className="text-muted-foreground text-sm">

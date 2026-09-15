@@ -1,5 +1,6 @@
 import { Head } from '@inertiajs/react';
-import { RefreshCw, TriangleAlert } from 'lucide-react';
+import { RefreshCw, Sparkles, TriangleAlert } from 'lucide-react';
+import { PageHeader } from '@/components/care/page-header';
 import { EmptyState, Section, StatCard } from '@/components/care/section';
 import { Badge } from '@/components/ui/badge';
 import { dashboard } from '@/routes';
@@ -87,17 +88,22 @@ export default function LlmLogIndex({
             <Head title="AI利用ログ" />
 
             <div className="flex flex-col gap-4 p-4">
-                <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="text-lg font-semibold">AI利用ログ</h1>
-                    <Badge variant="outline">{summary.month}</Badge>
-                    {/* APIキーが未設定のときは FakeClient が動く。実際に課金される状態か
-                        どうかを、画面上ではっきりさせておく（要件定義 7.4節 #12）。 */}
-                    {summary.driver === 'fake' && (
-                        <Badge variant="secondary">
-                            デモモード（実際のAPIは呼び出していません）
-                        </Badge>
-                    )}
-                </div>
+                <PageHeader
+                    icon={Sparkles}
+                    title="AI利用ログ"
+                    meta={
+                        <>
+                            <Badge variant="outline">{summary.month}</Badge>
+                            {/* APIキーが未設定のときは FakeClient が動く。実際に課金される
+                                状態かどうかを、画面上ではっきりさせておく（要件定義 7.4節 #12）。 */}
+                            {summary.driver === 'fake' && (
+                                <Badge variant="secondary">
+                                    デモモード（実際のAPIは呼び出していません）
+                                </Badge>
+                            )}
+                        </>
+                    }
+                />
 
                 <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                     <StatCard
@@ -113,7 +119,7 @@ export default function LlmLogIndex({
                                 : '—'
                         }
                         hint={`失敗 ${summary.failed} 件`}
-                        tone={summary.failed > 0 ? 'alert' : 'default'}
+                        tone={summary.failed > 0 ? 'warning' : 'default'}
                     />
                     <StatCard
                         label="今月の利用料"
