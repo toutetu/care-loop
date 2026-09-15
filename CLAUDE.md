@@ -30,6 +30,7 @@
 ```bash
 PATH="/c/Users/r0110/.config/herd/bin/php84:$PATH" npm run build
 ```
+
 - ブラウザで確かめるときは `.claude/launch.json` の `care-loop`（`artisan serve --port=8000`）。
 
 ## 変更後に必ず通すもの
