@@ -9,6 +9,7 @@ use App\Models\LlmJob;
 use App\Models\Resident;
 use App\Models\ServiceRecord;
 use App\Models\User;
+use App\Support\QueueHeartbeat;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
@@ -148,5 +149,59 @@ class LlmJobIndexTest extends TestCase
     public function test_未ログインでは開けない(): void
     {
         $this->get('/llm-jobs')->assertRedirect();
+    }
+
+    // ---------------------------------------------------------------
+    // ワーカーが止まっているとき
+    // ---------------------------------------------------------------
+
+    public function test_処理が始まらないジョブには警告を添える(): void
+    {
+        // 「待てば終わる」と「待っても終わらない」を同じ見た目にしない
+        LlmJob::factory()->create([
+            'requested_by' => $this->staff->id,
+            'status' => LlmJobStatus::Queued,
+            'created_at' => now()->subSeconds(LlmJob::DELAYED_AFTER_SECONDS + 1),
+        ]);
+
+        $this->actingAs($this->staff)->get('/llm-jobs')
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('jobs.data.0.statusLabel', '待機中')
+                ->where('jobs.data.0.isDelayed', true)
+            );
+    }
+
+    public function test_見捨てたジョブは失敗として出す(): void
+    {
+        LlmJob::factory()->create([
+            'requested_by' => $this->staff->id,
+            'status' => LlmJobStatus::Queued,
+            'created_at' => now()->subSeconds(LlmJob::ABANDON_QUEUED_AFTER_SECONDS + 1),
+        ]);
+
+        $this->actingAs($this->staff)->get('/llm-jobs')
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('jobs.data.0.status', 'failed')
+                ->where('jobs.data.0.isDelayed', false)
+                ->where('jobs.data.0.errorLabel', 'キュー停止')
+                ->where('jobs.data.0.needsOperatorAttention', true)
+            );
+    }
+
+    public function test_ワーカーの最終稼働を出す(): void
+    {
+        // ワーカーが止まっていることに、画面から気づけるようにする
+        $this->actingAs($this->staff)->get('/llm-jobs')
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('worker.lastSeenAt', null)
+                ->where('worker.connection', 'sync')
+            );
+
+        QueueHeartbeat::touch();
+
+        $this->actingAs($this->staff)->get('/llm-jobs')
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('worker.lastSeenAt', fn (?string $value) => $value !== null)
+            );
     }
 }

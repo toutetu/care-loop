@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import LlmActionController from '@/actions/App/Http/Controllers/LlmActionController';
 import ServiceRecordController from '@/actions/App/Http/Controllers/ServiceRecordController';
 import { RecordStatusBadge } from '@/components/care/badges';
+import { LlmJobNotice } from '@/components/care/llm-job-notice';
 import { Section } from '@/components/care/section';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
@@ -29,10 +30,12 @@ import {
 } from '@/components/ui/select';
 import { NOTICE_SURFACE } from '@/lib/care-presentation';
 import { cn } from '@/lib/utils';
+import { useLlmJobPolling } from '@/hooks/use-llm-job';
 import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
 import { dashboard } from '@/routes';
 import records from '@/routes/records';
 import residentRoutes from '@/routes/residents';
+import type { LlmJobSummary } from '@/types/care';
 
 type RecordProps = {
     id: number;
@@ -98,6 +101,8 @@ type Props = {
     verbalContacts: { id: number; topic: string; reason: string | null }[];
     mealForms: string[];
     bathingTypes: { value: string; label: string }[];
+    /** 三面変換の最新ジョブ。実行中の表示と、完了・失敗の通知に使う。 */
+    llmJob: LlmJobSummary | null;
     /**
      * 書き換えられるか。
      *
@@ -119,8 +124,19 @@ export default function RecordEdit({
     verbalContacts,
     mealForms,
     bathingTypes,
+    llmJob,
     canEdit,
 }: Props) {
+    // 変換はキューで動く。実行中のあいだだけ記録を読み直し、終わったら
+    // 通知を出す。3つの文章は key を値に結びつけてあるので、届けば差し替わる。
+    useLlmJobPolling(
+        llmJob,
+        ['llmJob', 'record', 'verbalContacts'],
+        `record-${record.id}`,
+    );
+
+    const transforming = llmJob?.isActive ?? false;
+
     // 入力欄は毎回空から始める。前に入れた分は下の一覧に残っているので、
     // 欄に残しておくと、同じ内容をもう一度積んでしまう。
     const [rawNote, setRawNote] = useState('');
@@ -344,21 +360,25 @@ export default function RecordEdit({
                                             name="raw_note"
                                             value={rawNote}
                                         />
+                                        {/* 受け付けたあともワーカーが動いているあいだは
+                                            押させない。押した回数だけ積まれ、
+                                            その数だけ費用がかかる。 */}
                                         <Button
                                             type="submit"
-                                            pending={processing}
+                                            pending={processing || transforming}
                                             disabled={
                                                 processing ||
+                                                transforming ||
                                                 rawNote.trim() === ''
                                             }
                                         >
-                                            {!processing && (
+                                            {!processing && !transforming && (
                                                 <Sparkles
                                                     className="size-4"
                                                     aria-hidden
                                                 />
                                             )}
-                                            {processing
+                                            {processing || transforming
                                                 ? '変換しています…'
                                                 : '記録・ご家族向け・申し送りに変換'}
                                         </Button>
@@ -366,6 +386,8 @@ export default function RecordEdit({
                                 )}
                             </Form>
                         )}
+
+                        <LlmJobNotice job={llmJob} />
                     </div>
                 </Section>
 

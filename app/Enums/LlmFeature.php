@@ -42,4 +42,33 @@ enum LlmFeature: string
     {
         return (int) (config("llm.max_tokens.{$this->value}") ?? config('llm.max_tokens.default'));
     }
+
+    /**
+     * 受け付けた直後に画面へ出す文言。
+     *
+     * 実行はキューで行うため、押した時点では結果がない。「受け付けた」ことと
+     * 「待てば画面が変わる」ことの両方を伝えないと、職員はもう一度押す。
+     */
+    public function acceptedMessage(): string
+    {
+        return match ($this) {
+            self::VoiceTransform => '変換を受け付けました。完了すると3つの文章がこの画面に表示されます。',
+            self::RiskDetection => 'リスク兆候の抽出を受け付けました。完了すると結果がこの画面に表示されます。',
+            self::GoalProgress => '目標進捗の要約を受け付けました。完了すると結果がこの画面に表示されます。',
+            self::Handover, self::FamilyReport => "{$this->label()}を受け付けました。",
+        };
+    }
+
+    /**
+     * 完了したときに画面へ出す文言。次に職員がすべきこと（確認）まで書く。
+     */
+    public function completedMessage(): string
+    {
+        return match ($this) {
+            self::VoiceTransform => '記録・ご家族向け・申し送りの3つの文章を生成しました。内容をご確認ください。',
+            self::RiskDetection => 'リスク兆候を抽出しました。根拠の記録を確認してから対応をご判断ください。',
+            self::GoalProgress => '目標進捗の要約を作成しました。モニタリング記録へ転記する前にご確認ください。',
+            self::Handover, self::FamilyReport => "{$this->label()}が完了しました。内容をご確認ください。",
+        };
+    }
 }

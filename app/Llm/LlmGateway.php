@@ -68,13 +68,13 @@ final class LlmGateway
         $networkRetries = 0;
         $correctionUsed = false;
 
-        // 合計時間の締切。再試行と訂正が重なって数分に達すると、その前に
-        // 手前のゲートウェイが切り、職員には英語のエラーページだけが出る。
+        // 合計時間の締切。再試行と訂正が重なって数分に達すると、キューワーカーが
+        // ジョブごと打ち切る。その前にアプリ側で失敗を確定させ、日本語の案内を出す。
         $deadlineAt = now()->addSeconds(max(1, (int) config('llm.deadline')));
 
         while (true) {
             try {
-                $response = $this->attempt($current, $networkRetries, $job);
+                $response = $this->attempt($this->boundedByDeadline($current, $deadlineAt), $networkRetries, $job);
 
                 return $this->validator->validate($response, $schema);
             } catch (LlmException $exception) {
@@ -103,6 +103,21 @@ final class LlmGateway
                 throw $exception;
             }
         }
+    }
+
+    /**
+     * 送信ごとの応答待ちを、締切までの残り時間に収める。
+     *
+     * 締切は「これ以上は送らない」という判断でしかない。送った直後に締切が
+     * 来ても、応答待ちの60秒はそのまま続く。残り時間より長く待たないように
+     * しておけば、合計時間が締切を大きく超えることはない。
+     */
+    private function boundedByDeadline(LlmRequest $request, CarbonInterface $deadlineAt): LlmRequest
+    {
+        $configured = max(1, (int) config('llm.timeout'));
+        $remaining = (int) ceil(now()->diffInMilliseconds($deadlineAt, absolute: false) / 1000);
+
+        return $request->withTimeout(min($configured, max(1, $remaining)));
     }
 
     /**

@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Enums\BathingType;
+use App\Enums\LlmFeature;
 use App\Enums\NoteInputMethod;
+use App\Http\Presenters\LlmJobSummary;
 use App\Http\Requests\UpdateServiceRecordRequest;
 use App\Models\Resident;
 use App\Models\ServiceRecord;
@@ -254,6 +256,8 @@ class ServiceRecordController extends Controller
                 'value' => $type->value,
                 'label' => $type->label(),
             ], BathingType::cases()),
+            // 三面変換はキューで動く。押したあとの進捗と、完了・失敗の通知に使う。
+            'llmJob' => LlmJobSummary::latestFor($serviceRecord, LlmFeature::VoiceTransform),
         ]);
     }
 

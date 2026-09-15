@@ -16,17 +16,24 @@ import {
     SourceBadge,
 } from '@/components/care/badges';
 import { EvidenceList } from '@/components/care/evidence-list';
+import { LlmJobNotice } from '@/components/care/llm-job-notice';
 import { EmptyState, Section } from '@/components/care/section';
 import { TrendChart } from '@/components/care/trend-chart';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { useLlmJobPolling } from '@/hooks/use-llm-job';
 import { NOTICE_SURFACE } from '@/lib/care-presentation';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import records from '@/routes/records';
 import residentRoutes from '@/routes/residents';
-import type { GoalProgress, RiskAssessment, VerbalContact } from '@/types/care';
+import type {
+    GoalProgress,
+    LlmJobSummary,
+    RiskAssessment,
+    VerbalContact,
+} from '@/types/care';
 
 type Resident = {
     id: number;
@@ -73,6 +80,11 @@ type Props = {
     riskAssessment: RiskAssessment | null;
     goalProgress: GoalProgress | null;
     verbalContacts: VerbalContact[];
+    /** AI処理の最新ジョブ。実行中の表示と、完了・失敗の通知に使う。 */
+    llmJobs: {
+        riskDetection: LlmJobSummary | null;
+        goalProgress: LlmJobSummary | null;
+    };
     /** ご利用者情報を編集できるか。生活相談員以上（ResidentPolicy）。 */
     canEdit: boolean;
 };
@@ -86,9 +98,26 @@ export default function ResidentShow({
     riskAssessment,
     goalProgress,
     verbalContacts,
+    llmJobs,
     canEdit,
 }: Props) {
     const latestLoss = weights.at(-1)?.lossRate ?? null;
+
+    // AI処理はキューで動く。実行中のあいだだけ結果の項目を読み直し、
+    // 終わったら通知を出す。押したこの画面で完結させる。
+    useLlmJobPolling(
+        llmJobs.riskDetection,
+        ['llmJobs', 'riskAssessment', 'verbalContacts'],
+        `resident-${resident.id}`,
+    );
+    useLlmJobPolling(
+        llmJobs.goalProgress,
+        ['llmJobs', 'goalProgress'],
+        `resident-${resident.id}`,
+    );
+
+    const detecting = llmJobs.riskDetection?.isActive ?? false;
+    const summarizing = llmJobs.goalProgress?.isActive ?? false;
 
     return (
         <>
@@ -224,18 +253,20 @@ export default function ResidentShow({
                             options={{ preserveScroll: true }}
                         >
                             {({ processing }) => (
+                                // 受け付けたあともワーカーが動いているあいだは押させない。
+                                // 押した回数だけ積まれ、その数だけ費用がかかる。
                                 <Button
                                     type="submit"
                                     size="sm"
-                                    pending={processing}
+                                    pending={processing || detecting}
                                 >
-                                    {!processing && (
+                                    {!processing && !detecting && (
                                         <Sparkles
                                             className="size-4"
                                             aria-hidden
                                         />
                                     )}
-                                    {processing
+                                    {processing || detecting
                                         ? '抽出しています…'
                                         : 'リスク兆候を抽出'}
                                 </Button>
@@ -243,6 +274,10 @@ export default function ResidentShow({
                         </Form>
                     }
                 >
+                    <LlmJobNotice
+                        job={llmJobs.riskDetection}
+                        className="mb-3"
+                    />
                     {riskAssessment === null ? (
                         <EmptyState>
                             上のボタンから抽出できます。数値の判定はルールベースで算出し、
@@ -346,21 +381,25 @@ export default function ResidentShow({
                                 <Button
                                     type="submit"
                                     size="sm"
-                                    pending={processing}
-                                    disabled={processing || carePlan === null}
+                                    pending={processing || summarizing}
+                                    disabled={
+                                        processing ||
+                                        summarizing ||
+                                        carePlan === null
+                                    }
                                     title={
                                         carePlan === null
                                             ? '有効な通所介護計画書がありません'
                                             : undefined
                                     }
                                 >
-                                    {!processing && (
+                                    {!processing && !summarizing && (
                                         <Sparkles
                                             className="size-4"
                                             aria-hidden
                                         />
                                     )}
-                                    {processing
+                                    {processing || summarizing
                                         ? '要約しています…'
                                         : '進捗を要約'}
                                 </Button>
@@ -368,6 +407,7 @@ export default function ResidentShow({
                         </Form>
                     }
                 >
+                    <LlmJobNotice job={llmJobs.goalProgress} className="mb-3" />
                     {goalProgress === null ? (
                         <EmptyState>
                             通所介護計画書の短期目標ごとに、記録から進捗を評価します。

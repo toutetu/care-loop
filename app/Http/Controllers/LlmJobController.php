@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\LlmErrorType;
 use App\Enums\LlmJobStatus;
 use App\Models\LlmJob;
 use App\Models\Resident;
 use App\Models\ServiceRecord;
 use App\Models\User;
+use App\Support\QueueHeartbeat;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -61,18 +61,31 @@ class LlmJobController extends Controller
             'counts' => $counts,
             'onlyFailed' => $onlyFailed,
             'canViewLlmLogs' => $user->role->canViewLlmLogs(),
+            /*
+             * ワーカーの生存。AI処理はキューで動くので、ワーカーが止まると
+             * 待機中が増えるだけで何も起きない。最終稼働時刻を出しておけば、
+             * 止まっていることに人が気づける。
+             */
+            'worker' => [
+                'connection' => (string) config('queue.default'),
+                'lastSeenAt' => QueueHeartbeat::lastSeenAt()?->translatedFormat('n月j日 H:i:s'),
+            ],
             'jobs' => [
                 'data' => array_values(collect($paginator->items())
                     ->map(fn (LlmJob $job): array => [
                         'id' => $job->id,
                         'feature' => $job->feature->label(),
                         'featureCode' => $job->feature->value,
-                        'status' => $job->status->value,
-                        'statusLabel' => $job->status->label(),
+                        // 見捨てたジョブは行の値が queued でも失敗として見せる
+                        'status' => $job->effectiveStatus()->value,
+                        'statusLabel' => $job->effectiveStatus()->label(),
+                        // 待機が長引いている。ワーカーが止まっている疑い
+                        'isDelayed' => $job->effectiveStatus()->isActive() && $job->isDelayed(),
                         'requester' => $job->requester?->name,
                         'attempts' => $job->attempts,
                         'durationSeconds' => $job->durationSeconds(),
                         'startedAt' => $job->started_at?->translatedFormat('n月j日 H:i'),
+                        'requestedAt' => $job->created_at->translatedFormat('n月j日 H:i'),
                         ...$this->errorOf($job),
                         ...$this->targetOf($job),
                     ])->all()),
@@ -93,11 +106,11 @@ class LlmJobController extends Controller
      */
     private function errorOf(LlmJob $job): array
     {
-        $type = $job->error_type !== null ? LlmErrorType::tryFrom($job->error_type) : null;
+        $type = $job->errorType();
 
         return [
             'errorLabel' => $type?->label(),
-            'errorMessage' => $type?->userMessage(),
+            'errorMessage' => $type !== null ? $job->userFacingError() : null,
             'isRetryable' => $type?->isRetryable() ?? false,
             'needsOperatorAttention' => $type?->needsOperatorAttention() ?? false,
         ];

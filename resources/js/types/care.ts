@@ -81,3 +81,27 @@ export type VerbalContact = {
     urgencyLabel: string;
     recordId: number | null;
 };
+
+export type LlmJobStatus = 'queued' | 'running' | 'succeeded' | 'failed';
+
+/**
+ * AI処理のジョブ1件の要約（App\Http\Presenters\LlmJobSummary と対応）。
+ *
+ * AI処理はキューで動く。押した画面はこの値をポーリングして、
+ * 実行中の表示と、完了・失敗の通知に使う。
+ */
+export type LlmJobSummary = {
+    id: number;
+    feature: string;
+    status: LlmJobStatus;
+    statusLabel: string;
+    /** 待機中または実行中。この間だけポーリングする。 */
+    isActive: boolean;
+    /** 待機が長引いている。ワーカーが止まっている可能性がある。 */
+    isDelayed: boolean;
+    waitingSeconds: number | null;
+    completedMessage: string | null;
+    errorMessage: string | null;
+    needsOperatorAttention: boolean;
+    finishedAt: string | null;
+};

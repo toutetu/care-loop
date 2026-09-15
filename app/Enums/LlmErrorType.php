@@ -46,6 +46,27 @@ enum LlmErrorType: string
      */
     case UnknownModel = 'unknown_model';
 
+    // --- APIを呼ぶ前に、アプリ側の理由で止まった ---
+
+    /**
+     * 実行に必要な材料が揃っていない。
+     *
+     * 音声の原文が空、有効な計画書がない、対象が削除済みなど。画面で先に
+     * 弾いているので、ここへ来るのはボタンを押してから実行されるまでの
+     * あいだに状況が変わったときに限られる。APIの失敗ではないため、
+     * リクエスト不正（HTTP 400）と混ぜない。
+     */
+    case Precondition = 'precondition_failed';
+
+    /**
+     * キューに積めなかった、または積んだまま処理が始まらなかった。
+     *
+     * ワーカーが止まっていると、ジョブは待機中のまま何も起きない。
+     * エラーも出ないため、放置すると「押したのに何も起きない」状態が
+     * 続く。一定時間で見切りをつけ、運用者の対応が要る失敗として残す。
+     */
+    case QueueUnavailable = 'queue_unavailable';
+
     /**
      * 同じ内容で再送する価値があるか。
      * 時間を置けば解消しうる一時的な失敗だけが true になる。
@@ -77,7 +98,7 @@ enum LlmErrorType: string
     public function needsOperatorAttention(): bool
     {
         return match ($this) {
-            self::Authentication, self::BudgetExceeded, self::UnknownModel => true,
+            self::Authentication, self::BudgetExceeded, self::UnknownModel, self::QueueUnavailable => true,
             default => false,
         };
     }
@@ -102,6 +123,8 @@ enum LlmErrorType: string
             self::BudgetExceeded => '今月のAI利用上限に達しました。管理者にご連絡ください。',
             self::NotConfigured => 'デモモードで動作しています。実際のAIは呼び出されていません。',
             self::UnknownModel => 'システム設定に問題があります。管理者にご連絡ください。',
+            self::Precondition => '実行に必要な情報が足りませんでした。画面の内容をご確認のうえ、もう一度お試しください。',
+            self::QueueUnavailable => 'AI処理を実行する仕組みが止まっています。管理者にご連絡ください。',
         };
     }
 
@@ -121,6 +144,8 @@ enum LlmErrorType: string
             self::BudgetExceeded => '予算上限超過',
             self::NotConfigured => 'APIキー未設定',
             self::UnknownModel => '料金表にないモデル',
+            self::Precondition => '前提条件の不足',
+            self::QueueUnavailable => 'キュー停止',
         };
     }
 
