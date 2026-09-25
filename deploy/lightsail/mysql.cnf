@@ -1,0 +1,19 @@
+# 1GB のサーバーで MySQL を小さく動かすための設定。
+#
+# setup.sh が /etc/mysql/mysql.conf.d/zz-careloop.cnf に置く（名前順で最後に読まれ、既定を上書きする）。
+#
+# 既定のままだと MySQL だけで数百 MB を使い、画面のビルドやキューワーカーとメモリを
+# 取り合う。デモのデータは小さいので、バッファを絞っても遅くはならない。
+
+[mysqld]
+performance_schema = OFF
+innodb_buffer_pool_size = 128M
+max_connections = 30
+table_open_cache = 400
+table_definition_cache = 400
+tmp_table_size = 16M
+max_heap_table_size = 16M
+key_buffer_size = 8M
+
+# 外からは接続させない。アプリは同じサーバーの中から使う。
+bind-address = 127.0.0.1
