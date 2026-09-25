@@ -180,6 +180,9 @@ final class DetectRisks
         ?LlmJob $job,
     ): RiskAssessment {
         return DB::transaction(function () use ($resident, $from, $to, $indicators, $result, $job): RiskAssessment {
+            // 職員が中止していれば、ここで抜けて何も書かない
+            $job?->claimCompletion();
+
             $llmRisks = is_array($result['risks'] ?? null) ? $result['risks'] : [];
 
             $assessment = RiskAssessment::create([

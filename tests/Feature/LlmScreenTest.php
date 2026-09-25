@@ -210,7 +210,7 @@ class LlmScreenTest extends TestCase
         $this->assertSame(0, LlmJob::query()->count());
     }
 
-    public function test_音声の原文がなければ実行しない(): void
+    public function test_確定した原文がなければ実行しない(): void
     {
         // 空の入力で呼び出しても意味がなく、費用だけがかかる
         $record = $this->recordWithRawNote(null);
@@ -218,29 +218,41 @@ class LlmScreenTest extends TestCase
         $this->actingAs($this->staff)
             ->from(route('records.edit', $record))
             ->post(route('llm.voice-transform', $record))
-            ->assertSessionHas('error', '先に音声入力または原文の入力を行ってください。');
+            ->assertSessionHas('error', '確定した原文がありません。音声入力の内容を「確定」してから、もう一度お試しください。');
 
         $this->assertSame(0, LlmJob::query()->count());
     }
 
-    public function test_保存していない原文でも変換できる(): void
+    public function test_書き直しは入力欄の内容を受け取らない(): void
     {
-        // 「保存してから変換」の2手順にすると、保存を忘れたまま押した職員には
-        // 何も起きていないように見える。押した時点の内容で動くのが自然である。
+        // 確定していない文は原文にしない。以前はこのボタンが保存も兼ねており、
+        // 聞き違いを直す前の文が、書き換えられない原文として残ったうえで
+        // そのままAIへ送られていた。
         Queue::fake();
 
         $record = $this->recordWithRawNote(null);
 
-        $this->actingAs($this->staff)->post(route('llm.voice-transform', $record), [
-            'raw_note' => 'えーっと 午前中は体操に参加されて',
-        ]);
+        $this->actingAs($this->staff)
+            ->from(route('records.edit', $record))
+            ->post(route('llm.voice-transform', $record), [
+                'raw_note' => 'えーっと 午前中は体操に参加されて',
+            ])
+            ->assertSessionHas('error');
 
-        // 原文は変換の前に保存される。AIが何を変えたのかを後から検証するには、
-        // 変換に使った文章が残っている必要がある。
-        $this->assertSame(
-            'えーっと 午前中は体操に参加されて',
-            $record->refresh()->load('notes')->combinedNoteText(),
-        );
+        $this->assertSame(0, $record->notes()->count());
+        $this->assertSame(0, LlmJob::query()->count());
+        Queue::assertNothingPushed();
+    }
+
+    public function test_確定した原文があれば書き直しを受け付ける(): void
+    {
+        Queue::fake();
+
+        $record = $this->recordWithRawNote('えーっと 午前中は体操に参加されて');
+
+        $this->actingAs($this->staff)
+            ->post(route('llm.voice-transform', $record))
+            ->assertSessionHas('success', LlmFeature::VoiceTransform->acceptedMessage());
 
         $this->assertSame(1, LlmJob::query()->count());
         Queue::assertPushed(RunLlmFeature::class);
@@ -424,6 +436,141 @@ class LlmScreenTest extends TestCase
                 ->where('llmJobs.riskDetection.completedMessage', LlmFeature::RiskDetection->completedMessage())
                 ->where('llmJobs.riskDetection.errorMessage', null)
             );
+    }
+
+    // ---------------------------------------------------------------
+    // 中止（押し間違いの取り消し）
+    // ---------------------------------------------------------------
+
+    public function test_待機中の書き直しを中止するとaiは呼ばれない(): void
+    {
+        $this->mock(LlmClient::class, function (Mockery\MockInterface $mock): void {
+            $mock->shouldNotReceive('send');
+        });
+
+        $record = $this->recordWithRawNote('午前中は体操に参加');
+        $job = $this->queuedJob(LlmFeature::VoiceTransform, $record);
+
+        $this->actingAs($this->staff)
+            ->from(route('records.edit', $record))
+            ->post(route('llm.cancel', $job))
+            ->assertRedirect(route('records.edit', $record))
+            // 中止になったことは、画面がジョブの状態から伝える。
+            // ここでも通知すると同じ知らせが2つ並ぶ。
+            ->assertSessionMissing('error')
+            ->assertSessionMissing('success');
+
+        $this->assertSame(LlmJobStatus::Cancelled, $job->refresh()->status);
+
+        // あとからワーカーが拾っても、APIは呼ばず記録も変えない
+        $this->app->call([new RunLlmFeature($job->id), 'handle']);
+
+        $this->assertSame(LlmJobStatus::Cancelled, $job->refresh()->status);
+        $this->assertNull($record->refresh()->record_text);
+    }
+
+    public function test_中止したジョブは失敗ではなく中止として画面に渡る(): void
+    {
+        $record = $this->recordWithRawNote('午前中は体操に参加');
+        $this->queuedJob(LlmFeature::VoiceTransform, $record)->cancel();
+
+        $this->actingAs($this->staff)->get(route('records.edit', $record))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('llmJob.status', 'cancelled')
+                ->where('llmJob.statusLabel', '中止')
+                ->where('llmJob.isActive', false)
+                ->where('llmJob.cancelledMessage', LlmFeature::VoiceTransform->cancelledMessage())
+                // 赤い通知も「管理者にご連絡ください」も出さない
+                ->where('llmJob.errorMessage', null)
+                ->where('llmJob.needsOperatorAttention', false)
+            );
+    }
+
+    public function test_中止したらすぐに同じ記録で書き直しを頼める(): void
+    {
+        // 中止したジョブまで実行中に数えると、押し直せなくなる
+        Queue::fake();
+
+        $record = $this->recordWithRawNote('午前中は体操に参加');
+        $this->queuedJob(LlmFeature::VoiceTransform, $record)->cancel();
+
+        $this->actingAs($this->staff)
+            ->post(route('llm.voice-transform', $record))
+            ->assertSessionHas('success', LlmFeature::VoiceTransform->acceptedMessage());
+
+        $this->assertSame(2, LlmJob::query()->count());
+    }
+
+    public function test_終わったあとの中止は間に合わなかったことを伝える(): void
+    {
+        // 結果がもう反映されているのに黙って戻ると、職員は止まったと思って
+        // 書き直された文章を確かめない。
+        $record = $this->recordWithRawNote('午前中は体操に参加');
+        $job = $this->queuedJob(LlmFeature::VoiceTransform, $record, [
+            'status' => LlmJobStatus::Succeeded,
+            'finished_at' => now(),
+        ]);
+
+        $this->actingAs($this->staff)
+            ->from(route('records.edit', $record))
+            ->post(route('llm.cancel', $job))
+            ->assertRedirect(route('records.edit', $record))
+            ->assertSessionHas('error', fn (string $message): bool => str_starts_with($message, '中止が間に合いませんでした。'));
+
+        $this->assertSame(LlmJobStatus::Succeeded, $job->refresh()->status);
+    }
+
+    public function test_失敗で終わったジョブの中止は何も言わずに戻る(): void
+    {
+        // 失敗は画面がジョブの状態から伝える。中止の側で重ねて知らせない。
+        $record = $this->recordWithRawNote('午前中は体操に参加');
+        $job = $this->queuedJob(LlmFeature::VoiceTransform, $record, [
+            'status' => LlmJobStatus::Failed,
+            'error_type' => 'rate_limit_error',
+            'finished_at' => now(),
+        ]);
+
+        $this->actingAs($this->staff)
+            ->post(route('llm.cancel', $job))
+            ->assertSessionMissing('error');
+
+        $this->assertSame(LlmJobStatus::Failed, $job->refresh()->status);
+    }
+
+    public function test_押した本人でなくても同じ事業所の職員なら中止できる(): void
+    {
+        // 押し間違いに気づくのは、押した本人とは限らない
+        $record = $this->recordWithRawNote('午前中は体操に参加');
+        $job = $this->queuedJob(LlmFeature::VoiceTransform, $record);
+
+        $this->actingAs($this->admin)->post(route('llm.cancel', $job));
+
+        $this->assertSame(LlmJobStatus::Cancelled, $job->refresh()->status);
+    }
+
+    public function test_ご利用者に対するai処理も中止できる(): void
+    {
+        $resident = Resident::factory()->for($this->facility)->create();
+        $job = $this->queuedJob(LlmFeature::GoalProgress, $resident);
+
+        $this->actingAs($this->staff)
+            ->from(route('residents.show', $resident))
+            ->post(route('llm.cancel', $job))
+            ->assertRedirect(route('residents.show', $resident));
+
+        $this->assertSame(LlmJobStatus::Cancelled, $job->refresh()->status);
+    }
+
+    public function test_別の事業所のai処理は中止できない(): void
+    {
+        $outsider = Resident::factory()->for(Facility::factory()->create())->create();
+        $job = $this->queuedJob(LlmFeature::RiskDetection, $outsider);
+
+        $this->actingAs($this->staff)
+            ->post(route('llm.cancel', $job))
+            ->assertForbidden();
+
+        $this->assertSame(LlmJobStatus::Queued, $job->refresh()->status);
     }
 
     // ---------------------------------------------------------------

@@ -40,6 +40,8 @@ final class LlmJobSummary
             'waitingSeconds' => $status->isActive() ? $job->waitingSeconds() : null,
             'completedMessage' => $status === LlmJobStatus::Succeeded ? $job->feature->completedMessage() : null,
             'errorMessage' => $status === LlmJobStatus::Failed ? $job->userFacingError() : null,
+            // 中止は失敗ではない。赤い通知ではなく、何も変わっていないことを伝える
+            'cancelledMessage' => $status === LlmJobStatus::Cancelled ? $job->feature->cancelledMessage() : null,
             'needsOperatorAttention' => $job->errorType()?->needsOperatorAttention() ?? false,
             'finishedAt' => $job->finished_at?->translatedFormat('n月j日 H:i'),
         ];

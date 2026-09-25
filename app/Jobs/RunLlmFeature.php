@@ -6,6 +6,7 @@ use App\Enums\LlmErrorType;
 use App\Enums\LlmFeature;
 use App\Enums\LlmJobStatus;
 use App\Llm\Exceptions\LlmException;
+use App\Llm\Exceptions\LlmJobCancelled;
 use App\Llm\UseCases\DetectRisks;
 use App\Llm\UseCases\SummarizeGoalProgress;
 use App\Llm\UseCases\TransformVoiceNote;
@@ -42,6 +43,11 @@ use Throwable;
  * どの失敗も例外を外へ出さず、llm_jobs に種別つきで記録する。画面はそれを
  * 読んで日本語の案内を出す。例外を投げ直しても、見る人がいない
  * failed_jobs に溜まるだけになる。
+ *
+ * 【中止されたら手を引く】
+ * 職員は終わる前ならいつでも中止できる。拾う前に中止されていればAPIを
+ * 呼ばない。実行中に中止されたら、再送せず（LlmGateway）、結果も記録へ
+ * 書き込まない（LlmJob::claimCompletion）。どちらの場合も行は中止のまま残す。
  */
 final class RunLlmFeature implements ShouldQueue
 {
@@ -67,8 +73,8 @@ final class RunLlmFeature implements ShouldQueue
 
         $job = LlmJob::query()->find($this->llmJobId);
 
-        // 行が消えている、または別のワーカーがすでに処理した（同じジョブが
-        // 二重に配られることはありうる）。二度目のAPI呼び出しをしない。
+        // 行が消えている、別のワーカーがすでに処理した（同じジョブが二重に
+        // 配られることはありうる）、または職員が中止した。APIを呼ばない。
         if ($job === null || $job->status !== LlmJobStatus::Queued) {
             return;
         }
@@ -87,7 +93,10 @@ final class RunLlmFeature implements ShouldQueue
             return;
         }
 
-        $job->markRunning();
+        // 上で読んでからここまでのあいだに中止されていれば、進めずに終える
+        if (! $job->markRunning()) {
+            return;
+        }
 
         try {
             $result = match ($job->feature) {
@@ -99,6 +108,9 @@ final class RunLlmFeature implements ShouldQueue
             };
 
             $job->markSucceeded($result);
+        } catch (LlmJobCancelled) {
+            // 職員が途中で中止した。結果は記録へ書き込んでおらず、行はすでに
+            // 中止になっている。失敗として記録し直さない。
         } catch (LlmException $exception) {
             // 種別ごとの文面は列挙型が持っている。ここで分岐すると、
             // 判断基準が2か所に散らばる。

@@ -163,11 +163,18 @@ final class TransformVoiceNote
     /**
      * 結果を記録へ反映する。
      *
+     * 【中止されていたら書き換えない】
+     * 反映は、職員が直した3つの文章を置き換え、確定も外す。押し間違いに
+     * 気づいて中止した職員の文章を、中止のあとで上書きしてはいけない。
+     * 中止の確認と反映を同じトランザクションで行う（LlmJob::claimCompletion）。
+     *
      * @param  array<string, mixed>  $result
      */
     private function apply(ServiceRecord $record, array $result, ?LlmJob $job): void
     {
         DB::transaction(function () use ($record, $result, $job): void {
+            $job?->claimCompletion();
+
             $record->forceFill([
                 'record_text' => $this->stringOf($result, 'record_text'),
                 'family_text' => $this->stringOf($result, 'family_text'),

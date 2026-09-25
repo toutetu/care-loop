@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Enums\BathingType;
 use App\Enums\LlmFeature;
-use App\Enums\NoteInputMethod;
 use App\Http\Presenters\LlmJobSummary;
 use App\Http\Requests\UpdateServiceRecordRequest;
 use App\Models\Resident;
@@ -295,8 +294,9 @@ class ServiceRecordController extends Controller
             $serviceRecord->recorded_by ??= $userId;
             $serviceRecord->save();
 
-            // 原文は書き換えず1件として積む。誰が入れたかを行ごとに残す。
-            $this->saveNote($serviceRecord, $data, $userId);
+            // 音声入力の原文はここでは受け取らない。音声欄の「確定」で1件ずつ
+            // 積む（RecordNoteController）。この保存でまとめて送ると、直している
+            // 途中の文まで、書き換えられない原文として残ってしまう。
 
             $this->saveVital($serviceRecord, $data['vital'] ?? [], $userId);
             $this->saveLunch($serviceRecord, $data['lunch'] ?? [], $userId);
@@ -326,48 +326,6 @@ class ServiceRecordController extends Controller
                 $record->{$column.'_edited_by_human'} = true;
             }
         }
-    }
-
-    /**
-     * バイタルは1件だけ扱う。
-     *
-     * 入浴前後で複数回測る事業所もあるため vital_signs は複数行を持てる構造だが、
-     * この画面では到着時の1件を編集する。複数回の測定はこの画面の役割ではない。
-     *
-     * @param  array<string, mixed>  $values
-     */
-    /**
-     * 原文を1件足す。
-     *
-     * 同じ内容が続けて送られたときだけ捨てる。保存を押し直しただけで同じ文が
-     * 二重に積まれるのを防ぐためで、内容が違えば必ず別の1件として残す。
-     */
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    private function saveNote(ServiceRecord $record, array $data, ?int $userId): void
-    {
-        $body = trim((string) ($data['raw_note'] ?? ''));
-
-        if ($body === '') {
-            return;
-        }
-
-        $record->loadMissing('notes');
-
-        if (trim((string) $record->notes->last()?->body) === $body) {
-            return;
-        }
-
-        $record->notes()->create([
-            'recorded_by' => $userId,
-            'body' => $body,
-            'input_method' => ($data['input_method'] ?? null) === 'voice'
-                ? NoteInputMethod::Voice
-                : NoteInputMethod::Keyboard,
-        ]);
-
-        $record->unsetRelation('notes');
     }
 
     /**

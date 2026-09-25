@@ -322,22 +322,16 @@ class ServiceRecordScreenTest extends TestCase
             ->assertSessionHasErrors('departure_time');
     }
 
-    public function test_原文は保存できるが記録として確定はしない(): void
+    public function test_記録の保存では原文を受け取らない(): void
     {
-        // 原文は音声入力の未加工のテキスト。AIが何を変えたのかを
-        // 後から検証できるよう、書き換えずに1件として積む。
+        // 原文は音声欄の「確定」で1件ずつ積む（RecordNoteTest）。下の保存で
+        // まとめて送ると、直している途中の文まで、書き換えられない原文として残る。
         $this->actingAs($this->staff)->put($this->updateUrl(), [
             'attendance_status' => 'attended',
             'raw_note' => 'えーっと 午前中は体操に参加されて',
-        ]);
+        ])->assertSessionHasNoErrors();
 
-        $this->record->refresh();
-
-        $note = $this->record->notes()->sole();
-
-        $this->assertSame('えーっと 午前中は体操に参加されて', $note->body);
-        $this->assertSame($this->staff->id, $note->recorded_by, '誰が入れたかが残る');
-        $this->assertNull($this->record->confirmed_at);
+        $this->assertSame(0, $this->record->notes()->count());
     }
 
     // ---------------------------------------------------------------

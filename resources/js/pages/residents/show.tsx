@@ -274,8 +274,11 @@ export default function ResidentShow({
                         </Form>
                     }
                 >
+                    {/* この画面を開ける職員は、誰でもAIを実行できる
+                        （ResidentPolicy::runLlm）。中止も同じ範囲にそろえる。 */}
                     <LlmJobNotice
                         job={llmJobs.riskDetection}
+                        cancellable
                         className="mb-3"
                     />
                     {riskAssessment === null ? (
@@ -407,7 +410,11 @@ export default function ResidentShow({
                         </Form>
                     }
                 >
-                    <LlmJobNotice job={llmJobs.goalProgress} className="mb-3" />
+                    <LlmJobNotice
+                        job={llmJobs.goalProgress}
+                        cancellable
+                        className="mb-3"
+                    />
                     {goalProgress === null ? (
                         <EmptyState>
                             通所介護計画書の短期目標ごとに、記録から進捗を評価します。

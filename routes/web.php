@@ -7,6 +7,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LlmActionController;
 use App\Http\Controllers\LlmJobController;
 use App\Http\Controllers\LlmLogController;
+use App\Http\Controllers\RecordNoteController;
 use App\Http\Controllers\ResidentController;
 use App\Http\Controllers\ServiceRecordController;
 use App\Http\Controllers\StaffController;
@@ -64,9 +65,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('records/{serviceRecord}/edit', [ServiceRecordController::class, 'edit'])->name('records.edit');
     Route::put('records/{serviceRecord}', [ServiceRecordController::class, 'update'])->name('records.update');
 
+    // 音声入力の原文を1件確定する。AIの書き直しとは別の操作にしてある
+    // （RecordNoteController）。
+    Route::post('records/{serviceRecord}/notes', [RecordNoteController::class, 'store'])
+        ->name('records.notes.store');
+
     // 日次の連絡帳（F-16）。送迎時にお渡しする1枚。
     Route::get('records/{serviceRecord}/family-report', [DailyFamilyReportController::class, 'show'])
         ->name('records.family-report');
+
+    /*
+     * AI処理の中止（押し間違いの取り消し）。
+     *
+     * 下の実行と違って費用を増やす操作ではないので、流量の制限はかけない。
+     * 制限にかかって中止できないと、止めたかった書き直しがそのまま
+     * 記録に反映される。
+     */
+    Route::post('llm-jobs/{llmJob}/cancel', [LlmActionController::class, 'cancel'])
+        ->name('llm.cancel');
 
     /*
      * AI機能の実行。

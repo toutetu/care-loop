@@ -7,6 +7,7 @@ use App\Llm\Contracts\LlmClient;
 use App\Llm\Data\LlmRequest;
 use App\Llm\Data\LlmResponse;
 use App\Llm\Exceptions\LlmException;
+use App\Llm\Exceptions\LlmJobCancelled;
 use App\Llm\Support\ResponseValidator;
 use App\Models\LlmJob;
 use App\Models\LlmRequest as LlmRequestRecord;
@@ -39,6 +40,11 @@ use Illuminate\Support\Sleep;
  * 【実行前に予算を確認する】
  * 月次上限に達していたら、APIを呼ぶ前に止める。
  * 呼んでから気づいたのでは手遅れになる。
+ *
+ * 【中止されたら、それ以上送らない】
+ * 送信のたびにジョブが中止されていないかを確かめ、中止されていれば
+ * LlmJobCancelled を投げる。再送の待ち時間のあいだに押された中止でも、
+ * 次の送信は行わない。
  */
 final class LlmGateway
 {
@@ -55,6 +61,7 @@ final class LlmGateway
      * @return array<string, mixed>
      *
      * @throws LlmException
+     * @throws LlmJobCancelled
      */
     public function send(LlmRequest $request, array $schema, ?LlmJob $job = null): array
     {
@@ -73,6 +80,13 @@ final class LlmGateway
         $deadlineAt = now()->addSeconds(max(1, (int) config('llm.deadline')));
 
         while (true) {
+            // 送るたびに、職員が中止していないかを確かめる。応答を待っている
+            // 途中の送信は止められないが、次の再送や修正の再実行は止められる。
+            // 中止のあとに送った分は、結果を使わないのに課金だけされる。
+            if ($job !== null && $job->wasCancelled()) {
+                throw LlmJobCancelled::forJob($job->id);
+            }
+
             try {
                 $response = $this->attempt($this->boundedByDeadline($current, $deadlineAt), $networkRetries, $job);
 
