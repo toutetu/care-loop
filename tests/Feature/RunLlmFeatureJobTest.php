@@ -2,11 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Enums\LlmErrorType;
 use App\Enums\LlmFeature;
 use App\Enums\LlmJobStatus;
 use App\Enums\NoteInputMethod;
 use App\Jobs\RunLlmFeature;
+use App\Llm\Clients\FakeClient;
 use App\Llm\Contracts\LlmClient;
+use App\Llm\Data\LlmRequest as LlmRequestData;
+use App\Llm\Data\LlmResponse;
 use App\Llm\Exceptions\LlmException;
 use App\Models\CarePlan;
 use App\Models\CarePlanGoal;
@@ -18,6 +22,7 @@ use App\Models\Resident;
 use App\Models\RiskAssessment;
 use App\Models\ServiceRecord;
 use App\Models\User;
+use App\Models\VerbalContactTask;
 use App\Support\QueueHeartbeat;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -272,6 +277,147 @@ class RunLlmFeatureJobTest extends TestCase
     }
 
     // ---------------------------------------------------------------
+    // 中止（押し間違いの取り消し）
+    // ---------------------------------------------------------------
+
+    public function test_待機中に中止されたジョブはapiを呼ばない(): void
+    {
+        $this->mock(LlmClient::class, function (Mockery\MockInterface $mock): void {
+            $mock->shouldNotReceive('send');
+        });
+
+        $resident = Resident::factory()->for($this->facility)->create();
+        $job = $this->queuedJob(LlmFeature::RiskDetection, $resident, withPeriod: true);
+        $job->cancel();
+
+        $this->execute($job);
+
+        $job->refresh();
+
+        $this->assertSame(LlmJobStatus::Cancelled, $job->status);
+        $this->assertSame(0, $job->attempts);
+        $this->assertSame(0, RiskAssessment::query()->count());
+    }
+
+    public function test_拾ってから始めるまでのあいだに中止されたら始めない(): void
+    {
+        // ワーカーは行を読んでから実行中に進める。そのあいだに通った中止を、
+        // 読んだときの値で上書きしてはいけない。
+        $resident = Resident::factory()->for($this->facility)->create();
+        $job = $this->queuedJob(LlmFeature::RiskDetection, $resident, withPeriod: true);
+
+        $seenByWorker = LlmJob::query()->findOrFail($job->id);
+        $job->cancel();
+
+        $this->assertFalse($seenByWorker->markRunning());
+        $this->assertSame(LlmJobStatus::Cancelled, $seenByWorker->status, '手元の値も行に合わせる');
+        $this->assertSame(LlmJobStatus::Cancelled, $job->refresh()->status);
+    }
+
+    public function test_応答を待つあいだに中止されたら結果を記録へ書き込まない(): void
+    {
+        // AIの書き直しは、職員が直した文章を置き換えて確定も外す。
+        // 押し間違いに気づいて止めたのに、あとから上書きされてはいけない。
+        $record = $this->recordWithRawNote('えーっと 入浴のとき 浴槽またぐの 右足あがり悪くて');
+        $record->forceFill([
+            'record_text' => '職員が直した記録の文章',
+            'record_text_edited_by_human' => true,
+            'confirmed_at' => now(),
+        ])->save();
+
+        $job = $this->queuedJob(LlmFeature::VoiceTransform, $record);
+        $this->cancelWhileWaiting($job);
+
+        $this->execute($job);
+
+        $job->refresh();
+        $record->refresh();
+
+        $this->assertSame(LlmJobStatus::Cancelled, $job->status);
+        $this->assertNull($job->error_type, '失敗としては記録しない');
+        $this->assertSame('職員が直した記録の文章', $record->record_text);
+        $this->assertTrue($record->record_text_edited_by_human);
+        $this->assertNotNull($record->confirmed_at, '確定も外れない');
+        $this->assertNull($record->llm_job_id);
+        $this->assertSame(0, VerbalContactTask::query()->count(), '口頭連絡のタスクも作らない');
+        $this->assertSame(1, LlmRequest::query()->count(), '送ってしまった1回は費用として残る');
+    }
+
+    public function test_リスク兆候抽出も中止されたら結果を残さない(): void
+    {
+        // 画面には前回の結果が表示されたまま残る
+        $resident = Resident::factory()->for($this->facility)->create();
+        $job = $this->queuedJob(LlmFeature::RiskDetection, $resident, withPeriod: true);
+        $this->cancelWhileWaiting($job);
+
+        $this->execute($job);
+
+        $this->assertSame(LlmJobStatus::Cancelled, $job->refresh()->status);
+        $this->assertSame(0, RiskAssessment::query()->count());
+    }
+
+    public function test_中止されたら再送しない(): void
+    {
+        // 再送を待つあいだに押された中止でも、次の送信はしない。
+        // 結果を使わないのに、送った分だけ課金される。
+        $resident = Resident::factory()->for($this->facility)->create();
+        $job = $this->queuedJob(LlmFeature::RiskDetection, $resident, withPeriod: true);
+
+        $this->mock(LlmClient::class, function (Mockery\MockInterface $mock) use ($job): void {
+            $mock->shouldReceive('send')->once()->andReturnUsing(function () use ($job): never {
+                LlmJob::query()->findOrFail($job->id)->cancel();
+
+                throw LlmException::rateLimited('429 Too Many Requests');
+            });
+        });
+
+        $this->execute($job);
+
+        $job->refresh();
+
+        $this->assertSame(LlmJobStatus::Cancelled, $job->status);
+        $this->assertNull($job->error_type);
+    }
+
+    public function test_中止のあとに起きた失敗は記録しない(): void
+    {
+        // 職員が止めたものを失敗と表示すると、「管理者にご連絡ください」の
+        // 案内まで出てしまう。
+        $resident = Resident::factory()->for($this->facility)->create();
+        $job = $this->queuedJob(LlmFeature::RiskDetection, $resident, withPeriod: true);
+
+        $this->mock(LlmClient::class, function (Mockery\MockInterface $mock) use ($job): void {
+            $mock->shouldReceive('send')->once()->andReturnUsing(function () use ($job): never {
+                LlmJob::query()->findOrFail($job->id)->cancel();
+
+                throw new LlmException(LlmErrorType::Authentication, '401 Unauthorized');
+            });
+        });
+
+        $this->execute($job);
+
+        $job->refresh();
+
+        $this->assertSame(LlmJobStatus::Cancelled, $job->status);
+        $this->assertNull($job->error_type);
+        $this->assertNull($job->userFacingError());
+    }
+
+    public function test_結果を書き込んだあとは中止できない(): void
+    {
+        // 間に合わなかった中止を「中止しました」と見せると、職員は反映された
+        // 文章を確かめない。
+        $record = $this->recordWithRawNote('午前中は体操に参加');
+        $job = $this->queuedJob(LlmFeature::VoiceTransform, $record);
+
+        $this->execute($job);
+
+        $this->assertFalse($job->cancel());
+        $this->assertSame(LlmJobStatus::Succeeded, $job->refresh()->status);
+        $this->assertSame($record->id, $job->result['service_record_id'] ?? null);
+    }
+
+    // ---------------------------------------------------------------
     // 運用のための振る舞い
     // ---------------------------------------------------------------
 
@@ -318,6 +464,21 @@ class RunLlmFeatureJobTest extends TestCase
             'requested_by' => $this->staff->id,
             ...$overrides,
         ]);
+    }
+
+    /**
+     * APIの応答を待っているあいだに、職員が画面から中止した状況を作る。
+     * 応答そのものは FakeClient の既定の内容をそのまま返す。
+     */
+    private function cancelWhileWaiting(LlmJob $job): void
+    {
+        $this->mock(LlmClient::class, function (Mockery\MockInterface $mock) use ($job): void {
+            $mock->shouldReceive('send')->once()->andReturnUsing(function (LlmRequestData $request) use ($job): LlmResponse {
+                LlmJob::query()->findOrFail($job->id)->cancel();
+
+                return (new FakeClient)->send($request);
+            });
+        });
     }
 
     private function recordWithRawNote(string $rawNote): ServiceRecord

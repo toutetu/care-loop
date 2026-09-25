@@ -52,7 +52,7 @@ class UpdateServiceRecordRequest extends FormRequest
             'lunch.meal_form' => ['nullable', 'string', 'max:30'],
             'lunch.choking' => ['nullable', 'boolean'],
 
-            'raw_note' => ['nullable', 'string', 'max:5000'],
+            // 音声入力の原文はここでは受け取らない（StoreRecordNoteRequest）
             'record_text' => ['nullable', 'string', 'max:5000'],
             'family_text' => ['nullable', 'string', 'max:5000'],
             'handover_note' => ['nullable', 'string', 'max:2000'],
@@ -80,7 +80,6 @@ class UpdateServiceRecordRequest extends FormRequest
             'lunch.staple_rate' => '主食の摂取割合',
             'lunch.side_rate' => '副菜の摂取割合',
             'lunch.meal_form' => '食形態',
-            'raw_note' => '音声入力の原文',
             'record_text' => '記録',
             'family_text' => 'ご家族向けの文章',
             'handover_note' => '申し送り',

@@ -1,5 +1,6 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import {
+    Check,
     Info,
     Lock,
     MessageSquareWarning,
@@ -11,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import LlmActionController from '@/actions/App/Http/Controllers/LlmActionController';
+import RecordNoteController from '@/actions/App/Http/Controllers/RecordNoteController';
 import ServiceRecordController from '@/actions/App/Http/Controllers/ServiceRecordController';
 import { RecordStatusBadge } from '@/components/care/badges';
 import { LlmJobNotice } from '@/components/care/llm-job-notice';
@@ -141,6 +143,10 @@ export default function RecordEdit({
     // 入力欄は毎回空から始める。前に入れた分は下の一覧に残っているので、
     // 欄に残しておくと、同じ内容をもう一度積んでしまう。
     const [rawNote, setRawNote] = useState('');
+    // 画面のマイクで入れたか。原文の一覧に「音声入力」と残し、読み返す職員が
+    // 聞き違いの混じりうる文だと分かるようにする。OSのキーボードの音声入力は
+    // アプリから見分けられないので、手入力として残る。
+    const [usedVoice, setUsedVoice] = useState(false);
     const [mealForm, setMealForm] = useState('');
     const [bathingType, setBathingType] = useState('');
 
@@ -152,6 +158,7 @@ export default function RecordEdit({
     if (shownRecordId !== record.id) {
         setShownRecordId(record.id);
         setRawNote('');
+        setUsedVoice(false);
         setMealForm('');
         setBathingType('');
     }
@@ -173,10 +180,52 @@ export default function RecordEdit({
             ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, [record.id]);
 
-    const { supported, listening, start, stop } = useSpeechRecognition((text) =>
-        // 認識結果は追記する。上書きすると、それまで話した内容が消える。
-        setRawNote((current) => (current === '' ? text : `${current}${text}`)),
+    const { supported, listening, start, stop } = useSpeechRecognition(
+        (text) => {
+            // 認識結果は追記する。上書きすると、それまで話した内容が消える。
+            setRawNote((current) =>
+                current === '' ? text : `${current}${text}`,
+            );
+            setUsedVoice(true);
+        },
     );
+
+    /*
+     * 「確定」と「AIで書き直す」を別のボタンにしている。
+     *
+     * 以前は1つのボタンが、入力欄の保存とAIの呼び出しを兼ねていた。音声の
+     * 聞き違いを直す前に押すと、直していない文が書き換えられない原文として残り、
+     * そのままAIへ送られる。読み直して「確定」したものだけを原文にし、AIは
+     * 確定した原文だけを使う。確定していない入力が欄に残っているあいだは、
+     * AIのボタンを押せないようにして、その理由を横に出す。
+     */
+    const hasUnconfirmedNote = rawNote.trim() !== '';
+    const hasExistingTexts =
+        record.recordText !== null ||
+        record.familyText !== null ||
+        record.handoverNote !== null;
+
+    const noteStatus = listening
+        ? '聞き取っています。話し終えたら「停止」を押し、読み直してから「確定」してください。'
+        : hasUnconfirmedNote
+          ? 'まだ確定していません。聞き違いがないか読み直してから「確定」を押してください。'
+          : '話した内容や入力した文字は、「確定」を押すまで保存されません。';
+
+    const aiBlockedReason = listening
+        ? '音声入力の途中です。停止して確定すると、AIで書き直せます。'
+        : hasUnconfirmedNote
+          ? '確定していない入力があります。AIは確定した原文だけを使うので、先に「確定」を押してください。'
+          : record.notes.length === 0
+            ? '原文を確定すると、AIで書き直せます。'
+            : null;
+
+    // 書き直すと、職員が直した文章も置き換わる。押す前にそれが分かるようにする。
+    const aiHint =
+        aiBlockedReason ??
+        `確定した原文（${record.notes.length}件）から、記録用・ご家族向け・申し送りの3つの文章を作ります。` +
+            (hasExistingTexts
+                ? `いま下にある文章は置き換わります${record.confirmedAt !== null ? '（確定も外れます）' : ''}。`
+                : '');
 
     return (
         <>
@@ -277,10 +326,10 @@ export default function RecordEdit({
                     </p>
                 )}
 
-                {/* --- 音声入力とAI変換 --- */}
+                {/* --- 音声入力とAIの書き直し --- */}
                 <Section
                     title="音声入力"
-                    description="お話しになった内容をそのまま入力してください。整えるのはAIが行います。"
+                    description="お話しになった内容を読み直し、直してから「確定」してください。確定した原文をもとに、AIが文章を整えます。"
                 >
                     <EntryList
                         items={record.notes.map((note) => ({
@@ -289,90 +338,160 @@ export default function RecordEdit({
                             text: note.body,
                             recorder: note.recorder,
                         }))}
-                        empty="まだ入力はありません。"
+                        empty="まだ確定した原文はありません。"
                     />
 
                     <div className="space-y-3">
-                        <div className="relative">
-                            <textarea
-                                value={rawNote}
-                                onChange={(event) =>
-                                    setRawNote(event.target.value)
-                                }
-                                rows={5}
-                                form="record-form"
-                                name="raw_note"
-                                readOnly={!canEdit}
-                                placeholder="例：午前中は体操に参加されて えーっと 昼食のときに少しむせこみがあって 水分は1000mlくらい"
-                                className="border-input bg-background focus-visible:ring-ring w-full rounded-md border px-3 py-2 text-base shadow-xs outline-none focus-visible:ring-2"
-                            />
-                            {/* このボタンは、対応ブラウザでのみ表示される（要件定義 7.8節 ②）。
-                                iOSではキーボードのマイクを使う想定なので出さない。 */}
-                            {supported && canEdit && (
-                                <Button
-                                    type="button"
-                                    variant={
-                                        listening ? 'destructive' : 'outline'
-                                    }
-                                    onClick={listening ? stop : start}
-                                    className="absolute right-2 bottom-2"
-                                >
-                                    {listening ? (
-                                        <>
-                                            <MicOff
-                                                className="size-4"
-                                                aria-hidden
-                                            />
-                                            停止
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Mic
-                                                className="size-4"
-                                                aria-hidden
-                                            />
-                                            音声入力
-                                        </>
+                        <Form
+                            {...RecordNoteController.store.form(record.id)}
+                            options={{ preserveScroll: true }}
+                            // 確定した分は上の一覧へ移る。欄に残すと、同じ内容を
+                            // もう一度確定してしまう。
+                            onSuccess={() => {
+                                setRawNote('');
+                                setUsedVoice(false);
+                            }}
+                            className="space-y-2"
+                        >
+                            {({ processing, errors }) => (
+                                <>
+                                    <div className="relative">
+                                        <textarea
+                                            value={rawNote}
+                                            onChange={(event) => {
+                                                setRawNote(event.target.value);
+
+                                                // 全部消したら、次に入るのは別の内容
+                                                if (event.target.value === '') {
+                                                    setUsedVoice(false);
+                                                }
+                                            }}
+                                            rows={5}
+                                            name="body"
+                                            aria-label="音声入力の内容"
+                                            aria-describedby="raw-note-status"
+                                            readOnly={!canEdit}
+                                            placeholder="例：午前中は体操に参加されて えーっと 昼食のときに少しむせこみがあって 水分は1000mlくらい"
+                                            className={cn(
+                                                'border-input bg-background focus-visible:ring-ring w-full rounded-md border px-3 py-2 text-base shadow-xs outline-none focus-visible:ring-2',
+                                                // 下端のマイクのボタンに、直したい文字が隠れないようにする
+                                                supported && canEdit && 'pb-14',
+                                            )}
+                                        />
+                                        {/* このボタンは、対応ブラウザでのみ表示される（要件定義 7.8節 ②）。
+                                            iOSではキーボードのマイクを使う想定なので出さない。 */}
+                                        {supported && canEdit && (
+                                            <Button
+                                                type="button"
+                                                variant={
+                                                    listening
+                                                        ? 'destructive'
+                                                        : 'outline'
+                                                }
+                                                onClick={
+                                                    listening ? stop : start
+                                                }
+                                                // 確定を送っているあいだに話し始めると、
+                                                // 確定のあとで欄を空にするときに消えてしまう
+                                                disabled={processing}
+                                                className="absolute right-2 bottom-2"
+                                            >
+                                                {listening ? (
+                                                    <>
+                                                        <MicOff
+                                                            className="size-4"
+                                                            aria-hidden
+                                                        />
+                                                        停止
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Mic
+                                                            className="size-4"
+                                                            aria-hidden
+                                                        />
+                                                        音声入力
+                                                    </>
+                                                )}
+                                            </Button>
+                                        )}
+                                    </div>
+
+                                    <input
+                                        type="hidden"
+                                        name="input_method"
+                                        value={usedVoice ? 'voice' : 'keyboard'}
+                                    />
+                                    <InputError message={errors.body} />
+
+                                    {canEdit && (
+                                        <div className="flex flex-wrap items-center justify-between gap-3">
+                                            <p
+                                                id="raw-note-status"
+                                                className="text-muted-foreground min-w-0 flex-1 basis-56 text-sm"
+                                            >
+                                                {noteStatus}
+                                            </p>
+                                            {/* 聞き取りの途中では押させない。停止したあとに
+                                                届いた言葉が、確定したあとの空の欄に入ってしまう。 */}
+                                            <Button
+                                                type="submit"
+                                                pending={processing}
+                                                disabled={
+                                                    processing ||
+                                                    listening ||
+                                                    !hasUnconfirmedNote
+                                                }
+                                            >
+                                                {!processing && (
+                                                    <Check
+                                                        className="size-4"
+                                                        aria-hidden
+                                                    />
+                                                )}
+                                                {processing
+                                                    ? '確定しています…'
+                                                    : '確定'}
+                                            </Button>
+                                        </div>
                                     )}
-                                </Button>
+                                </>
                             )}
-                        </div>
+                        </Form>
 
                         <p className="text-muted-foreground flex items-start gap-2 text-xs">
                             <Info
                                 className="mt-0.5 size-3.5 shrink-0"
                                 aria-hidden
                             />
-                            この原文は書き換えません。AIが何を変えたのかを後から確認できるよう、そのまま保存します。
+                            確定した原文は書き換えません。AIが何を変えたのかを後から確かめられるよう、そのまま残します。
                             お名前などはAIへ送る前に伏せ字へ置き換えています。
                         </p>
 
+                        {/* --- AIの書き直し。確定とは別のボタンにする --- */}
                         {canEdit && (
-                            <Form
-                                {...LlmActionController.transformVoice.form(
-                                    record.id,
-                                )}
-                                options={{ preserveScroll: true }}
-                            >
-                                {({ processing }) => (
-                                    <>
-                                        {/* 押した時点の原文を一緒に送る。保存を忘れたまま
-                                            押しても、画面に見えている内容で変換される。 */}
-                                        <input
-                                            type="hidden"
-                                            name="raw_note"
-                                            value={rawNote}
-                                        />
-                                        {/* 受け付けたあともワーカーが動いているあいだは
-                                            押させない。押した回数だけ積まれ、
-                                            その数だけ費用がかかる。 */}
+                            <div className="space-y-3 border-t pt-4">
+                                <p id="ai-rewrite-hint" className="text-sm">
+                                    {aiHint}
+                                </p>
+                                <Form
+                                    {...LlmActionController.transformVoice.form(
+                                        record.id,
+                                    )}
+                                    options={{ preserveScroll: true }}
+                                >
+                                    {({ processing }) => (
+                                        // 受け付けたあともワーカーが動いているあいだは
+                                        // 押させない。押した回数だけ積まれ、
+                                        // その数だけ費用がかかる。
                                         <Button
                                             type="submit"
+                                            aria-describedby="ai-rewrite-hint"
                                             pending={processing || transforming}
                                             disabled={
                                                 processing ||
                                                 transforming ||
-                                                rawNote.trim() === ''
+                                                aiBlockedReason !== null
                                             }
                                         >
                                             {!processing && !transforming && (
@@ -382,15 +501,16 @@ export default function RecordEdit({
                                                 />
                                             )}
                                             {processing || transforming
-                                                ? '変換しています…'
-                                                : '記録・ご家族向け・申し送りに変換'}
+                                                ? '書き直しています…'
+                                                : 'AIで3つの文章に書き直す'}
                                         </Button>
-                                    </>
-                                )}
-                            </Form>
+                                    )}
+                                </Form>
+                            </div>
                         )}
 
-                        <LlmJobNotice job={llmJob} />
+                        {/* 押し間違えたときは、終わる前ならここから止められる */}
+                        <LlmJobNotice job={llmJob} cancellable={canEdit} />
                     </div>
                 </Section>
 

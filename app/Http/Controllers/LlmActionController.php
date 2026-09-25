@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Enums\LlmErrorType;
 use App\Enums\LlmFeature;
 use App\Enums\LlmJobStatus;
-use App\Enums\NoteInputMethod;
 use App\Jobs\RunLlmFeature;
 use App\Models\LlmJob;
 use App\Models\Resident;
@@ -37,6 +36,11 @@ use Throwable;
  * 【実行者を必ず残す】
  * 1回ごとに費用が発生する。誰がどのご利用者に対して呼び出したのかを
  * llm_jobs に残し、AI処理の実行状況の画面から追えるようにしている。
+ *
+ * 【押し間違いは、終わる前なら中止できる】
+ * 同期実行のころは押した瞬間に結果が出て、取り消す間もなかった。
+ * 非同期になって結果が出るまで数十秒の間ができたので、その間に止められる
+ * ようにした（cancel）。
  */
 class LlmActionController extends Controller
 {
@@ -46,21 +50,23 @@ class LlmActionController extends Controller
     /**
      * F-LLM-05 音声入力の三面変換。
      *
-     * 音声の原文から、記録用・ご家族向け・申し送り用の3つの文体を一度に作る。
+     * 確定した原文から、記録用・ご家族向け・申し送り用の3つの文体を一度に作る。
+     *
+     * 【入力欄の内容は受け取らない】
+     * 材料は、職員が「確定」した原文（RecordNoteController）だけにする。
+     * 以前はこのボタンが入力欄の内容の保存も兼ねていたため、音声の聞き違いを
+     * 直す前に押すと、直していない文が書き換えられない原文として残り、
+     * そのままAIへ送られていた。画面は、確定していない入力が残っているあいだ
+     * このボタンを押せないようにしている。
      */
     public function transformVoice(Request $request, ServiceRecord $serviceRecord): RedirectResponse
     {
         Gate::authorize('update', $serviceRecord);
 
-        // 画面で入力した原文をそのまま受け取る。
-        // 「保存してから変換」の2手順にすると、保存を忘れたまま押した職員には
-        // 何も起きていないように見える。押した時点の内容で動くのが自然である。
-        $this->storeRawNote($request, $serviceRecord);
-
         $serviceRecord->load('notes');
 
         if ($serviceRecord->combinedNoteText() === '') {
-            return back()->with('error', '先に音声入力または原文の入力を行ってください。');
+            return back()->with('error', '確定した原文がありません。音声入力の内容を「確定」してから、もう一度お試しください。');
         }
 
         return $this->enqueue(LlmFeature::VoiceTransform, $serviceRecord, $request);
@@ -99,45 +105,34 @@ class LlmActionController extends Controller
         return $this->enqueue(LlmFeature::GoalProgress, $resident, $request, $from, $to);
     }
 
-    // ---------------------------------------------------------------
-
     /**
-     * 画面から送られた原文を記録へ足す。
+     * 待機中・実行中のAI処理を中止する（押し間違いの取り消し）。
      *
-     * 【変換の前に保存する】
-     * 原文はAIが何を変えたのかを後から検証するための原本である。
-     * 変換に使った文章が残っていなければ、検証のしようがない。
+     * 費用を増やす操作ではないので、流量の制限（throttle:llm）はかけない。
      *
-     * 【書き換えずに積む】
-     * 同じ内容が続けて送られたときだけ捨てる。押し直しや再変換で同じ文が
-     * 二重に積まれるのを防ぐためで、内容が違えば必ず別の1件として残す。
+     * 【中止できたときは、ここでは何も言わない】
+     * 画面はジョブの状態を読み直しており、中止になったことをそちらで伝える
+     * （useLlmJobPolling）。ここでも伝えると同じ通知が2つ並ぶ。すでに失敗で
+     * 終わっていた場合も同じ理由で黙って戻る。
+     *
+     * 伝えるのは、間に合わなかったときだけである。結果がもう反映されているのに
+     * 何も言わずに戻ると、職員は止まったと思って確かめない。
      */
-    private function storeRawNote(Request $request, ServiceRecord $record): void
+    public function cancel(LlmJob $llmJob): RedirectResponse
     {
-        $rawNote = $request->string('raw_note')->trim()->value();
+        Gate::authorize('cancel', $llmJob);
 
-        if ($rawNote === '') {
-            return;
+        if ($llmJob->cancel() || $llmJob->status !== LlmJobStatus::Succeeded) {
+            return back();
         }
 
-        $record->loadMissing('notes');
-
-        if (trim((string) $record->notes->last()?->body) === $rawNote) {
-            return;
-        }
-
-        // 上限は記録本文と同じ。音声入力が延々と続いた状態でそのまま
-        // 送ると、トークンも費用も跳ね上がる。
-        $record->notes()->create([
-            'recorded_by' => $request->user()?->id,
-            'body' => mb_substr($rawNote, 0, 5000),
-            'input_method' => $request->string('input_method')->value() === 'voice'
-                ? NoteInputMethod::Voice
-                : NoteInputMethod::Keyboard,
-        ]);
-
-        $record->unsetRelation('notes');
+        return back()->with(
+            'error',
+            "中止が間に合いませんでした。{$llmJob->feature->label()}はすでに終わり、結果が画面に反映されています。内容をご確認ください。",
+        );
     }
+
+    // ---------------------------------------------------------------
 
     /**
      * ジョブの行を作ってキューへ積む。

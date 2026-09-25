@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\LlmErrorType;
 use App\Enums\LlmFeature;
 use App\Enums\LlmJobStatus;
+use App\Llm\Exceptions\LlmJobCancelled;
 use Carbon\CarbonInterface;
 use Database\Factories\LlmJobFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -25,6 +26,12 @@ use Throwable;
  * 画面はこの行を作って RunLlmFeature をキューへ積み、すぐに戻る。
  * ワーカーが行の状態を queued → running → succeeded / failed と進め、
  * 画面はそれをポーリングして結果を描く。
+ *
+ * 【中止】
+ * 押し間違いに気づいた職員は、終わる前なら中止できる（cancelled）。
+ * 待機中ならAPIを呼ばずに終わる。実行中なら応答は止められないが、
+ * 再送はせず、結果も記録へ書き込まない。AIの書き直しは職員が直した
+ * 文章を置き換えるので、止める手段がないと押し間違いが取り返せない。
  *
  * 1ジョブが複数の llm_requests を持つ（リトライした分だけ増える）。
  *
@@ -170,19 +177,63 @@ class LlmJob extends Model
 
     // ---------------------------------------------------------------
     // 状態遷移
+    //
+    // どの遷移も「今の状態がこれなら」という条件つきの UPDATE 1文で行う
+    // （transition）。職員の中止とワーカーの状態更新は、別のプロセスで
+    // 同時に起こる。手元の値を見てから保存すると、そのあいだに通った中止を
+    // 上書きしてしまう。
     // ---------------------------------------------------------------
 
-    public function markRunning(): void
+    /**
+     * 実行を始める。待機中のときだけ進める。
+     *
+     * @return bool 進めたか。false なら、ワーカーが拾うまでのあいだに中止された
+     */
+    public function markRunning(): bool
     {
-        $this->forceFill([
+        return $this->transition([LlmJobStatus::Queued], [
             'status' => LlmJobStatus::Running,
             'started_at' => now(),
             'attempts' => $this->attempts + 1,
-        ])->save();
+        ]);
+    }
+
+    /**
+     * 結果を書き込む直前に、完了を確保する。中止されていれば例外を投げる。
+     *
+     * 【書き込みと完了を1つのトランザクションに入れる】
+     * 結果を書き込むトランザクションの中で呼ぶ。書き込みを終えてから完了を
+     * 記録すると、そのあいだに通った中止が「中止しました」と表示されたまま、
+     * AIの文章だけが記録に残る。同じトランザクションで完了にしておけば、
+     * 中止は「書き込みの前（何も書き換えない）」か「後（すでに終わっていると
+     * 伝える）」のどちらかにしかならない。書き込みの途中で失敗すれば、
+     * 完了もいっしょに巻き戻って実行中へ戻る。
+     *
+     * 【トランザクションの先頭で呼ぶ】
+     * 書き込む行の多くは llm_job_id でこの行を参照しており、外部キーの確認で
+     * この行に共有ロックがかかる。共有ロックを持ったまま、あとから排他ロックを
+     * 取りにいくと、同時に来た中止とデッドロックする。
+     *
+     * @throws LlmJobCancelled
+     */
+    public function claimCompletion(): void
+    {
+        $claimed = $this->transition([LlmJobStatus::Queued, LlmJobStatus::Running], [
+            'status' => LlmJobStatus::Succeeded,
+            'finished_at' => now(),
+        ]);
+
+        if (! $claimed) {
+            throw LlmJobCancelled::forJob($this->id);
+        }
     }
 
     /**
      * 成功を記録する。
+     *
+     * 状態は、結果を書き込んだトランザクションの中で完了になっている
+     * （claimCompletion）。ここでは生成物の所在を書き足す。中止や失敗で
+     * 終わった行は書き換えない。
      *
      * result には生成物そのものではなく、生成物の所在（作成した評価や記録のID）を
      * 入れる。本文は各テーブルが持っており、ここにも複製すると実名を含む文章が
@@ -192,28 +243,91 @@ class LlmJob extends Model
      */
     public function markSucceeded(array $result): void
     {
-        $this->forceFill([
+        $this->transition([LlmJobStatus::Queued, LlmJobStatus::Running, LlmJobStatus::Succeeded], [
             'status' => LlmJobStatus::Succeeded,
             'result' => $result,
             'error_type' => null,
             'error_message' => null,
             'finished_at' => now(),
-        ])->save();
+        ]);
     }
 
     /**
      * 失敗を記録する。error_type には rate_limit_error / schema_mismatch /
      * json_parse_error など、どの種類の失敗かを必ず入れる。
      * 画面での案内文と、再実行してよいかの判断がここで決まるため。
+     *
+     * 中止されたあとに起きた失敗は記録しない。職員が止めたものを失敗と
+     * 表示すると、「管理者にご連絡ください」の案内まで出てしまう。
      */
     public function markFailed(string $errorType, string|Throwable $error): void
     {
-        $this->forceFill([
+        $this->transition([LlmJobStatus::Queued, LlmJobStatus::Running], [
             'status' => LlmJobStatus::Failed,
             'error_type' => $errorType,
             'error_message' => $error instanceof Throwable ? $error->getMessage() : $error,
             'finished_at' => now(),
-        ])->save();
+        ]);
+    }
+
+    /**
+     * 職員の操作で中止する。待機中・実行中のときだけ効く。
+     *
+     * 待機中なら、ワーカーは拾っても何もしない（APIを呼ばない）。
+     * 実行中なら、送ってしまった分の応答は止められない。それ以上は再送せず
+     * （LlmGateway）、結果も記録へ書き込まない（claimCompletion）。
+     *
+     * @return bool 中止できたか。false なら、すでに終わっていた
+     */
+    public function cancel(): bool
+    {
+        return $this->transition([LlmJobStatus::Queued, LlmJobStatus::Running], [
+            'status' => LlmJobStatus::Cancelled,
+            'finished_at' => now(),
+        ]);
+    }
+
+    /**
+     * 別のプロセスで中止されたか。手元の値ではなく行を読み直して確かめる。
+     * ワーカーが持っているモデルは、実行を始めた時点の値のままである。
+     */
+    public function wasCancelled(): bool
+    {
+        return static::query()
+            ->whereKey($this->getKey())
+            ->where('status', LlmJobStatus::Cancelled)
+            ->exists();
+    }
+
+    /**
+     * 状態を進める。今の状態が $from のいずれかであるときだけ書き換える。
+     *
+     * 状態を WHERE に入れた UPDATE 1文なので、同時に来た2つの遷移は
+     * 先に書いたほうだけが通る。通ったかどうかは更新件数で分かる。
+     *
+     * @param  list<LlmJobStatus>  $from
+     * @param  array<string, mixed>  $attributes
+     */
+    private function transition(array $from, array $attributes): bool
+    {
+        // UPDATE 文にはモデルのキャストが効かない。いったん空のモデルに入れて、
+        // 列に入る形（列挙型は値、配列は JSON、日時は文字列）へ直してから渡す。
+        $values = $this->newInstance()->forceFill($attributes)->getAttributes();
+
+        $moved = static::query()
+            ->whereKey($this->getKey())
+            ->whereIn('status', array_map(fn (LlmJobStatus $status): string => $status->value, $from))
+            ->update($values) === 1;
+
+        // 通っても通らなくても、手元の値を行に合わせる。通らなかったときに
+        // 古い状態のまま判断を続けると、中止されたジョブを実行中として扱う。
+        $fresh = static::query()->whereKey($this->getKey())->first();
+
+        if ($fresh !== null) {
+            $this->setRawAttributes($fresh->getAttributes(), true);
+        }
+
+        return $moved;
     }
 
     // ---------------------------------------------------------------

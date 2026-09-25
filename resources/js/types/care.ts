@@ -82,7 +82,12 @@ export type VerbalContact = {
     recordId: number | null;
 };
 
-export type LlmJobStatus = 'queued' | 'running' | 'succeeded' | 'failed';
+export type LlmJobStatus =
+    | 'queued'
+    | 'running'
+    | 'succeeded'
+    | 'failed'
+    | 'cancelled';
 
 /**
  * AI処理のジョブ1件の要約（App\Http\Presenters\LlmJobSummary と対応）。
@@ -102,6 +107,8 @@ export type LlmJobSummary = {
     waitingSeconds: number | null;
     completedMessage: string | null;
     errorMessage: string | null;
+    /** 職員が中止したとき。失敗ではないので errorMessage とは分けてある。 */
+    cancelledMessage: string | null;
     needsOperatorAttention: boolean;
     finishedAt: string | null;
 };

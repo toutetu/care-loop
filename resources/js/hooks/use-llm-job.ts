@@ -59,6 +59,14 @@ export function useLlmJobPolling(
             return;
         }
 
+        // 中止は職員が選んだ結果で、失敗ではない。赤い通知で驚かせず、
+        // 手元の内容が変わっていないことだけを伝える。別の職員が中止した
+        // ときも、開いている画面にはここから届く。
+        if (job.status === 'cancelled' && job.cancelledMessage) {
+            toast.info(job.cancelledMessage);
+            return;
+        }
+
         if (job.errorMessage) {
             // 失敗は自動で消さない。「もう一度押す」と「管理者に連絡する」では
             // 取るべき行動が違うので、読む前に消えては意味がない。

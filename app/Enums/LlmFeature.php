@@ -52,7 +52,7 @@ enum LlmFeature: string
     public function acceptedMessage(): string
     {
         return match ($this) {
-            self::VoiceTransform => '変換を受け付けました。完了すると3つの文章がこの画面に表示されます。',
+            self::VoiceTransform => 'AIでの書き直しを受け付けました。完了すると3つの文章がこの画面に表示されます。',
             self::RiskDetection => 'リスク兆候の抽出を受け付けました。完了すると結果がこの画面に表示されます。',
             self::GoalProgress => '目標進捗の要約を受け付けました。完了すると結果がこの画面に表示されます。',
             self::Handover, self::FamilyReport => "{$this->label()}を受け付けました。",
@@ -69,6 +69,22 @@ enum LlmFeature: string
             self::RiskDetection => 'リスク兆候を抽出しました。根拠の記録を確認してから対応をご判断ください。',
             self::GoalProgress => '目標進捗の要約を作成しました。モニタリング記録へ転記する前にご確認ください。',
             self::Handover, self::FamilyReport => "{$this->label()}が完了しました。内容をご確認ください。",
+        };
+    }
+
+    /**
+     * 中止したときに画面へ出す文言。
+     *
+     * 押し間違いに気づいて止めた職員が知りたいのは、手元の内容が
+     * 無事かどうかである。何も書き換えていないことまで書く。
+     */
+    public function cancelledMessage(): string
+    {
+        return match ($this) {
+            self::VoiceTransform => 'AIでの書き直しを中止しました。記録の文章は変わっていません。',
+            self::RiskDetection => 'リスク兆候の抽出を中止しました。表示中の結果は変わっていません。',
+            self::GoalProgress => '目標進捗の要約を中止しました。表示中の結果は変わっていません。',
+            self::Handover, self::FamilyReport => "{$this->label()}を中止しました。",
         };
     }
 }

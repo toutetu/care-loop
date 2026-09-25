@@ -175,6 +175,9 @@ final class SummarizeGoalProgress
         ?LlmJob $job,
     ): GoalProgressReport {
         return DB::transaction(function () use ($resident, $plan, $goals, $from, $to, $result, $job): GoalProgressReport {
+            // 職員が中止していれば、ここで抜けて何も書かない
+            $job?->claimCompletion();
+
             $report = GoalProgressReport::create([
                 'resident_id' => $resident->id,
                 'care_plan_id' => $plan->id,
