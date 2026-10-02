@@ -1,4 +1,4 @@
-import { usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 
@@ -21,6 +21,20 @@ type FlashProps = {
 export function useFlashToasts() {
     const { flash } = usePage<FlashProps>().props;
     const shown = useRef<string | null>(null);
+
+    // 職員が自分で操作して送ったときは、同じ文言でも必ず出す。
+    // 記録一覧から続けてメモを確定すると、2人目以降も「原文を確定しました」が
+    // 返る。重複として捨てると、保存できたのかが分からなくなる。
+    // 読み直し（only を付けた部分リロード）と先読みは、この扱いから外す。
+    useEffect(() => {
+        return router.on('start', (event) => {
+            const { visit } = event.detail;
+
+            if (visit.only.length === 0 && !visit.prefetch) {
+                shown.current = null;
+            }
+        });
+    }, []);
 
     useEffect(() => {
         const message = flash?.error ?? flash?.success;

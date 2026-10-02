@@ -4,6 +4,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
 import { registerRequestFailureToast } from '@/lib/request-failure-toast';
 import AppLayout from '@/layouts/app-layout';
+import { initializeDeviceClass } from '@/lib/device-class';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 
@@ -43,3 +44,6 @@ registerRequestFailureToast();
 
 // This will set light / dark mode on load...
 initializeTheme();
+
+// ログイン直後に開く画面を、端末に合わせて選べるようにする（StartController）
+initializeDeviceClass();

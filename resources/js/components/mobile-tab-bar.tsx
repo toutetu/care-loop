@@ -1,11 +1,12 @@
-import { Link } from '@inertiajs/react';
-import { ClipboardList, LayoutGrid, Menu, Users } from 'lucide-react';
+import { Link, usePage } from '@inertiajs/react';
+import { Bell, ClipboardList, Menu, MessagesSquare } from 'lucide-react';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useCurrentUrl } from '@/hooks/use-current-url';
+import { COUNT_BADGE } from '@/lib/care-presentation';
 import { cn } from '@/lib/utils';
-import { dashboard } from '@/routes';
+import messages from '@/routes/messages';
+import notices from '@/routes/notices';
 import records from '@/routes/records';
-import residents from '@/routes/residents';
 
 /**
  * スマートフォンの下部タブバー。
@@ -17,10 +18,10 @@ import residents from '@/routes/residents';
  * この制約に逆らう。docs/mock/mobile.html の「主要操作をすべて画面
  * 下部3分の1に配置。上部は情報表示のみ」という原則に合わせてある。
  *
- * 【なぜ4つか】
- * 毎日使う3つだけを出し、残りは「その他」からドロワーで開く。
- * 職員アカウント・編集履歴・AI利用ログは管理者が事務所で見るもので、
- * 送迎や入浴の合間に押すものではない。
+ * 【なぜこの4つか】
+ * スマートフォンを開くのは、介助の合間に気づいたことを残すときと、
+ * 気をつけることや職員からの連絡を確かめるときである。ダッシュボードと
+ * 利用者一覧は朝礼や事務所で見るもので、「その他」からドロワーで開く。
  *
  * 【寸法】
  * iPhone SE（375×667）を基準にしている。1つあたりの高さは56pxで、
@@ -28,19 +29,30 @@ import residents from '@/routes/residents';
  * 下端はホームバーに隠れないよう safe-area を足す。
  */
 
-const TABS = [
-    { title: 'ホーム', href: dashboard(), icon: LayoutGrid },
-    { title: '記録', href: records.index(), icon: ClipboardList },
-    { title: 'ご利用者', href: residents.index(), icon: Users },
-];
-
 /** タブ1つぶんの見た目。リンクでも「その他」ボタンでも同じ形にする。 */
 const TAB_SHAPE =
-    'flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-md text-xs font-medium outline-none focus-visible:ring-ring focus-visible:ring-[3px]';
+    'relative flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-md text-xs font-medium outline-none focus-visible:ring-ring focus-visible:ring-[3px]';
 
 export function MobileTabBar() {
     const { isCurrentUrl } = useCurrentUrl();
     const { setOpenMobile } = useSidebar();
+    const { noticeCount } = usePage().props;
+
+    const tabs = [
+        { title: '記録', href: records.index(), icon: ClipboardList, count: 0 },
+        {
+            title: 'お知らせ',
+            href: notices.index(),
+            icon: Bell,
+            count: noticeCount,
+        },
+        {
+            title: '連絡',
+            href: messages.index(),
+            icon: MessagesSquare,
+            count: 0,
+        },
+    ];
 
     return (
         <nav
@@ -51,7 +63,7 @@ export function MobileTabBar() {
             {/* gap-2 は、モックの「隣接要素との間隔を8px以上」に合わせている。
                 手袋をした指では、隣を押してしまう事故のほうが多い。 */}
             <div className="flex items-stretch gap-2 px-2 py-1">
-                {TABS.map((tab) => {
+                {tabs.map((tab) => {
                     const active = isCurrentUrl(tab.href);
 
                     return (
@@ -75,6 +87,23 @@ export function MobileTabBar() {
                                 aria-hidden
                             />
                             {tab.title}
+                            {/* 件数が無ければ開かれない。読み上げでは件数を名前に足す */}
+                            {tab.count > 0 && (
+                                <>
+                                    <span
+                                        className={cn(
+                                            'absolute top-1 left-1/2 ml-2 min-w-5 rounded-full px-1.5 text-center text-[11px] leading-5 font-bold tabular-nums',
+                                            COUNT_BADGE,
+                                        )}
+                                        aria-hidden
+                                    >
+                                        {tab.count > 99 ? '99+' : tab.count}
+                                    </span>
+                                    <span className="sr-only">
+                                        （{tab.count}件）
+                                    </span>
+                                </>
+                            )}
                         </Link>
                     );
                 })}
