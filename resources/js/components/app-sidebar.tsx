@@ -2,12 +2,14 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     Activity,
     Bath,
+    Bell,
     BookOpen,
     ClipboardList,
     FolderGit2,
     HeartPulse,
     History,
     LayoutGrid,
+    MessagesSquare,
     Sparkles,
     UserCog,
     Users,
@@ -37,6 +39,8 @@ import auditLogs from '@/routes/audit-logs';
 import { dashboard } from '@/routes';
 import llmJobs from '@/routes/llm-jobs';
 import llmLogs from '@/routes/llm-logs';
+import messages from '@/routes/messages';
+import notices from '@/routes/notices';
 import records from '@/routes/records';
 import residents from '@/routes/residents';
 import staff from '@/routes/staff';
@@ -61,7 +65,7 @@ type SidebarEntry = NavItem & {
 };
 
 type SidebarSection = {
-    /** 見出し。ダッシュボードのように1つだけの区画には付けない。 */
+    /** 見出し。先頭の区画（ダッシュボードとお知らせ）には付けない。 */
     label?: string;
     items: SidebarEntry[];
 };
@@ -103,6 +107,10 @@ export function AppSidebar() {
                     href: dashboard(),
                     icon: LayoutGrid,
                 },
+                // スマートフォンでは下のバーにある。PCとタブレットでも
+                // 同じ場所へ行けるよう、ここにも並べる。
+                { title: 'お知らせ', href: notices.index(), icon: Bell },
+                { title: '連絡', href: messages.index(), icon: MessagesSquare },
             ],
         },
         {

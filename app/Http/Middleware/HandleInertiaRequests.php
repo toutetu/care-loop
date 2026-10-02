@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\NoticeBoard;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -41,6 +42,16 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            /*
+             * 下のバーの「お知らせ」に出す件数。
+             *
+             * 数字が付いていなければ、職員は開かない。どの画面にいても目に入るよう、
+             * 画面ごとではなく共通の値として渡す。関数で包んで、使う画面を開いた
+             * ときだけ数える。
+             */
+            'noticeCount' => fn () => $request->user()
+                ? (new NoticeBoard($request->user()->facility_id))->count()
+                : 0,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             /*
              * AI機能の実行結果を画面に返すために使う。

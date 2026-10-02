@@ -170,3 +170,12 @@ export const NOTICE_SURFACE = {
     ai: 'border-ai-line bg-ai-soft text-ai-ink',
     danger: 'border-danger-line bg-danger-soft text-danger-ink',
 } as const;
+
+/**
+ * 下のバーのお知らせ件数。
+ *
+ * 職員が開いて読む必要があるものの数なので、軸1の danger を使う。
+ * 未読の連絡のような「急ぎではないが見てほしい」数を足すときも、
+ * 中身が要対応のリスクを含む以上、色は分けない。
+ */
+export const COUNT_BADGE = 'bg-danger text-danger-foreground';

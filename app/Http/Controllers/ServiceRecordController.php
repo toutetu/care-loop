@@ -60,6 +60,7 @@ class ServiceRecordController extends Controller
             ->whereHas('resident', fn ($query) => $query->where('facility_id', $user->facility_id))
             ->whereDate('service_date', $date)
             ->with(['resident.careLevel', 'recorder', 'vitalSigns', 'bathingRecords'])
+            ->withCount('notes')
             ->get();
 
         $rows = $records
@@ -153,6 +154,8 @@ class ServiceRecordController extends Controller
                     default => 'draft',
                 },
                 'bathing' => $bathing?->bathing_type->label(),
+                // スマートフォンの一覧で、もう話して残したかを見分けるのに使う
+                'notesCount' => $record->notes_count,
                 'canEdit' => $user->can('update', $record),
             ];
         })->all());

@@ -5,10 +5,9 @@ namespace App\Http\Controllers;
 use App\Enums\LlmJobStatus;
 use App\Models\LlmJob;
 use App\Models\LlmRequest;
-use App\Models\RiskFinding;
 use App\Models\ServiceRecord;
 use App\Models\User;
-use App\Models\VerbalContactTask;
+use App\Support\NoticeBoard;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
@@ -32,6 +31,7 @@ class DashboardController extends Controller
         $facilityId = $user->facility_id;
 
         $date = $this->targetDate($facilityId);
+        $notices = new NoticeBoard($facilityId);
 
         return Inertia::render('dashboard', [
             'day' => [
@@ -43,8 +43,9 @@ class DashboardController extends Controller
             // 中身を見たい人はその画面へ送る。朝礼で全体を見る場所と、
             // 記録を埋めていく場所は目的が違う。
             'counts' => $this->recordCounts($facilityId, $date),
-            'risks' => $this->urgentRisks($facilityId),
-            'verbalContacts' => $this->pendingVerbalContacts($facilityId),
+            // お知らせの画面と同じ抽出条件を使う（NoticeBoard）
+            'risks' => $notices->urgentRisks(),
+            'verbalContacts' => $notices->pendingVerbalContacts(),
             'llm' => $this->llmStatus($facilityId),
             'canViewLlmLogs' => $user->role->canViewLlmLogs(),
         ]);
@@ -99,69 +100,6 @@ class DashboardController extends Controller
             // 後から思い出して書くことになる。その日のうちに気づける形にする。
             'unconfirmed' => $onDate()->whereNull('confirmed_at')->count(),
         ];
-    }
-
-    /**
-     * 職員がまだ確認していない、重要度の高い指摘。
-     *
-     * 確認済みのものは出さない。既読の指摘が並び続けると、
-     * 新しい指摘が埋もれて誰も見なくなる。
-     *
-     * @return list<array<string, mixed>>
-     */
-    private function urgentRisks(?int $facilityId): array
-    {
-        $findings = RiskFinding::query()
-            ->highSeverity()
-            ->whereHas(
-                'riskAssessment',
-                fn ($query) => $query
-                    ->whereNull('reviewed_at')
-                    ->whereHas('resident', fn ($inner) => $inner->where('facility_id', $facilityId)),
-            )
-            ->with('riskAssessment.resident')
-            ->get();
-
-        return array_values($findings->map(fn (RiskFinding $finding): array => [
-            'id' => $finding->id,
-            'residentId' => $finding->riskAssessment->resident_id,
-            'residentName' => $finding->riskAssessment->resident->name,
-            'title' => $finding->title,
-            'category' => $finding->category->label(),
-            'severityLabel' => $finding->severity->label(),
-            'source' => $finding->source->value,
-            // 再現性のある指摘か、読んで判断すべき指摘かを画面で区別する
-            // （要件定義 7.1節）。ここがこのアプリの設計上の要点にあたる。
-            'isDeterministic' => $finding->source->isDeterministic(),
-            'evidenceCount' => is_array($finding->evidence) ? count($finding->evidence) : 0,
-            'assessedOn' => $finding->riskAssessment->assessed_at->translatedFormat('n月j日'),
-        ])->all());
-    }
-
-    /**
-     * まだお伝えできていない口頭連絡（F-20）。
-     *
-     * 連絡帳に書いてあるからといって、伝わったことにはならない。
-     * 送迎の担当者が代わっても引き継がれるよう、画面に残す。
-     *
-     * @return list<array<string, mixed>>
-     */
-    private function pendingVerbalContacts(?int $facilityId): array
-    {
-        $tasks = VerbalContactTask::query()
-            ->pending()
-            ->whereHas('resident', fn ($query) => $query->where('facility_id', $facilityId))
-            ->with('resident')
-            ->get();
-
-        return array_values($tasks->map(fn (VerbalContactTask $task): array => [
-            'id' => $task->id,
-            'residentId' => $task->resident_id,
-            'residentName' => $task->resident->name,
-            'topic' => $task->topic,
-            'urgencyLabel' => $task->urgency === 'same_day' ? '当日中' : '次回利用時',
-            'recordId' => $task->service_record_id,
-        ])->all());
     }
 
     /**

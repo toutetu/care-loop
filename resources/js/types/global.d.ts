@@ -12,6 +12,8 @@ declare module '@inertiajs/core' {
             name: string;
             auth: Auth;
             sidebarOpen: boolean;
+            /** 下のバーの「お知らせ」に出す件数（HandleInertiaRequests） */
+            noticeCount: number;
             [key: string]: unknown;
         };
     }

@@ -7,16 +7,31 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LlmActionController;
 use App\Http\Controllers\LlmJobController;
 use App\Http\Controllers\LlmLogController;
+use App\Http\Controllers\MessageController;
+use App\Http\Controllers\NoticeController;
 use App\Http\Controllers\RecordNoteController;
 use App\Http\Controllers\ResidentController;
 use App\Http\Controllers\ServiceRecordController;
 use App\Http\Controllers\StaffController;
+use App\Http\Controllers\StartController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    // ログイン直後の行き先。端末に合わせて記録かダッシュボードへ送る（StartController）
+    Route::get('start', StartController::class)->name('start');
+
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    /*
+     * --- お知らせと連絡 ---
+     *
+     * スマートフォンの下のバーから開く。お知らせはダッシュボードと同じ抽出条件で、
+     * すぐ読めるものだけを並べる。連絡（職員間のメッセージ）は準備中。
+     */
+    Route::get('notices', [NoticeController::class, 'index'])->name('notices.index');
+    Route::get('messages', [MessageController::class, 'index'])->name('messages.index');
 
     /*
      * --- ご利用者 ---
