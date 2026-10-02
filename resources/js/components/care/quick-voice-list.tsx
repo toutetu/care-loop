@@ -99,14 +99,14 @@ export function QuickVoiceList({ rows }: { rows: QuickVoiceRow[] }) {
                             <button
                                 type="button"
                                 onClick={() => open(row)}
-                                className="focus-visible:ring-ring hover:bg-accent flex min-h-14 min-w-0 flex-1 items-center gap-2 px-3 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-inset"
+                                className="focus-visible:ring-ring hover:bg-accent flex min-h-14 min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-inset"
                             >
                                 <RowBody row={row} />
                             </button>
                         ) : (
                             <Link
                                 href={records.edit(row.recordId)}
-                                className="hover:bg-accent flex min-h-14 min-w-0 flex-1 items-center gap-2 px-3"
+                                className="hover:bg-accent flex min-h-14 min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2"
                             >
                                 <RowBody row={row} />
                             </Link>
@@ -277,22 +277,31 @@ export function QuickVoiceList({ rows }: { rows: QuickVoiceRow[] }) {
     );
 }
 
-/** 1行の中身。お名前を大きく、状態は右に小さく寄せる。 */
+/**
+ * 1行の中身。お名前を大きく、状態は右に小さく寄せる。
+ *
+ * 【お名前は省略しない】
+ * 幅が足りないときは、お名前を「…」で切らずに状態のほうを次の行へ送る。
+ * 「AI下書き・未確認」のバッジは長く、375px ではお名前が「木村 トミ…」まで
+ * 削られていた。押す相手を名前で見分ける画面なので、削るなら状態のほうである。
+ */
 function RowBody({ row }: { row: QuickVoiceRow }) {
     return (
         <>
-            <span className="min-w-0 flex-1 truncate text-base font-semibold">
+            <span className="max-w-full text-base font-semibold">
                 {row.name} 様
             </span>
-            {/* もう話して残したかが分かれば、同じことを二度残さずに済む */}
-            {row.notesCount > 0 && (
-                <span className="text-muted-foreground flex shrink-0 items-center gap-1 text-xs tabular-nums">
-                    <NotebookPen className="size-3.5" aria-hidden />
-                    {row.notesCount}
-                    <span className="sr-only">件のメモ</span>
-                </span>
-            )}
-            <RecordStatusBadge status={row.status} />
+            <span className="ml-auto flex shrink-0 items-center gap-2">
+                {/* もう話して残したかが分かれば、同じことを二度残さずに済む */}
+                {row.notesCount > 0 && (
+                    <span className="text-muted-foreground flex items-center gap-1 text-xs tabular-nums">
+                        <NotebookPen className="size-3.5" aria-hidden />
+                        {row.notesCount}
+                        <span className="sr-only">件のメモ</span>
+                    </span>
+                )}
+                <RecordStatusBadge status={row.status} />
+            </span>
         </>
     );
 }
