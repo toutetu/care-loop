@@ -1,0 +1,32 @@
+# AI 処理（リスク兆候抽出・目標進捗要約・音声の三面変換）を実行するキューワーカー。
+#
+# setup.sh が /etc/systemd/system/careloop-queue.service に置く。
+# Laravel Cloud のマネージドキューの代わりに、systemd（OS の起動時に立ち上げ、
+# 落ちたら立ち上げ直す Linux の仕組み）で常駐させる。
+#
+# 値の理由（docs/02_デプロイ手順.md 2.5 節と同じにそろえている）
+#   --timeout=90   アプリ側の打ち切り（LLM_JOB_TIMEOUT_SECONDS=85）より長くする。
+#                  短いと、打ち切られたことがアプリに記録されないままジョブが消える
+#   --tries=1      再送は LlmGateway が失敗の種類ごとに判断する。ここでも再試行すると、
+#                  同じ API 呼び出しに二重で課金される
+#   --max-time     1 時間で自分から終了し、systemd が立ち上げ直す。
+#                  動かし続けてメモリが膨らむのを防ぐ
+
+[Unit]
+Description=CareLoop queue worker
+After=network-online.target mysql.service
+Wants=network-online.target mysql.service
+
+[Service]
+Type=simple
+User=careloop
+Group=careloop
+WorkingDirectory=/var/www/care-loop
+ExecStart=/usr/bin/php artisan queue:work database --queue=default --timeout=90 --tries=1 --sleep=3 --max-time=3600
+Restart=always
+RestartSec=5
+# 止めるときは、実行中のジョブが --timeout で打ち切られるまで待つ
+TimeoutStopSec=100
+
+[Install]
+WantedBy=multi-user.target

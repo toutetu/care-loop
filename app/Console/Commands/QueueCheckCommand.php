@@ -20,9 +20,10 @@ use Throwable;
  * 【いつ使うか】
  *   - AI処理をキュー実行へ切り替える前（ワーカーが無いと全機能が沈黙する）
  *   - Laravel Cloud で Deploy したあと
+ *   - AWS（Lightsail）で setup.sh / deploy.sh を実行したあと
  *   - 「AI処理の実行状況」で待機中が増え続けているとき
  *
- * 本番では Laravel Cloud の Commands から実行する。
+ * 本番では Laravel Cloud の Commands から、AWS ではブラウザの SSH 画面から実行する。
  */
 class QueueCheckCommand extends Command
 {
@@ -82,6 +83,7 @@ class QueueCheckCommand extends Command
         $this->line('  ワーカーが動いていない可能性があります。次を確認してください。');
         $this->line('   - Laravel Cloud で Deploy を押したか（押すまで QUEUE_CONNECTION=cloud は効きません）');
         $this->line('   - マネージドキューのワーカーが増えているか（Monitoring → Queues）');
+        $this->line('   - AWS（Lightsail）なら、sudo systemctl status careloop-queue が active (running) か');
         $this->line('   - ローカルなら、別の端末で php artisan queue:work を起動しているか');
         $this->line('');
 
