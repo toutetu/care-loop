@@ -34,7 +34,7 @@ import {
     REQUIREMENTS_URL,
     SCALE_POLICY_URL,
 } from '@/lib/links';
-import { dashboard, login } from '@/routes';
+import { login, start } from '@/routes';
 import type { Auth } from '@/types';
 
 /**
@@ -349,8 +349,10 @@ const DOCUMENTS = [
 
 export default function Welcome() {
     const { auth } = usePage<{ auth: Auth }>().props;
-    const primaryHref = auth.user ? dashboard() : login();
-    const primaryLabel = auth.user ? 'ダッシュボードへ' : 'デモにログイン';
+    // ログイン済みなら、端末に合わせた最初の画面へ送る（StartController）。
+    // ダッシュボードを直接指すと、スマートフォンでも朝礼用の画面が開く。
+    const primaryHref = auth.user ? start() : login();
+    const primaryLabel = auth.user ? 'アプリを開く' : 'デモにログイン';
 
     return (
         <>
