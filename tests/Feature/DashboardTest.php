@@ -84,7 +84,10 @@ class DashboardTest extends TestCase
 
     public function test_未確認で重要度の高い指摘だけが並ぶ(): void
     {
-        $unreviewed = RiskAssessment::factory()->for($this->resident)->create(['reviewed_at' => null]);
+        $unreviewed = RiskAssessment::factory()->for($this->resident)->create([
+            'reviewed_at' => null,
+            'assessed_at' => now(),
+        ]);
         RiskFinding::factory()->create([
             'risk_assessment_id' => $unreviewed->id,
             'severity' => RiskSeverity::High,
@@ -99,9 +102,11 @@ class DashboardTest extends TestCase
         ]);
 
         // 確認済みのものも出さない。既読が並び続けると新しい指摘が埋もれる。
+        // 最新の抽出だけを見るので、確認済みのほうは前回の抽出にしておく。
         $reviewed = RiskAssessment::factory()->for($this->resident)->create([
             'reviewed_at' => now(),
             'reviewed_by' => $this->staff->id,
+            'assessed_at' => now()->subDays(7),
         ]);
         RiskFinding::factory()->create([
             'risk_assessment_id' => $reviewed->id,
@@ -138,6 +143,69 @@ class DashboardTest extends TestCase
         $assessment = RiskAssessment::factory()->for($other)->create(['reviewed_at' => null]);
         RiskFinding::factory()->create([
             'risk_assessment_id' => $assessment->id,
+            'severity' => RiskSeverity::High,
+        ]);
+
+        $this->actingAs($this->staff)->get('/dashboard')
+            ->assertInertia(fn (AssertableInertia $page) => $page->has('risks', 0));
+    }
+
+    public function test_抽出を何度実行しても最新の結果だけを出す(): void
+    {
+        // 古い結果まで数えると、同じ指摘が実行した回数だけ並ぶ。
+        // 利用者詳細も最新の1件だけを見せている。
+        $older = RiskAssessment::factory()->for($this->resident)->create([
+            'reviewed_at' => null,
+            'assessed_at' => now()->subDays(7),
+        ]);
+        RiskFinding::factory()->create([
+            'risk_assessment_id' => $older->id,
+            'severity' => RiskSeverity::High,
+            'title' => '前回の指摘',
+        ]);
+
+        $latest = RiskAssessment::factory()->for($this->resident)->create([
+            'reviewed_at' => null,
+            'assessed_at' => now(),
+        ]);
+        RiskFinding::factory()->create([
+            'risk_assessment_id' => $latest->id,
+            'severity' => RiskSeverity::High,
+            'title' => '今回の指摘',
+        ]);
+
+        $this->actingAs($this->staff)->get('/dashboard')
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('risks', 1)
+                ->where('risks.0.title', '今回の指摘')
+            );
+
+        // 下のバーの件数も同じ数え方にする
+        $this->actingAs($this->staff)->get('/notices')
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('risks', 1)
+                ->where('noticeCount', 1)
+            );
+    }
+
+    public function test_最新の抽出を確認済みにすれば古い未確認の結果は出さない(): void
+    {
+        $older = RiskAssessment::factory()->for($this->resident)->create([
+            'reviewed_at' => null,
+            'assessed_at' => now()->subDays(7),
+        ]);
+        RiskFinding::factory()->create([
+            'risk_assessment_id' => $older->id,
+            'severity' => RiskSeverity::High,
+        ]);
+
+        $latest = RiskAssessment::factory()->for($this->resident)->create([
+            'reviewed_at' => now(),
+            'reviewed_by' => $this->staff->id,
+            'assessed_at' => now(),
+        ]);
+        RiskFinding::factory()->create([
+            'risk_assessment_id' => $latest->id,
             'severity' => RiskSeverity::High,
         ]);
 

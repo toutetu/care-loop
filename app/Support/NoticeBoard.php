@@ -90,7 +90,10 @@ class NoticeBoard
             ->highSeverity()
             ->whereHas(
                 'riskAssessment',
+                // 抽出を何度か実行すると、同じ指摘が回数ぶん並ぶ。
+                // 利用者詳細と同じく、ご利用者ごとに最新の抽出だけを見る。
                 fn ($query) => $query
+                    ->latestPerResident()
                     ->whereNull('reviewed_at')
                     ->whereHas('resident', fn ($inner) => $inner->where('facility_id', $this->facilityId)),
             );

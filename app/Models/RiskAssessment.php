@@ -60,6 +60,34 @@ class RiskAssessment extends Model
         return $query->whereNull('reviewed_at');
     }
 
+    /**
+     * ご利用者ごとに最新の抽出だけに絞る。
+     *
+     * 抽出は実行するたびに1件ずつ積まれ、前の結果は消さない（いつ何を
+     * 指摘したかを後から辿るため）。古い結果まで数えると、同じ指摘が
+     * 実行した回数だけ並ぶ。利用者詳細は最新の1件だけを見せているので、
+     * 一覧や件数もそれに揃える。
+     *
+     * 抽出日時が同じなら、あとから作ったほうを最新とみなす。
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeLatestPerResident(Builder $query): Builder
+    {
+        $table = $this->getTable();
+
+        return $query->whereNotExists(fn ($newer) => $newer
+            ->selectRaw('1')
+            ->from("{$table} as newer")
+            ->whereColumn('newer.resident_id', "{$table}.resident_id")
+            ->where(fn ($later) => $later
+                ->whereColumn('newer.assessed_at', '>', "{$table}.assessed_at")
+                ->orWhere(fn ($sameTime) => $sameTime
+                    ->whereColumn('newer.assessed_at', "{$table}.assessed_at")
+                    ->whereColumn('newer.id', '>', "{$table}.id"))));
+    }
+
     public function markReviewed(User $user): void
     {
         $this->forceFill([
