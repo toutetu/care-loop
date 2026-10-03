@@ -60,14 +60,22 @@ class MobileEntryTest extends TestCase
             ->assertRedirect(route('records.index'));
     }
 
-    public function test_p_cとタブレットではダッシュボードから始まる(): void
+    public function test_タブレットでも記録の一覧から始まる(): void
     {
-        foreach (['desktop', 'tablet'] as $device) {
-            $this->actingAs($this->staff)
-                ->withUnencryptedCookie('device', $device)
-                ->get('/start')
-                ->assertRedirect(route('dashboard'));
-        }
+        // フロアに置いたタブレットで開くのは、食事や入浴をまとめて入れるとき。
+        // 一覧の上に一括入力への入口がある
+        $this->actingAs($this->staff)
+            ->withUnencryptedCookie('device', 'tablet')
+            ->get('/start')
+            ->assertRedirect(route('records.index'));
+    }
+
+    public function test_p_cではダッシュボードから始まる(): void
+    {
+        $this->actingAs($this->staff)
+            ->withUnencryptedCookie('device', 'desktop')
+            ->get('/start')
+            ->assertRedirect(route('dashboard'));
     }
 
     public function test_ダッシュボードを開こうとしていてもログイン後は端末に合わせる(): void

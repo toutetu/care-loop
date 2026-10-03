@@ -57,7 +57,7 @@ export function MobileTabBar() {
     return (
         <nav
             aria-label="主なメニュー"
-            className="bg-background/95 fixed inset-x-0 bottom-0 z-40 border-t backdrop-blur md:hidden"
+            className="bg-background/95 fixed inset-x-0 bottom-0 z-40 border-t backdrop-blur xl:hidden md:pointer-fine:hidden"
             style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
             {/* gap-2 は、モックの「隣接要素との間隔を8px以上」に合わせている。
