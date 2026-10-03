@@ -99,7 +99,7 @@ APIの検証は JSON Schema の仕様どおりではありません。
 | データベース   | MySQL / MariaDB（第3正規形まで正規化）            |
 | LLM            | Anthropic Claude API（`anthropic-ai/sdk`）        |
 | 静的解析       | PHPStan level 7（larastan）/ Laravel Pint         |
-| テスト         | PHPUnit 430件                                     |
+| テスト         | PHPUnit 432件                                     |
 
 データベースの正規化方針は、各マイグレーションの `comment()` に根拠を書いています。要介護度を文字列で持たず `care_levels` に切り出した理由、`service_records` に `resident_id` と `service_date` の複合一意制約を置いた理由などです。
 

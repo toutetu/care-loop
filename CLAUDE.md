@@ -38,7 +38,7 @@ PATH="/c/Users/r0110/.config/herd/bin/php84:$PATH" npm run build
 ```bash
 npm run check          # 整形＋lint（vp check）。直すなら npm run check:fix
 npm run types:check
-php artisan test       # 430 件
+php artisan test       # 432 件
 vendor/bin/pint --test
 vendor/bin/phpstan analyse
 ```
