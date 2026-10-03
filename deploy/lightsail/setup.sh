@@ -225,7 +225,7 @@ fi
 as_app 'php artisan optimize'
 
 # ---------------------------------------------------------------------------
-step '9/10 Web サーバーと AI 処理の係（キューワーカー）を起動します'
+step '9/10 Web サーバーと AI 処理の係（キューワーカー）、毎分の予定確認を起動します'
 
 readonly FPM_POOL_DIR="/etc/php/${PHP_VERSION}/fpm/pool.d"
 install -m 644 "$HERE/php-fpm.conf" "$FPM_POOL_DIR/careloop.conf"
@@ -243,9 +243,14 @@ nginx -t -q
 systemctl reload nginx
 
 install -m 644 "$HERE/careloop-queue.service" /etc/systemd/system/careloop-queue.service
+# 毎分 schedule:run を呼ぶ（Laravel Cloud の Scheduler の代わり）。今の予定は
+# デモの1日ぶんを毎朝つくる careloop:demo-day だけで、デモ環境でしか登録されない
+install -m 644 "$HERE/careloop-schedule.service" /etc/systemd/system/careloop-schedule.service
+install -m 644 "$HERE/careloop-schedule.timer" /etc/systemd/system/careloop-schedule.timer
 systemctl daemon-reload
 systemctl enable --quiet careloop-queue.service
 systemctl restart careloop-queue.service
+systemctl enable --quiet --now careloop-schedule.timer
 
 # ---------------------------------------------------------------------------
 step "10/10 HTTPS の証明書（Let's Encrypt）を取得します"

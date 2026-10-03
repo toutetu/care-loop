@@ -1,0 +1,18 @@
+# careloop-schedule.service を毎分起動する。
+#
+# cron ではなく systemd のタイマーにしたのは、キューワーカーと同じ仕組みで
+# 状態を見られるようにするため（systemctl status / journalctl で同じように追える）。
+#
+# Persistent=false のまま。サーバーが止まっていたあいだの分をまとめて
+# 取り戻すと、起動直後に予定が重なって動く。毎朝の予定は、次の朝に動けば足りる。
+
+[Unit]
+Description=Run CareLoop scheduler every minute
+
+[Timer]
+OnCalendar=*-*-* *:*:00
+AccuracySec=1s
+Unit=careloop-schedule.service
+
+[Install]
+WantedBy=timers.target
