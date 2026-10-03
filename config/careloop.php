@@ -25,6 +25,12 @@ return [
     | 呼び出せる。パスワード再設定は、メール送信の手配がない環境では
     | 押しても何も届かないリンクになる。
     |
+    | パスキー（顔認証・指紋）は、公開デモでは既定で閉じる。見に来た人は
+    | 役割のボタンでログインするので、パスキーのボタンは迷わせるだけになる。
+    | デモのアカウントは共用なので、誰かが自分の顔認証を登録すると、その
+    | 共用アカウントに個人の鍵が残る。実運用（CARELOOP_DEMO が立っていない
+    | 環境）では開いたままにする。
+    |
     | 【Fortify の機能自体は無効にしない】
     | 機能を外すとルートが登録されず、Wayfinder が生成する
     | resources/js/routes/register.ts などが作られなくなる。
@@ -39,6 +45,7 @@ return [
     'features' => [
         'registration' => (bool) env('FEATURE_REGISTRATION', true),
         'password_reset' => (bool) env('FEATURE_PASSWORD_RESET', true),
+        'passkeys' => (bool) env('FEATURE_PASSKEYS', ! (bool) env('CARELOOP_DEMO', false)),
     ],
 
     /*

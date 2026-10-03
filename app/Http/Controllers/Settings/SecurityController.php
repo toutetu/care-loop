@@ -18,10 +18,13 @@ class SecurityController extends Controller
      */
     public function edit(TwoFactorAuthenticationRequest $request): Response
     {
+        // 公開デモでは、共用のアカウントに個人の鍵を登録させない（config/careloop.php）
+        $canManagePasskeys = Features::canManagePasskeys() && config('careloop.features.passkeys');
+
         $props = [
             'canManageTwoFactor' => Features::canManageTwoFactorAuthentication(),
-            'canManagePasskeys' => Features::canManagePasskeys(),
-            'passkeys' => Features::canManagePasskeys()
+            'canManagePasskeys' => $canManagePasskeys,
+            'passkeys' => $canManagePasskeys
                 ? $request->user()
                     ->passkeys()
                     ->select(['id', 'name', 'credential', 'created_at', 'last_used_at'])

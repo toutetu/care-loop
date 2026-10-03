@@ -290,7 +290,7 @@ const DEMO_ACCOUNTS: {
         icon: HeartHandshake,
         role: '介護職員',
         email: 'staff@example.com',
-        note: '自分が書いた記録のみ編集できる',
+        note: '記録の入力と確定。ご利用者の登録と AI 運用は扱わない',
     },
 ];
 
