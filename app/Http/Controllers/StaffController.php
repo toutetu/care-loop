@@ -143,7 +143,7 @@ class StaffController extends Controller
             'value' => $role->value,
             'label' => $role->label(),
             'description' => match ($role) {
-                UserRole::Staff => '自分が書いた記録のみ編集できます',
+                UserRole::Staff => '事業所の記録を入力・確定できます（ご利用者の登録とAI運用は扱いません）',
                 UserRole::Manager => 'すべての記録とご利用者情報を編集できます',
                 UserRole::Admin => '職員アカウントとAI利用ログも扱えます',
             },
