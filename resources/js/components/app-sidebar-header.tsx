@@ -22,7 +22,11 @@ export function AppSidebarHeader({
                  * 上下に2つあると、押しやすいほう（下）が使われなくなる。
                  */}
                 <SidebarTrigger
-                    className={mobileTabBar ? 'max-xl:hidden' : ''}
+                    className={
+                        mobileTabBar
+                            ? 'max-md:hidden max-xl:pointer-coarse:hidden'
+                            : ''
+                    }
                 />
 
                 {/* スマートフォンとタブレットではサイドバーが隠れ、ロゴがどこにも出ない。
@@ -31,7 +35,7 @@ export function AppSidebarHeader({
                     href={dashboard()}
                     prefetch
                     aria-label="ダッシュボードへ"
-                    className="focus-visible:ring-ring shrink-0 rounded-md outline-none focus-visible:ring-2 xl:hidden"
+                    className="focus-visible:ring-ring shrink-0 rounded-md outline-none focus-visible:ring-2 md:pointer-fine:hidden xl:hidden"
                 >
                     <BrandMark className="size-7 rounded-md" title="" />
                 </Link>

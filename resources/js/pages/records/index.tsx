@@ -118,7 +118,7 @@ export default function RecordIndex({
                     PCではサイドバーの「入力」から入れる。 */}
                 <nav
                     aria-label="まとめて入力"
-                    className="hidden grid-cols-3 gap-3 md:grid xl:hidden"
+                    className="hidden grid-cols-3 gap-3 md:pointer-coarse:grid xl:hidden"
                 >
                     {BATCH_ENTRIES.map((entry) => (
                         <Link

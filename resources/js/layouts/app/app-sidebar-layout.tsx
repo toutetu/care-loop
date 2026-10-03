@@ -20,7 +20,7 @@ export default function AppSidebarLayout({
                     'min-w-0 overflow-x-clip',
                     // 下部タブバーのぶんだけ内容を空ける。これが無いと、
                     // いちばん下の保存ボタンがタブバーに隠れる。
-                    mobileTabBar && 'pb-20 xl:pb-0',
+                    mobileTabBar && 'pb-20 md:pointer-fine:pb-0 xl:pb-0',
                 )}
             >
                 <AppSidebarHeader

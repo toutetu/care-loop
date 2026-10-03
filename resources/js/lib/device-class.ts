@@ -8,6 +8,11 @@
  *
  * 境目は Tailwind の md（768px）と xl（1280px）に揃える。画面の組み替えと
  * ログイン直後の行き先（StartController）が、同じ線で切り替わるようにする。
+ *
+ * 【タブレットは指で操作するものに限る】
+ * PC でも、他の作業と並べてウィンドウを半分にすると 1280px を下回る。
+ * 幅だけで決めると、マウスで使っている PC が下のバーの画面になってしまう。
+ * 768〜1279px でも、主な操作がマウス（pointer: fine）なら PC として扱う。
  */
 
 export type DeviceClass = 'phone' | 'tablet' | 'desktop';
@@ -22,7 +27,9 @@ export function currentDeviceClass(): DeviceClass {
         return 'phone';
     }
 
-    return width < DESKTOP_MIN ? 'tablet' : 'desktop';
+    const touch = window.matchMedia('(pointer: coarse)').matches;
+
+    return width < DESKTOP_MIN && touch ? 'tablet' : 'desktop';
 }
 
 function writeCookie(value: DeviceClass): void {
