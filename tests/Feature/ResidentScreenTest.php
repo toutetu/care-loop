@@ -83,6 +83,30 @@ class ResidentScreenTest extends TestCase
             );
     }
 
+    public function test_一覧の要確認は最新の抽出で判断する(): void
+    {
+        // 詳細は最新の抽出だけを出す。古い未確認の結果で「要確認」と出ると、
+        // 詳細を開いても何を確認すればよいのか分からない。
+        $older = RiskAssessment::factory()->for($this->resident)->create([
+            'reviewed_at' => null,
+            'assessed_at' => now()->subDays(7),
+        ]);
+        RiskFinding::factory()->create([
+            'risk_assessment_id' => $older->id,
+            'severity' => RiskSeverity::High,
+        ]);
+        RiskAssessment::factory()->for($this->resident)->create([
+            'reviewed_at' => now(),
+            'reviewed_by' => $this->staff->id,
+            'assessed_at' => now(),
+        ]);
+
+        $this->actingAs($this->staff)->get('/residents')
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('residents.0.unreviewedRiskCount', 0)
+            );
+    }
+
     // ---------------------------------------------------------------
     // 詳細：リスク兆候
     // ---------------------------------------------------------------

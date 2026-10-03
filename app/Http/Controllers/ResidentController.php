@@ -51,7 +51,9 @@ class ResidentController extends Controller
             ->withCount([
                 // 未確認の指摘がいくつ残っているかを一覧に出す。
                 // 詳細を開かないと分からない状態では、見落としが起きる。
+                // 詳細は最新の抽出だけを出すので、一覧もそれに揃える。
                 'riskAssessments as unreviewed_risk_count' => fn ($query) => $query
+                    ->latestPerResident()
                     ->whereNull('reviewed_at')
                     ->whereHas('findings', fn ($inner) => $inner->highSeverity()),
             ])
@@ -345,7 +347,9 @@ class ResidentController extends Controller
         /** @var RiskAssessment|null $assessment */
         $assessment = $resident->riskAssessments()
             ->with('findings')
+            // 抽出日時が同じなら、あとから作ったほうを最新とする（latestPerResident と同じ）
             ->latest('assessed_at')
+            ->latest('id')
             ->first();
 
         if ($assessment === null) {
