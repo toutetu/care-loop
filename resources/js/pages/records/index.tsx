@@ -1,5 +1,14 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { CalendarDays, CircleCheck, Printer, X } from 'lucide-react';
+import {
+    Bath,
+    CalendarDays,
+    CircleCheck,
+    HeartPulse,
+    Printer,
+    UtensilsCrossed,
+    X,
+} from 'lucide-react';
+import BatchEntryController from '@/actions/App/Http/Controllers/BatchEntryController';
 import { RecordStatusBadge } from '@/components/care/badges';
 import { PageHeader } from '@/components/care/page-header';
 import { QuickVoiceList } from '@/components/care/quick-voice-list';
@@ -11,6 +20,13 @@ import { dashboard } from '@/routes';
 import records from '@/routes/records';
 import residents from '@/routes/residents';
 import type { RecordStatus } from '@/types/care';
+
+/** タブレットで記録一覧の上に出す、一括入力への入口。 */
+const BATCH_ENTRIES = [
+    { kind: 'bathing', label: '入浴をまとめて入力', icon: Bath },
+    { kind: 'meal', label: '食事をまとめて入力', icon: UtensilsCrossed },
+    { kind: 'vital', label: 'バイタルをまとめて入力', icon: HeartPulse },
+] as const;
 
 type Row = {
     recordId: number;
@@ -95,6 +111,28 @@ export default function RecordIndex({
                         />
                     }
                 />
+
+                {/* タブレットはフロアに置き、食事や入浴をまとめて入れるときに開く。
+                    サイドバーはドロワーに隠れているので、入口をここに大きく置く。
+                    スマートフォンでは出さない（音声メモの一覧を先に見せる）。
+                    PCではサイドバーの「入力」から入れる。 */}
+                <nav
+                    aria-label="まとめて入力"
+                    className="hidden grid-cols-3 gap-3 md:grid xl:hidden"
+                >
+                    {BATCH_ENTRIES.map((entry) => (
+                        <Link
+                            key={entry.kind}
+                            href={BatchEntryController.index.url({
+                                kind: entry.kind,
+                            })}
+                            className="bg-card hover:bg-accent focus-visible:ring-ring flex min-h-24 flex-col items-center justify-center gap-2 rounded-xl border text-base font-semibold shadow-card outline-none focus-visible:ring-[3px]"
+                        >
+                            <entry.icon className="size-7" aria-hidden />
+                            {entry.label}
+                        </Link>
+                    ))}
+                </nav>
 
                 {/* スマートフォンでは件数のカードを出さない。開く目的は
                     「気づいたことを残す」で、一覧が画面に入りきるほうが大事。

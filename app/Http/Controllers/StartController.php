@@ -13,9 +13,11 @@ use Illuminate\Http\Request;
  * 見分けられない。画面側で幅を測って device という Cookie に書き、
  * ここではそれを読むだけにする（resources/js/lib/device-class.ts）。
  *
- * 【スマートフォンは記録から始める】
+ * 【スマートフォンとタブレットは記録から始める】
  * スマートフォンを開くのは、介助の合間に気づいたことを残すときである。
- * ダッシュボードを経由させると、そのぶん1回多く押させることになる。
+ * タブレットはフロアに置き、食事や入浴をまとめて入れるときに開く。
+ * どちらもダッシュボードを経由させると、そのぶん1回多く押させることになる。
+ * 記録の一覧には、タブレットのときだけ一括入力への大きな入口を出す。
  * 朝礼で全体を見るダッシュボードは、PCで開く画面として残す。
  */
 class StartController extends Controller
@@ -23,7 +25,7 @@ class StartController extends Controller
     public function __invoke(Request $request): RedirectResponse
     {
         return match ($request->cookie('device')) {
-            'phone' => to_route('records.index'),
+            'phone', 'tablet' => to_route('records.index'),
             default => to_route('dashboard'),
         };
     }

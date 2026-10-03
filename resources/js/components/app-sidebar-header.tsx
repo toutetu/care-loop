@@ -16,21 +16,22 @@ export function AppSidebarHeader({
         <header className="border-sidebar-border/50 flex h-16 shrink-0 items-center gap-2 border-b px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 md:px-4">
             <div className="flex min-w-0 items-center gap-2">
                 {/*
-                 * 下部タブバーがある画面では、この開閉ボタンをスマートフォンで隠す。
+                 * 下部タブバーがある画面では、この開閉ボタンをスマートフォンと
+                 * タブレットで隠す。
                  * 左上の角は親指がいちばん届かない場所で、同じドロワーへの入口が
                  * 上下に2つあると、押しやすいほう（下）が使われなくなる。
                  */}
                 <SidebarTrigger
-                    className={mobileTabBar ? 'max-md:hidden' : ''}
+                    className={mobileTabBar ? 'max-xl:hidden' : ''}
                 />
 
-                {/* スマートフォンではサイドバーが隠れ、ロゴがどこにも出ない。
+                {/* スマートフォンとタブレットではサイドバーが隠れ、ロゴがどこにも出ない。
                     マークだけをここに置く。文字を添えるとパンくずと競合する。 */}
                 <Link
                     href={dashboard()}
                     prefetch
                     aria-label="ダッシュボードへ"
-                    className="focus-visible:ring-ring shrink-0 rounded-md outline-none focus-visible:ring-2 md:hidden"
+                    className="focus-visible:ring-ring shrink-0 rounded-md outline-none focus-visible:ring-2 xl:hidden"
                 >
                     <BrandMark className="size-7 rounded-md" title="" />
                 </Link>
