@@ -39,6 +39,9 @@ export type RiskAssessment = {
     noRiskDetected: boolean;
     confidence: string | null;
     isReviewed: boolean;
+    /** 確認済みにした職員と日時。未確認なら null。 */
+    reviewedBy: string | null;
+    reviewedAt: string | null;
     findings: RiskFinding[];
 };
 

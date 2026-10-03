@@ -8,6 +8,7 @@ import {
     Sparkles,
     TriangleAlert,
 } from 'lucide-react';
+import RiskReviewController from '@/actions/App/Http/Controllers/RiskReviewController';
 import LlmActionController from '@/actions/App/Http/Controllers/LlmActionController';
 import {
     ProgressBadge,
@@ -309,6 +310,49 @@ export default function ResidentShow({
                                     />
                                     まだ職員が確認していない抽出結果です。根拠の記録をご確認ください。
                                 </p>
+                            )}
+
+                            {/* 確認済みにすると、お知らせとダッシュボードから外れる。
+                                根拠を読まずに押させないよう、何を読んでから押すのかを書いておく。 */}
+                            {riskAssessment.isReviewed ? (
+                                <p className="text-muted-foreground flex items-center gap-2 text-sm">
+                                    <CircleCheck
+                                        className="size-4"
+                                        aria-hidden
+                                    />
+                                    {riskAssessment.reviewedBy ?? '職員'} さんが{' '}
+                                    {riskAssessment.reviewedAt}{' '}
+                                    に確認済みにしました。
+                                </p>
+                            ) : (
+                                <Form
+                                    {...RiskReviewController.store.form(
+                                        riskAssessment.id,
+                                    )}
+                                    options={{ preserveScroll: true }}
+                                    className="flex flex-wrap items-center gap-x-3 gap-y-1"
+                                >
+                                    {({ processing }) => (
+                                        <>
+                                            <Button
+                                                type="submit"
+                                                variant="outline"
+                                                pending={processing}
+                                            >
+                                                {!processing && (
+                                                    <CircleCheck
+                                                        className="size-4"
+                                                        aria-hidden
+                                                    />
+                                                )}
+                                                根拠を確認したので、確認済みにする
+                                            </Button>
+                                            <span className="text-muted-foreground text-xs">
+                                                下の指摘と根拠の記録を読んでから押してください。押した職員と日時が残ります。
+                                            </span>
+                                        </>
+                                    )}
+                                </Form>
                             )}
 
                             {riskAssessment.findings.map((finding) => (

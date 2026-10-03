@@ -15,6 +15,7 @@ use App\Http\Controllers\MessageRoomController;
 use App\Http\Controllers\NoticeController;
 use App\Http\Controllers\RecordNoteController;
 use App\Http\Controllers\ResidentController;
+use App\Http\Controllers\RiskReviewController;
 use App\Http\Controllers\ServiceRecordController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\StartController;
@@ -84,6 +85,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('residents/{resident}/edit', [ResidentController::class, 'edit'])->name('residents.edit');
     Route::put('residents/{resident}', [ResidentController::class, 'update'])->name('residents.update');
     Route::get('residents/{resident}', [ResidentController::class, 'show'])->name('residents.show');
+
+    // リスク兆候の抽出結果を、根拠を読んだうえで「確認済み」にする（RiskReviewController）
+    Route::post('risk-assessments/{riskAssessment}/review', [RiskReviewController::class, 'store'])
+        ->whereNumber('riskAssessment')->name('risk-assessments.review');
 
     /*
      * --- 職員アカウント（管理者のみ） ---
