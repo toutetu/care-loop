@@ -51,9 +51,7 @@ class HandleInertiaRequests extends Middleware
              * ときだけ数える。
              */
             'noticeCount' => fn () => $request->user()
-                ? (new NoticeBoard($request->user()->facility_id))->count()
-                    // 自分宛ての個別の連絡も、読むまではお知らせに数える
-                    + array_sum(array_column((new MessageInbox($request->user()))->unreadDirect(), 'unread'))
+                ? NoticeBoard::countFor($request->user())
                 : 0,
             // 下のバーの「連絡」に出す未読の数。参加しているすべての部屋の合計。
             'messageUnread' => fn () => $request->user()

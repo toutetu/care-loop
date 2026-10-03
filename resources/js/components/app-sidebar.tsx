@@ -9,6 +9,7 @@ import {
     HeartPulse,
     History,
     LayoutGrid,
+    Megaphone,
     MessagesSquare,
     Sparkles,
     UserCog,
@@ -35,6 +36,7 @@ import {
 } from '@/components/ui/sidebar';
 import { REPOSITORY_URL, REQUIREMENTS_URL } from '@/lib/links';
 import { toUrl } from '@/lib/utils';
+import announcements from '@/routes/announcements';
 import auditLogs from '@/routes/audit-logs';
 import { dashboard } from '@/routes';
 import llmJobs from '@/routes/llm-jobs';
@@ -111,6 +113,11 @@ export function AppSidebar() {
                 // 同じ場所へ行けるよう、ここにも並べる。
                 { title: 'お知らせ', href: notices.index(), icon: Bell },
                 { title: '連絡', href: messages.index(), icon: MessagesSquare },
+                {
+                    title: '周知',
+                    href: announcements.index(),
+                    icon: Megaphone,
+                },
             ],
         },
         {

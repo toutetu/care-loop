@@ -1,6 +1,11 @@
 import { Head, Link } from '@inertiajs/react';
 import { Bell, ChevronRight, MessagesSquare } from 'lucide-react';
 import {
+    AnnouncementCard,
+    ConfirmAnnouncementButton,
+} from '@/components/care/announcement-card';
+import type { AnnouncementSummary } from '@/components/care/announcement-card';
+import {
     UrgentRiskSection,
     VerbalContactSection,
 } from '@/components/care/notice-lists';
@@ -9,6 +14,7 @@ import { PageHeader } from '@/components/care/page-header';
 import { Section } from '@/components/care/section';
 import { COUNT_BADGE } from '@/lib/care-presentation';
 import { cn } from '@/lib/utils';
+import announcementRoutes from '@/routes/announcements';
 import messages from '@/routes/messages';
 import notices from '@/routes/notices';
 import type { VerbalContact } from '@/types/care';
@@ -19,6 +25,8 @@ type Props = {
     risks: UrgentRisk[];
     verbalContacts: VerbalContact[];
     directMessages: DirectMessage[];
+    /** まだ「確認しました」を押していない周知。重要なものが先。 */
+    announcements: AnnouncementSummary[];
 };
 
 /**
@@ -32,11 +40,13 @@ type Props = {
  * 【自分宛ての連絡は、あるときだけ出す】
  * 個別の連絡は自分にしか届かないので、読み落とすと誰も気づかない。
  * ただし無いときに空の枠を出すと、毎回読み飛ばす場所が1つ増える。
+ * 管理者からの周知も同じで、確認を済ませれば消える。
  */
 export default function NoticeIndex({
     risks,
     verbalContacts,
     directMessages,
+    announcements,
 }: Props) {
     return (
         <>
@@ -84,6 +94,35 @@ export default function NoticeIndex({
                                 </li>
                             ))}
                         </ul>
+                    </Section>
+                )}
+
+                {announcements.length > 0 && (
+                    <Section
+                        title="管理者からの周知"
+                        description="読んだら「確認しました」を押してください。押すとここから消えます。"
+                        action={
+                            <Link
+                                href={announcementRoutes.index()}
+                                className="text-sm underline underline-offset-4"
+                            >
+                                周知の一覧
+                            </Link>
+                        }
+                    >
+                        <div className="flex flex-col gap-3">
+                            {announcements.map((announcement) => (
+                                <AnnouncementCard
+                                    key={announcement.id}
+                                    announcement={announcement}
+                                    footer={
+                                        <ConfirmAnnouncementButton
+                                            announcementId={announcement.id}
+                                        />
+                                    }
+                                />
+                            ))}
+                        </div>
                     </Section>
                 )}
 

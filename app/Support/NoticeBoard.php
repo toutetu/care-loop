@@ -2,7 +2,9 @@
 
 namespace App\Support;
 
+use App\Models\Announcement;
 use App\Models\RiskFinding;
+use App\Models\User;
 use App\Models\VerbalContactTask;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -81,6 +83,45 @@ class NoticeBoard
     public function count(): int
     {
         return $this->urgentRiskQuery()->count() + $this->verbalContactQuery()->count();
+    }
+
+    /**
+     * その職員の「お知らせ」の件数。事業所のお知らせに、本人宛てのものを足す。
+     *
+     * お知らせの画面に並ぶものと同じものを数える。画面と件数で数え方が
+     * 違うと、バッジの数字を見て開いた職員が「どれのことか」と迷う。
+     */
+    public static function countFor(User $user): int
+    {
+        return (new self($user->facility_id))->count()
+            // 自分宛ての個別の連絡は、読むまで数える
+            + array_sum(array_column((new MessageInbox($user))->unreadDirect(), 'unread'))
+            // 管理者からの周知は、「確認しました」を押すまで数える
+            + Announcement::query()->unconfirmedBy($user)->count();
+    }
+
+    /**
+     * その職員がまだ確認していない周知。重要なものを先に、新しい順に並べる。
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function unconfirmedAnnouncements(User $user): array
+    {
+        return array_values(Announcement::query()
+            ->unconfirmedBy($user)
+            ->with('author')
+            ->orderByDesc('is_important')
+            ->latest('id')
+            ->get()
+            ->map(fn (Announcement $announcement): array => [
+                'id' => $announcement->id,
+                'title' => $announcement->title,
+                'body' => $announcement->body,
+                'isImportant' => $announcement->is_important,
+                'author' => $announcement->author !== null ? $announcement->author->name : '（退職した職員）',
+                'postedAt' => $announcement->created_at->translatedFormat('n/j H:i'),
+            ])
+            ->all());
     }
 
     /** @return Builder<RiskFinding> */

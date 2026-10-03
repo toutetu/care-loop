@@ -65,6 +65,17 @@ enum UserRole: string
         return $this !== self::Staff;
     }
 
+    /**
+     * 周知を出せるか。
+     *
+     * 周知は「全員が必ず読むもの」として扱い、確認の有無まで追う。誰でも
+     * 出せると数が増え、1件ずつの重みがなくなる。日々のやり取りは連絡で行う。
+     */
+    public function canPostAnnouncements(): bool
+    {
+        return $this !== self::Staff;
+    }
+
     /** 職員アカウントを管理できるか。 */
     public function canManageUsers(): bool
     {
