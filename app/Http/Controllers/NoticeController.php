@@ -30,6 +30,7 @@ class NoticeController extends Controller
             'verbalContacts' => $notices->pendingVerbalContacts(),
             // 個別の連絡は自分にしか届かないので、読み落とすと誰も気づかない
             'directMessages' => (new MessageInbox($user))->unreadDirect(),
+            'announcements' => NoticeBoard::unconfirmedAnnouncements($user),
         ]);
     }
 }

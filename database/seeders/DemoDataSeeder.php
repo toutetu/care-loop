@@ -13,6 +13,7 @@ use App\Enums\RiskSource;
 use App\Enums\UserRole;
 use App\Enums\VerbalContactStatus;
 use App\Llm\Support\RiskIndicatorCalculator;
+use App\Models\Announcement;
 use App\Models\CareLevel;
 use App\Models\CarePlan;
 use App\Models\CarePlanGoal;
@@ -175,6 +176,7 @@ class DemoDataSeeder extends Seeder
         $this->createGoalProgress($residents['sato'], $staff['manager'], $from, $to);
         $this->createLlmHistory($staff['manager']);
         $this->createMessages($facility, $staff);
+        $this->createAnnouncements($facility, $staff);
 
         $this->command->info('  デモデータを投入しました（ご利用者20名・約3ヶ月分の記録）');
     }
@@ -759,6 +761,56 @@ class DemoDataSeeder extends Seeder
                 'comment' => $comment,
                 'evidence' => $this->recentEvidence($resident, $evidenceCount),
             ]);
+        }
+    }
+
+    /**
+     * 管理者からの周知。全員が確認済みの古いものと、介護職員（山口）が
+     * まだ確認していない重要なものを1つずつ作る。
+     *
+     * 介護職員としてログインすると、お知らせの先頭に「確認しました」の
+     * ボタンつきで出る。周知の一覧では、まだの方の名前が並ぶ。
+     *
+     * @param  array{admin: User, manager: User, staff: User, staff2: User}  $staff
+     */
+    private function createAnnouncements(Facility $facility, array $staff): void
+    {
+        $post = function (string $title, string $body, bool $important, CarbonInterface $at) use ($facility, $staff): Announcement {
+            $announcement = Announcement::query()->create([
+                'facility_id' => $facility->id,
+                'user_id' => $staff['manager']->id,
+                'title' => $title,
+                'body' => $body,
+                'is_important' => $important,
+            ]);
+            $announcement->forceFill(['created_at' => $at, 'updated_at' => $at])->save();
+
+            return $announcement;
+        };
+
+        $today = Carbon::today();
+
+        $past = $post(
+            '敬老会の準備について',
+            "18日（木）の敬老会では、午後のレクリエーションの時間にお茶菓子をお出しします。\n嚥下に配慮が必要な方には、ゼリーをご用意しています。配膳の前に食事形態をご確認ください。",
+            false,
+            $today->copy()->subDays(10)->setTime(9, 0),
+        );
+
+        foreach (['admin', 'staff', 'staff2'] as $key) {
+            $past->confirm($staff[$key]);
+        }
+
+        $current = $post(
+            '送迎車内の換気について',
+            "今週から、送迎中は後部座席の窓を5cmほど開けてください。\n寒さを訴える方には膝掛けをお渡しし、記録の「申し送り」に残してください。",
+            true,
+            $today->copy()->subDay()->setTime(16, 0),
+        );
+
+        // 山口さんだけがまだ確認していない状態にする
+        foreach (['admin', 'staff2'] as $key) {
+            $current->confirm($staff[$key]);
         }
     }
 

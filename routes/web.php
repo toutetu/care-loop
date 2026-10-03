@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\BatchEntryController;
 use App\Http\Controllers\DailyFamilyReportController;
@@ -35,6 +36,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
      * すぐ読めるものだけを並べる。
      */
     Route::get('notices', [NoticeController::class, 'index'])->name('notices.index');
+
+    // 管理者からの周知。開いただけでは確認にせず、職員が押したときだけ記録する
+    Route::get('announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
+    Route::post('announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
+    Route::post('announcements/{announcement}/confirm', [AnnouncementController::class, 'confirm'])
+        ->whereNumber('announcement')->name('announcements.confirm');
 
     /*
      * 連絡（職員どうしのメッセージ）。

@@ -179,3 +179,12 @@ export const NOTICE_SURFACE = {
  * 中身が要対応のリスクを含む以上、色は分けない。
  */
 export const COUNT_BADGE = 'bg-danger text-danger-foreground';
+
+/**
+ * 周知の「重要」。
+ *
+ * 全員が確認するまで追いかけるものなので、軸1の danger を使う。
+ * 重要でない周知に色を付けないのは、どれも同じ色だと重要なものが埋もれるため。
+ */
+export const IMPORTANT_BADGE =
+    'border-transparent bg-danger text-danger-foreground';

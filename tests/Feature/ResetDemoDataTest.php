@@ -60,15 +60,17 @@ class ResetDemoDataTest extends TestCase
         );
     }
 
-    public function test_連絡の表がすべて消去対象に入っている(): void
+    public function test_連絡と周知の表がすべて消去対象に入っている(): void
     {
-        // users は1から採番し直されるので、残った連絡は別の職員の発言になる
+        // users は1から採番し直されるので、残った連絡や周知は別の職員のものになる
         $tables = $this->truncatedTables();
         $expected = [
             'message_rooms',
             'message_consents',
             ...$this->tablesReferencing('message_room_id'),
             ...$this->tablesReferencing('message_id'),
+            'announcements',
+            ...$this->tablesReferencing('announcement_id'),
         ];
 
         $missing = array_values(array_diff($expected, $tables));
@@ -76,7 +78,7 @@ class ResetDemoDataTest extends TestCase
         $this->assertSame(
             [],
             $missing,
-            '連絡の表が ResetDemoData の消去対象から漏れている: '.implode(', ', $missing),
+            '連絡・周知の表が ResetDemoData の消去対象から漏れている: '.implode(', ', $missing),
         );
     }
 

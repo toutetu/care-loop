@@ -46,6 +46,8 @@ class ResetDemoData extends Command
         'messages',
         'message_room_members',
         'message_rooms',
+        'announcement_reads',
+        'announcements',
         'goal_progress_items',
         'goal_progress_reports',
         'risk_findings',
