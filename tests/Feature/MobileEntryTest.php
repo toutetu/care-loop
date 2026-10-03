@@ -114,12 +114,11 @@ class MobileEntryTest extends TestCase
             );
     }
 
-    public function test_連絡の画面を開ける(): void
+    public function test_連絡は承諾の画面から始まる(): void
     {
+        // 中身は MessagingTest で確かめる。ここでは下のバーから開けることだけを見る
         $this->actingAs($this->staff)->get('/messages')
-            ->assertInertia(fn (AssertableInertia $page) => $page
-                ->component('messages/index')
-            );
+            ->assertRedirect(route('messages.consent'));
     }
 
     public function test_未ログインでは開けない(): void

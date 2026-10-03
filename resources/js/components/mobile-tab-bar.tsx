@@ -36,7 +36,7 @@ const TAB_SHAPE =
 export function MobileTabBar() {
     const { isCurrentUrl } = useCurrentUrl();
     const { setOpenMobile } = useSidebar();
-    const { noticeCount } = usePage().props;
+    const { noticeCount, messageUnread } = usePage().props;
 
     const tabs = [
         { title: '記録', href: records.index(), icon: ClipboardList, count: 0 },
@@ -50,7 +50,7 @@ export function MobileTabBar() {
             title: '連絡',
             href: messages.index(),
             icon: MessagesSquare,
-            count: 0,
+            count: messageUnread,
         },
     ];
 
