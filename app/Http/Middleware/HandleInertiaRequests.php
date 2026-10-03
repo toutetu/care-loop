@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\MessageInbox;
 use App\Support\NoticeBoard;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -51,6 +52,12 @@ class HandleInertiaRequests extends Middleware
              */
             'noticeCount' => fn () => $request->user()
                 ? (new NoticeBoard($request->user()->facility_id))->count()
+                    // 自分宛ての個別の連絡も、読むまではお知らせに数える
+                    + array_sum(array_column((new MessageInbox($request->user()))->unreadDirect(), 'unread'))
+                : 0,
+            // 下のバーの「連絡」に出す未読の数。参加しているすべての部屋の合計。
+            'messageUnread' => fn () => $request->user()
+                ? (new MessageInbox($request->user()))->unreadTotal()
                 : 0,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             /*

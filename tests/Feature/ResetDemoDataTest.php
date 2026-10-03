@@ -60,6 +60,26 @@ class ResetDemoDataTest extends TestCase
         );
     }
 
+    public function test_連絡の表がすべて消去対象に入っている(): void
+    {
+        // users は1から採番し直されるので、残った連絡は別の職員の発言になる
+        $tables = $this->truncatedTables();
+        $expected = [
+            'message_rooms',
+            'message_consents',
+            ...$this->tablesReferencing('message_room_id'),
+            ...$this->tablesReferencing('message_id'),
+        ];
+
+        $missing = array_values(array_diff($expected, $tables));
+
+        $this->assertSame(
+            [],
+            $missing,
+            '連絡の表が ResetDemoData の消去対象から漏れている: '.implode(', ', $missing),
+        );
+    }
+
     public function test_消す順序は子から親へ(): void
     {
         // 外部キー制約を外しているので順序を間違えても落ちないが、

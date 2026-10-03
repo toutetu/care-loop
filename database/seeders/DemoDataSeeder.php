@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Enums\BathingType;
 use App\Enums\LlmFeature;
 use App\Enums\LlmJobStatus;
+use App\Enums\MessageRoomKind;
 use App\Enums\ProgressStatus;
 use App\Enums\RiskCategory;
 use App\Enums\RiskSeverity;
@@ -22,6 +23,7 @@ use App\Models\IncidentReport;
 use App\Models\LlmJob;
 use App\Models\LlmRequest;
 use App\Models\MealRecord;
+use App\Models\MessageRoom;
 use App\Models\Resident;
 use App\Models\RiskAssessment;
 use App\Models\RiskFinding;
@@ -30,6 +32,7 @@ use App\Models\User;
 use App\Models\VerbalContactTask;
 use App\Models\VitalSign;
 use App\Models\WeightRecord;
+use App\Support\MessageInbox;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
@@ -171,6 +174,7 @@ class DemoDataSeeder extends Seeder
         $this->createRiskAssessments($residents, $staff, $from, $to);
         $this->createGoalProgress($residents['sato'], $staff['manager'], $from, $to);
         $this->createLlmHistory($staff['manager']);
+        $this->createMessages($facility, $staff);
 
         $this->command->info('  デモデータを投入しました（ご利用者20名・約3ヶ月分の記録）');
     }
@@ -756,6 +760,52 @@ class DemoDataSeeder extends Seeder
                 'evidence' => $this->recentEvidence($resident, $evidenceCount),
             ]);
         }
+    }
+
+    /**
+     * 職員どうしの連絡。施設全員・グループ・個別を1つずつ作る。
+     *
+     * 介護職員（山口）宛ての個別の連絡を未読のまま残す。介護職員として
+     * ログインすると、お知らせと下のバーにその件数が出る。
+     * 承諾は作らない。最初に開いたときの承諾の画面も見てもらうため。
+     *
+     * @param  array{admin: User, manager: User, staff: User, staff2: User}  $staff
+     */
+    private function createMessages(Facility $facility, array $staff): void
+    {
+        $say = function (MessageRoom $room, User $author, string $body, CarbonInterface $at): void {
+            $message = $room->messages()->create(['user_id' => $author->id, 'body' => $body]);
+            $message->forceFill(['created_at' => $at, 'updated_at' => $at])->save();
+        };
+
+        $today = Carbon::today();
+
+        $all = MessageRoom::forFacility($facility->id);
+        $say($all, $staff['manager'], '明日から入浴の順番を変えます。詳しくは入浴担当のグループに書きました。', $today->copy()->subDay()->setTime(17, 30));
+        $say($all, $staff['staff'], '佐藤 ハナ様、昼食のときに少しむせ込みがありました。記録にも書いてあります。', $today->copy()->setTime(12, 40));
+        $say($all, $staff['staff2'], '了解しました。おやつはとろみをつけてお出しします。', $today->copy()->setTime(12, 52));
+
+        $bathing = MessageRoom::query()->create([
+            'facility_id' => $facility->id,
+            'kind' => MessageRoomKind::Group,
+            'name' => '入浴担当',
+            'created_by' => $staff['manager']->id,
+        ]);
+        $bathing->members()->sync([$staff['manager']->id, $staff['staff']->id, $staff['staff2']->id]);
+        $say($bathing, $staff['manager'], '明日は田中 ヨシ子様を午前の最初にお願いします。午後は通院のため早めにお帰りです。', $today->copy()->subDay()->setTime(17, 35));
+        $say($bathing, $staff['staff2'], '承知しました。手すり側の浴槽を空けておきます。', $today->copy()->subDay()->setTime(17, 48));
+
+        $direct = MessageRoom::directBetween($staff['manager'], $staff['staff']);
+        $say($direct, $staff['manager'], '来週の土曜、送迎の担当を河野さんと交代していただけますか。', $today->copy()->setTime(9, 15));
+
+        // 送った側は自分の発言まで読んだことにする。施設全員と入浴担当は
+        // 全員が読み終えた状態にして、個別の連絡だけを未読として残す。
+        foreach ([$all, $bathing] as $room) {
+            foreach ($staff as $user) {
+                (new MessageInbox($user))->markRead($room);
+            }
+        }
+        (new MessageInbox($staff['manager']))->markRead($direct);
     }
 
     /**

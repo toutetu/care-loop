@@ -7,13 +7,17 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LlmActionController;
 use App\Http\Controllers\LlmJobController;
 use App\Http\Controllers\LlmLogController;
+use App\Http\Controllers\MessageConsentController;
 use App\Http\Controllers\MessageController;
+use App\Http\Controllers\MessagePostController;
+use App\Http\Controllers\MessageRoomController;
 use App\Http\Controllers\NoticeController;
 use App\Http\Controllers\RecordNoteController;
 use App\Http\Controllers\ResidentController;
 use App\Http\Controllers\ServiceRecordController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\StartController;
+use App\Http\Middleware\EnsureMessagingConsent;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
@@ -28,10 +32,34 @@ Route::middleware(['auth', 'verified'])->group(function () {
      * --- お知らせと連絡 ---
      *
      * スマートフォンの下のバーから開く。お知らせはダッシュボードと同じ抽出条件で、
-     * すぐ読めるものだけを並べる。連絡（職員間のメッセージ）は準備中。
+     * すぐ読めるものだけを並べる。
      */
     Route::get('notices', [NoticeController::class, 'index'])->name('notices.index');
-    Route::get('messages', [MessageController::class, 'index'])->name('messages.index');
+
+    /*
+     * 連絡（職員どうしのメッセージ）。
+     *
+     * 使い始める前に承諾を取る（EnsureMessagingConsent）。承諾の画面だけは
+     * その外に置く。中に置くと、承諾の画面へ送り返す処理が自分自身に向かう。
+     *
+     * consent / groups / direct を {messageRoom} より先に置く。あとに置くと
+     * 「consent という ID の部屋」として解釈される。
+     */
+    Route::get('messages/consent', [MessageConsentController::class, 'show'])->name('messages.consent');
+    Route::post('messages/consent', [MessageConsentController::class, 'store'])->name('messages.consent.store');
+
+    Route::middleware(EnsureMessagingConsent::class)->group(function () {
+        Route::get('messages', [MessageController::class, 'index'])->name('messages.index');
+        Route::post('messages/groups', [MessageRoomController::class, 'storeGroup'])->name('messages.groups.store');
+        Route::post('messages/direct', [MessageRoomController::class, 'direct'])->name('messages.direct');
+        Route::get('messages/{messageRoom}', [MessageRoomController::class, 'show'])
+            ->whereNumber('messageRoom')->name('messages.show');
+        // 連打や貼り付けの暴走で部屋が埋まらないよう、送信だけ回数を絞る
+        Route::post('messages/{messageRoom}', [MessagePostController::class, 'store'])
+            ->whereNumber('messageRoom')->middleware('throttle:30,1')->name('messages.store');
+        Route::put('messages/{messageRoom}/{message}', [MessagePostController::class, 'update'])
+            ->whereNumber(['messageRoom', 'message'])->name('messages.update');
+    });
 
     /*
      * --- ご利用者 ---

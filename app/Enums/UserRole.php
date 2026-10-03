@@ -47,6 +47,24 @@ enum UserRole: string
         return $this === self::Admin;
     }
 
+    /**
+     * 参加していない連絡の部屋も読めるか。
+     *
+     * 職員どうしのトラブルや、ご利用者への対応の行き違いを、管理者が後から
+     * 確かめられるようにする。読んだことは記録し、参加者にも見せる
+     * （MessageAccessLog）。
+     */
+    public function canOverseeMessages(): bool
+    {
+        return $this !== self::Staff;
+    }
+
+    /** 連絡のグループを作れるか。係の分け方は管理者が決める。 */
+    public function canCreateMessageGroups(): bool
+    {
+        return $this !== self::Staff;
+    }
+
     /** 職員アカウントを管理できるか。 */
     public function canManageUsers(): bool
     {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\MessageInbox;
 use App\Support\NoticeBoard;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -27,6 +28,8 @@ class NoticeController extends Controller
         return Inertia::render('notices/index', [
             'risks' => $notices->urgentRisks(),
             'verbalContacts' => $notices->pendingVerbalContacts(),
+            // 個別の連絡は自分にしか届かないので、読み落とすと誰も気づかない
+            'directMessages' => (new MessageInbox($user))->unreadDirect(),
         ]);
     }
 }
