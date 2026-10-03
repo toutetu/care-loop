@@ -346,7 +346,7 @@ class ResidentController extends Controller
     {
         /** @var RiskAssessment|null $assessment */
         $assessment = $resident->riskAssessments()
-            ->with('findings')
+            ->with(['findings', 'reviewer'])
             // 抽出日時が同じなら、あとから作ったほうを最新とする（latestPerResident と同じ）
             ->latest('assessed_at')
             ->latest('id')
@@ -368,6 +368,9 @@ class ResidentController extends Controller
             'noRiskDetected' => $assessment->no_risk_detected,
             'confidence' => $assessment->confidence,
             'isReviewed' => $assessment->isReviewed(),
+            // 誰がいつ確かめたのかを出す。確認済みの印だけでは、誰に聞けばよいか分からない
+            'reviewedBy' => $assessment->reviewer?->name,
+            'reviewedAt' => $assessment->reviewed_at?->translatedFormat('n月j日 H:i'),
             'findings' => $findings->map(fn (RiskFinding $finding): array => [
                 'id' => $finding->id,
                 'category' => $finding->category->label(),
