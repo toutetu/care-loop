@@ -169,6 +169,36 @@ class PublicDemoGuardTest extends TestCase
         $this->get('/login')->assertOk();
     }
 
+    public function test_パスキーを閉じるとログイン画面と設定画面に出さず登録もできない(): void
+    {
+        // 見に来た人は役割のボタンでログインする。共用のアカウントに
+        // 個人の顔認証を登録させない。
+        config(['careloop.features.passkeys' => false]);
+
+        $this->get('/login')->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('canUsePasskeys', false)
+        );
+        $this->get('/passkeys/login/options')->assertNotFound();
+
+        $this->actingAs($this->staff)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->get('/settings/security')
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('canManagePasskeys', false)
+            );
+        $this->actingAs($this->staff)->get('/user/passkeys/options')->assertNotFound();
+    }
+
+    public function test_パスキーを開いていればログイン画面に出す(): void
+    {
+        // 実運用（公開デモではない環境）では使えるままにする
+        config(['careloop.features.passkeys' => true]);
+
+        $this->get('/login')->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('canUsePasskeys', true)
+        );
+    }
+
     public function test_既定では新規登録を閉じない(): void
     {
         // ローカルでの開発と、この先の実運用を妨げない

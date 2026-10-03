@@ -33,6 +33,9 @@ class EnsureAuthFeatureEnabled
     private const GUARDED = [
         'registration' => ['register', 'register.store'],
         'password_reset' => ['password.request', 'password.email', 'password.reset', 'password.update'],
+        // 登録済みの鍵を消す passkey.destroy は閉じない。閉じる前に登録された
+        // 鍵があっても、本人が設定画面から消せるようにしておく。
+        'passkeys' => ['passkey.login', 'passkey.login-options', 'passkey.registration-options', 'passkey.store'],
     ];
 
     public function handle(Request $request, Closure $next): Response

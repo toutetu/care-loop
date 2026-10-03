@@ -112,6 +112,9 @@ class FortifyServiceProvider extends ServiceProvider
             // 公開デモでは新規登録を閉じている。押しても 404 になる導線は出さない。
             'canRegister' => Features::enabled(Features::registration())
                 && config('careloop.features.registration'),
+            // 公開デモではパスキーを閉じる。ボタンを出すと、押しても使えない入口になる。
+            'canUsePasskeys' => Features::enabled(Features::passkeys())
+                && config('careloop.features.passkeys'),
             'status' => $request->session()->get('status'),
             'demoAccounts' => $this->demoAccounts(),
         ]));

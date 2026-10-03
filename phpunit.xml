@@ -38,5 +38,9 @@
         <env name="BLIND_INDEX_KEY" value="test-only-key-do-not-use-in-production"/>
         <env name="LLM_DRIVER" value="fake"/>
         <env name="ANTHROPIC_API_KEY" value=""/>
+        <!-- 手元の .env がデモ環境（true）でも、既定の振る舞いで確かめる。
+             パスキーなど、デモかどうかで既定が変わる機能がある。
+             デモとしての振る舞いは、各テストで config を切り替えて確かめる。 -->
+        <env name="CARELOOP_DEMO" value="false"/>
     </php>
 </phpunit>

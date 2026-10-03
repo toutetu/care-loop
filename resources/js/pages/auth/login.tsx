@@ -33,6 +33,11 @@ type Props = {
     canResetPassword: boolean;
     /** 公開デモでは false。新規登録の導線そのものを出さない。 */
     canRegister: boolean;
+    /**
+     * 公開デモでは false。見に来た人は役割のボタンでログインするので、
+     * パスキーのボタンは迷わせるだけになる（config/careloop.php）。
+     */
+    canUsePasskeys: boolean;
     /** デモ環境でのみ届く。本番相当の環境ではサーバーから渡されない。 */
     demoAccounts: DemoAccount[] | null;
 };
@@ -44,6 +49,7 @@ export default function Login({
     status,
     canResetPassword,
     canRegister,
+    canUsePasskeys,
     demoAccounts,
 }: Props) {
     return (
@@ -57,11 +63,13 @@ export default function Login({
                 </>
             )}
 
-            <PasskeyVerify
-                label="パスキーでログイン"
-                loadingLabel="確認しています"
-                separator="または メールアドレスでログイン"
-            />
+            {canUsePasskeys && (
+                <PasskeyVerify
+                    label="パスキーでログイン"
+                    loadingLabel="確認しています"
+                    separator="または メールアドレスでログイン"
+                />
+            )}
 
             <Form
                 {...store.form()}
