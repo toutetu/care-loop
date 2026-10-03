@@ -118,7 +118,7 @@ export default function RecordIndex({
                     PCではサイドバーの「入力」から入れる。 */}
                 <nav
                     aria-label="まとめて入力"
-                    className="hidden grid-cols-3 gap-3 md:pointer-coarse:grid xl:hidden"
+                    className="hidden grid-cols-3 gap-3 xl:hidden md:pointer-coarse:grid"
                 >
                     {BATCH_ENTRIES.map((entry) => (
                         <Link
@@ -126,7 +126,7 @@ export default function RecordIndex({
                             href={BatchEntryController.index.url({
                                 kind: entry.kind,
                             })}
-                            className="bg-card hover:bg-accent focus-visible:ring-ring flex min-h-24 flex-col items-center justify-center gap-2 rounded-xl border text-base font-semibold shadow-card outline-none focus-visible:ring-[3px]"
+                            className="bg-card hover:bg-accent focus-visible:ring-ring shadow-card flex min-h-24 flex-col items-center justify-center gap-2 rounded-xl border text-base font-semibold outline-none focus-visible:ring-[3px]"
                         >
                             <entry.icon className="size-7" aria-hidden />
                             {entry.label}

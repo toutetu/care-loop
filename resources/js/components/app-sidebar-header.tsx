@@ -35,7 +35,7 @@ export function AppSidebarHeader({
                     href={dashboard()}
                     prefetch
                     aria-label="ダッシュボードへ"
-                    className="focus-visible:ring-ring shrink-0 rounded-md outline-none focus-visible:ring-2 md:pointer-fine:hidden xl:hidden"
+                    className="focus-visible:ring-ring shrink-0 rounded-md outline-none focus-visible:ring-2 xl:hidden md:pointer-fine:hidden"
                 >
                     <BrandMark className="size-7 rounded-md" title="" />
                 </Link>
