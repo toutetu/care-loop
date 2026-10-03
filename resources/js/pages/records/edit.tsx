@@ -1,6 +1,7 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import {
     Check,
+    ChevronRight,
     Info,
     Lock,
     MessageSquareWarning,
@@ -114,6 +115,11 @@ type Props = {
      * 書き換えは記録した本人か管理者以上に限る。
      */
     canEdit: boolean;
+    /**
+     * 同じ日の、次に確かめる未確定の記録。残っていなければ null。
+     * 一覧へ戻らずに次へ進めるようにする（ServiceRecordController::nextUnconfirmed）。
+     */
+    nextUnconfirmed: { id: number; residentName: string } | null;
 };
 
 /**
@@ -129,6 +135,7 @@ export default function RecordEdit({
     bathingTypes,
     llmJob,
     canEdit,
+    nextUnconfirmed,
 }: Props) {
     // 変換はキューで動く。実行中のあいだだけ記録を読み直し、終わったら
     // 通知を出す。3つの文章は key を値に結びつけてあるので、届けば差し替わる。
@@ -268,6 +275,21 @@ export default function RecordEdit({
                                     連絡帳
                                 </a>
                             </Button>
+                            {/* まとめて確かめるときに、1件ごとに一覧へ戻らずに済むようにする */}
+                            {nextUnconfirmed && (
+                                <Button variant="outline" size="sm" asChild>
+                                    <Link
+                                        href={`${records.edit(nextUnconfirmed.id).url}#confirm`}
+                                    >
+                                        次の未確定：
+                                        {nextUnconfirmed.residentName} 様
+                                        <ChevronRight
+                                            className="size-4"
+                                            aria-hidden
+                                        />
+                                    </Link>
+                                </Button>
+                            )}
                         </>
                     }
                 />

@@ -162,6 +162,40 @@ class ServiceRecordController extends Controller
     }
 
     /**
+     * 同じ日の、次に確かめる未確定の記録。
+     *
+     * 【一覧へ戻らずに次へ進める】
+     * PC で1日ぶんの記録をまとめて確かめるとき、1件ごとに一覧へ戻って次を
+     * 探すと、他の作業と並べて画面を見ている職員ほど手間が増える。
+     * 並びは記録一覧と同じ氏名カナ順にし、今の記録より後ろにあればそれを、
+     * なければ先頭へ戻って残っているものを示す。
+     *
+     * @return array{id: int, residentName: string}|null
+     */
+    private function nextUnconfirmed(ServiceRecord $current): ?array
+    {
+        $records = ServiceRecord::query()
+            ->whereHas('resident', fn ($query) => $query->where('facility_id', $current->resident->facility_id))
+            ->whereDate('service_date', $current->service_date)
+            ->whereNull('confirmed_at')
+            ->whereKeyNot($current->id)
+            ->with('resident')
+            ->get()
+            // 氏名カナは暗号化しているためSQLでは並べ替えられない（要件定義 9.3節）
+            ->sortBy(fn (ServiceRecord $record) => $record->resident->name_kana)
+            ->values();
+
+        $kana = (string) $current->resident->name_kana;
+        $next = $records->first(fn (ServiceRecord $record): bool => strcmp((string) $record->resident->name_kana, $kana) > 0)
+            ?? $records->first();
+
+        return $next === null ? null : [
+            'id' => $next->id,
+            'residentName' => $next->resident->name,
+        ];
+    }
+
+    /**
      * 記録を開く。
      *
      * 【閲覧と編集を分けている】
@@ -185,6 +219,7 @@ class ServiceRecordController extends Controller
 
         return Inertia::render('records/edit', [
             'canEdit' => $request->user()?->can('update', $serviceRecord) ?? false,
+            'nextUnconfirmed' => $this->nextUnconfirmed($serviceRecord),
             'record' => [
                 'id' => $serviceRecord->id,
                 'recorder' => $serviceRecord->recorder?->name,

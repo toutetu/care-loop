@@ -1,10 +1,13 @@
 import { Head } from '@inertiajs/react';
 import { CalendarDays } from 'lucide-react';
+import type { AnnouncementSummary } from '@/components/care/announcement-card';
 import {
+    AnnouncementSection,
+    DirectMessageSection,
     UrgentRiskSection,
     VerbalContactSection,
 } from '@/components/care/notice-lists';
-import type { UrgentRisk } from '@/components/care/notice-lists';
+import type { DirectMessage, UrgentRisk } from '@/components/care/notice-lists';
 import { PageHeader } from '@/components/care/page-header';
 import { StatCard } from '@/components/care/section';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +29,9 @@ type Props = {
         usageRate: number;
     };
     canViewLlmJobs: boolean;
+    /** 本人がまだ確認していない周知と、未読の個別の連絡。無ければ欄ごと出さない。 */
+    announcements: AnnouncementSummary[];
+    directMessages: DirectMessage[];
 };
 
 /**
@@ -35,6 +41,10 @@ type Props = {
  * ここは全体を見る場所で、記録を埋めるのは記録一覧、AIの結果を追うのは
  * AI処理の実行状況が担う。数字を出し、押せばその画面へ移れるようにする。
  * 目的の違う一覧を1画面に並べると、どれも中途半端になる。
+ *
+ * 【本人宛てのものだけは先頭に出す】
+ * PC には下のバーがなく、お知らせの件数が目に入らない。管理者からの周知と
+ * 個別の連絡は本人にしか届かないので、確認を済ませるまでここの先頭に出す。
  */
 export default function Dashboard({
     day,
@@ -43,6 +53,8 @@ export default function Dashboard({
     verbalContacts,
     llm,
     canViewLlmJobs,
+    announcements,
+    directMessages,
 }: Props) {
     return (
         <>
@@ -61,6 +73,9 @@ export default function Dashboard({
                         )
                     }
                 />
+
+                <DirectMessageSection directMessages={directMessages} />
+                <AnnouncementSection announcements={announcements} />
 
                 {/* 数字を見た職員が次にすることは「その中身を見る」である。
                     カードから、それぞれの一覧へ直接移れるようにする。 */}
