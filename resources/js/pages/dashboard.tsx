@@ -25,6 +25,7 @@ type Props = {
         budgetUsd: number;
         usageRate: number;
     };
+    canViewLlmJobs: boolean;
 };
 
 /**
@@ -41,6 +42,7 @@ export default function Dashboard({
     risks,
     verbalContacts,
     llm,
+    canViewLlmJobs,
 }: Props) {
     return (
         <>
@@ -91,12 +93,16 @@ export default function Dashboard({
                         tone={risks.length > 0 ? 'danger' : 'default'}
                         hint="重要度 高・未確認のもの"
                     />
+                    {/* 費用は全員に見せる。1回あたりの単価が小さいと
+                        呼び放題という誤解が生まれるため（DashboardController）。
+                        ただし明細のAI実行状況は生活相談員以上なので、
+                        介護職員には押せないカードとして出す。 */}
                     <StatCard
                         label="今月のAI利用料"
-                        value={`$${llm.spentUsd.toFixed(2)}`}
+                        value={`${llm.spentUsd.toFixed(2)}`}
                         hint={`成功 ${llm.succeeded} 件 ／ 失敗 ${llm.failed} 件`}
                         tone={llm.failed > 0 ? 'warning' : 'default'}
-                        href={llmJobs.index()}
+                        href={canViewLlmJobs ? llmJobs.index() : undefined}
                     />
                 </div>
 

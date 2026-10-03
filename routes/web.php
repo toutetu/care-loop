@@ -158,9 +158,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     /*
-     * AI処理の実行状況。職員全員が開ける。
+     * AI処理の実行状況（生活相談員以上）。
      * 押した処理が通ったのか失敗したのかを確認する場所であり、
      * 費用とトークン数を扱う AI利用ログ（管理者のみ）とは役割が違う。
+     *
+     * 一覧には事業所ぜんぶの実行が並ぶので、介護職員には開かせない。
+     * 自分が押した音声整形の結果は、その記録の編集画面に出る。
      */
     Route::get('llm-jobs', [LlmJobController::class, 'index'])->name('llm-jobs.index');
 

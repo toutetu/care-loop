@@ -169,6 +169,33 @@ class BatchEntryTest extends TestCase
         $this->assertSame($this->staff->id, $meal->recorded_by);
     }
 
+    public function test_食事の区分は表ぜんぶで1つ選ぶ(): void
+    {
+        // 昼食を全員ぶん、そのあとおやつを全員ぶん、という順で回る。
+        // 行ごとに選ばせると同じ値を20回選ぶことになる。
+        $this->actingAs($this->staff)->post('/records/batch/meal', [
+            'meal_type' => 'snack',
+            'entries' => [
+                $this->record->id => ['staple_rate' => '50'],
+            ],
+        ]);
+
+        $this->assertSame('snack', $this->record->mealRecords()->sole()->meal_type);
+    }
+
+    public function test_行ごとの区分があればそちらを使う(): void
+    {
+        // 記録入力の画面から1件だけ送る経路は、表の区分とは関係なく決める
+        $this->actingAs($this->staff)->post('/records/batch/meal', [
+            'meal_type' => 'snack',
+            'entries' => [
+                $this->record->id => ['meal_type' => 'lunch', 'staple_rate' => '50'],
+            ],
+        ]);
+
+        $this->assertSame('lunch', $this->record->mealRecords()->sole()->meal_type);
+    }
+
     public function test_範囲外の摂取割合は未入力として扱う(): void
     {
         // 桁を打ち間違えた 999% を記録として残さない

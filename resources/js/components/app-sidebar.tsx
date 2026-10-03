@@ -3,9 +3,7 @@ import {
     Activity,
     Bath,
     Bell,
-    BookOpen,
     ClipboardList,
-    FolderGit2,
     HeartPulse,
     History,
     LayoutGrid,
@@ -34,7 +32,6 @@ import {
     SidebarMenuSubItem,
     SidebarSeparator,
 } from '@/components/ui/sidebar';
-import { REPOSITORY_URL, REQUIREMENTS_URL } from '@/lib/links';
 import { toUrl } from '@/lib/utils';
 import announcements from '@/routes/announcements';
 import auditLogs from '@/routes/audit-logs';
@@ -55,6 +52,11 @@ import type { NavItem } from '@/types';
  * 平らに9個並べると、毎日使う「記録を書く」と、月に一度開く「AI利用ログ」が
  * 同じ重さで見える。職員は50〜60代が中心で、目で端から端まで走査させる
  * 作りは負担になる。やることの種類でまとめ、探す範囲を先に狭める。
+ *
+ * 【見出しと項目を段で分ける】
+ * 見出しを薄くするだけでは、項目と同じ列に並ぶかぎり「押せるもの」に見える。
+ * 項目を1段右へ下げて、見出しにぶら下がっている形を作る。色の濃淡が
+ * 読み取りにくくても、位置だけで親子が分かる。
  *
  * 【編集履歴を親の下に置く】
  * 編集履歴は単独で開くものではなく「この一覧の変更を辿りたい」ときに開く。
@@ -78,7 +80,15 @@ type SidebarPageProps = {
 
 export function AppSidebar() {
     const page = usePage<SidebarPageProps>();
-    const isAdmin = page.props.auth.user?.role === 'admin';
+    const role = page.props.auth.user?.role;
+    const isAdmin = role === 'admin';
+
+    /*
+     * AI運用は介護職員に出さない。一覧には事業所ぜんぶの実行が並ぶため、
+     * 運用を預かる側の画面である（UserRole::canViewLlmJobs と揃える）。
+     * ここで隠すのは見た目の話で、開かせない担保はコントローラ側にある。
+     */
+    const canViewLlmOps = role !== undefined && role !== 'staff';
 
     /*
      * 現在地の判定。
@@ -189,31 +199,34 @@ export function AppSidebar() {
                     : []),
             ],
         },
-        {
-            // 押した処理が通ったかの確認（実行状況）と、費用・失敗率の集計
-            // （利用ログ）。どちらもAIを動かした結果を見にくる場所である。
-            label: 'AI運用',
-            items: [
-                { title: 'AI実行状況', href: llmJobs.index(), icon: Activity },
-                ...(isAdmin
-                    ? [
+        /*
+         * 押した処理が通ったかの確認（実行状況）と、費用・失敗率の集計
+         * （利用ログ）。どちらもAIを動かした結果を見にくる場所であり、
+         * 介護職員には区画ごと出さない。
+         */
+        ...(canViewLlmOps
+            ? [
+                  {
+                      label: 'AI運用',
+                      items: [
                           {
-                              title: 'AI利用ログ',
-                              href: llmLogs.index(),
-                              icon: Sparkles,
+                              title: 'AI実行状況',
+                              href: llmJobs.index(),
+                              icon: Activity,
                           },
-                      ]
-                    : []),
-            ],
-        },
-        {
-            // このアプリ自体の作りを見に行く先。業務の導線ではない。
-            label: '開発資料',
-            items: [
-                { title: 'リポジトリ', href: REPOSITORY_URL, icon: FolderGit2 },
-                { title: '要件定義書', href: REQUIREMENTS_URL, icon: BookOpen },
-            ],
-        },
+                          ...(isAdmin
+                              ? [
+                                    {
+                                        title: 'AI利用ログ',
+                                        href: llmLogs.index(),
+                                        icon: Sparkles,
+                                    },
+                                ]
+                              : []),
+                      ],
+                  },
+              ]
+            : []),
     ];
 
     return (
@@ -235,14 +248,34 @@ export function AppSidebar() {
                     <div key={section.label ?? 'main'}>
                         {index > 0 && <SidebarSeparator className="mx-0" />}
 
-                        <SidebarGroup className="px-2 py-0">
+                        {/* 項目を1段下げるぶん、区画そのものの取り代は詰める。
+                            幅16remは動かせないので、増やした段の幅は
+                            どこかから借りるしかない */}
+                        <SidebarGroup className="px-1 py-0">
                             {section.label && (
-                                <SidebarGroupLabel>
+                                /*
+                                 * 見出しは押すものではない。項目より薄くして、
+                                 * 目が先に項目へ向くようにする。
+                                 *
+                                 * 60%より下げない。明モードでちょうど 4.5:1
+                                 * （WCAG AA）で、55%にすると 3.83:1 まで落ちる。
+                                 * 本文の 7:1 には届かないが、見出しは読む順を
+                                 * 示すためのもので、読み取れなくなってはいけない。
+                                 */
+                                <SidebarGroupLabel className="text-sidebar-foreground/60">
                                     {section.label}
                                 </SidebarGroupLabel>
                             )}
 
-                            <SidebarMenu>
+                            {/* 折りたたむと見出しは消え、幅も3remしか残らない。
+                                そのときは下げず、アイコンを中央に置いたままにする */}
+                            <SidebarMenu
+                                className={
+                                    section.label
+                                        ? 'pl-4 group-data-[collapsible=icon]:pl-0'
+                                        : undefined
+                                }
+                            >
                                 {section.items.map((item) => (
                                     <SidebarMenuItem key={item.title}>
                                         <SidebarMenuButton
@@ -254,7 +287,10 @@ export function AppSidebar() {
                                         </SidebarMenuButton>
 
                                         {item.children && (
-                                            <SidebarMenuSub>
+                                            /* 同じ理由で子の取り代も詰める。
+                                               既定のままだと「利用者編集履歴」が
+                                               入りきらず途中で切れる */
+                                            <SidebarMenuSub className="mx-1.5 px-2">
                                                 {item.children.map((child) => (
                                                     <SidebarMenuSubItem
                                                         key={child.title}
@@ -293,32 +329,12 @@ export function AppSidebar() {
  * Radix の Slot で className を子へ渡すが、間にコンポーネントを挟むと
  * 受け取って捨ててしまい、並びも余白も効かずアイコンと文字が縦に積まれる。
  * 要素を直接返せば、Slot の子が <a> / <Link> そのものになる。
- *
- * リポジトリと要件定義書は外部サイトなので、Inertia の遷移ではなく素の
- * <a> で新しいタブへ出す。アプリ内リンクと同じ挙動にすると、戻る導線の
- * ない画面へ飛ばすことになる。
  */
 function navLink(item: NavItem) {
-    const body = (
-        <>
-            {item.icon && <item.icon />}
-            <span>{item.title}</span>
-        </>
-    );
-
-    const href = toUrl(item.href);
-
-    if (href.startsWith('http')) {
-        return (
-            <a href={href} target="_blank" rel="noopener noreferrer">
-                {body}
-            </a>
-        );
-    }
-
     return (
         <Link href={item.href} prefetch>
-            {body}
+            {item.icon && <item.icon />}
+            <span>{item.title}</span>
         </Link>
     );
 }

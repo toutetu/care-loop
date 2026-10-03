@@ -18,16 +18,33 @@ import llmJobs from '@/routes/llm-jobs';
  * 倍になる。先に実行状況を見てもらう。
  */
 export function registerRequestFailureToast(): void {
+    /*
+     * AI処理の実行状況は生活相談員以上しか開けない（UserRole::canViewLlmJobs）。
+     * 介護職員に「見に行く」ボタンを出すと、押した先で断られて終わる。
+     *
+     * この関数はアプリの起動時に1度だけ呼ぶため、React の usePage が使えない。
+     * 画面が切り替わるたびに飛ぶ navigate から、そのときの役割を控えておく。
+     */
+    let canViewLlmJobs = false;
+
+    router.on('navigate', (event) => {
+        const role = event.detail.page.props.auth?.user?.role;
+
+        canViewLlmJobs = role !== undefined && role !== 'staff';
+    });
+
     const show = (title: string, description: string) => {
         toast.error(title, {
             description,
             // 失敗は自動で消さない。読む前に消えては意味がない。
             duration: Infinity,
             closeButton: true,
-            action: {
-                label: 'AI処理の実行状況を見る',
-                onClick: () => router.visit(llmJobs.index()),
-            },
+            action: canViewLlmJobs
+                ? {
+                      label: 'AI処理の実行状況を見る',
+                      onClick: () => router.visit(llmJobs.index()),
+                  }
+                : undefined,
         });
     };
 

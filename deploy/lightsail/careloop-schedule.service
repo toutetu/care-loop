@@ -1,0 +1,20 @@
+# Laravel の予定（routes/console.php）を1回だけ確かめて、時刻が来たものを動かす。
+#
+# setup.sh が /etc/systemd/system/careloop-schedule.service に置き、
+# careloop-schedule.timer が毎分これを起動する。Laravel Cloud の Scheduler の代わり。
+#
+# 今の予定は、デモの1日ぶんを毎朝9時に作る careloop:demo-day だけで、
+# CARELOOP_DEMO=true のときにしか登録されない。本物の事業所環境では、
+# 起動しても何もせずに終わる。
+
+[Unit]
+Description=CareLoop scheduler (schedule:run)
+After=network-online.target mysql.service
+Wants=network-online.target mysql.service
+
+[Service]
+Type=oneshot
+User=careloop
+Group=careloop
+WorkingDirectory=/var/www/care-loop
+ExecStart=/usr/bin/php artisan schedule:run

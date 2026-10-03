@@ -24,7 +24,7 @@
 
 役割ごとに別のサービスへ分けると、月額が数倍になります。Lightsail のマネージドデータベースは月 $15 から、ロードバランサーは月 $18 です。公開デモの負荷は数人の閲覧で、分ける理由がありません。
 
-1 台で完結できるのは、アプリの作りによるところも大きいです。セッション・キャッシュ・キューをすべてデータベースに置き、ファイルのアップロードも定期実行もないため、Redis やファイル置き場を足さずに済みます。
+1 台で完結できるのは、アプリの作りによるところも大きいです。セッション・キャッシュ・キューをすべてデータベースに置き、ファイルのアップロードもないため、Redis やファイル置き場を足さずに済みます。定期実行は、デモの1日ぶんを毎朝つくる予定だけで、OS の systemd タイマーが毎分 `schedule:run` を呼べば足ります。
 
 ### メモリ 1GB（$7）のプランにした理由
 
@@ -124,18 +124,18 @@ sudo bash setup.sh care.example.com
 
 ### setup.sh がしていること
 
-| 手順 | 内容                                                                                                  |
-| ---- | ----------------------------------------------------------------------------------------------------- |
-| 1    | スワップ 2GB を作る                                                                                   |
-| 2    | OS を更新し、nginx・MySQL・certbot を入れる。セキュリティ更新を毎日自動で当てる設定にする             |
-| 3    | PHP 8.4 を入れる（Ubuntu 24.04 の標準は 8.3 で、`symfony/console` 8.x の要件 8.4.1 を満たさないため） |
-| 4    | Composer と Node.js 22（CI と同じ版）を入れる                                                         |
-| 5    | アプリ専用のユーザー `careloop` を作り、`/var/www/care-loop` に main を取得する                       |
-| 6    | `deploy/lightsail/env.production` から `.env` を作り、鍵とパスワードを生成して埋める                  |
-| 7    | MySQL を 1GB 向けに絞り、データベースとユーザーを作る                                                 |
-| 8    | `composer install`・`npm ci`・`npm run build`・`migrate`。データが空のときだけデモデータを入れる      |
-| 9    | PHP-FPM・nginx・キューワーカー（`careloop-queue.service`）を設定して起動する                          |
-| 10   | ドメインがこのサーバーを向いていれば、Let's Encrypt の証明書を取り、http を https へ転送する          |
+| 手順 | 内容                                                                                                                      |
+| ---- | ------------------------------------------------------------------------------------------------------------------------- |
+| 1    | スワップ 2GB を作る                                                                                                       |
+| 2    | OS を更新し、nginx・MySQL・certbot を入れる。セキュリティ更新を毎日自動で当てる設定にする                                 |
+| 3    | PHP 8.4 を入れる（Ubuntu 24.04 の標準は 8.3 で、`symfony/console` 8.x の要件 8.4.1 を満たさないため）                     |
+| 4    | Composer と Node.js 22（CI と同じ版）を入れる                                                                             |
+| 5    | アプリ専用のユーザー `careloop` を作り、`/var/www/care-loop` に main を取得する                                           |
+| 6    | `deploy/lightsail/env.production` から `.env` を作り、鍵とパスワードを生成して埋める                                      |
+| 7    | MySQL を 1GB 向けに絞り、データベースとユーザーを作る                                                                     |
+| 8    | `composer install`・`npm ci`・`npm run build`・`migrate`。データが空のときだけデモデータを入れる                          |
+| 9    | PHP-FPM・nginx・キューワーカー（`careloop-queue.service`）・毎分の予定確認（`careloop-schedule.timer`）を設定して起動する |
+| 10   | ドメインがこのサーバーを向いていれば、Let's Encrypt の証明書を取り、http を https へ転送する                              |
 
 ### 鍵とパスワード
 
@@ -158,6 +158,7 @@ sudo bash setup.sh care.example.com
 | 確認項目       | 操作                                                                         | 期待する結果                            |
 | -------------- | ---------------------------------------------------------------------------- | --------------------------------------- |
 | ワーカー       | `sudo systemctl status careloop-queue`                                       | `active (running)`                      |
+| 予定の確認     | `systemctl list-timers careloop-schedule`                                    | 次の実行が1分以内に入っている           |
 | キューの疎通   | `cd /var/www/care-loop && sudo -u careloop php artisan careloop:queue-check` | `ワーカーが応答しました`                |
 | HTTPS への転送 | ブラウザで `http://`（s なし）のアドレスを開く                               | `https://` に切り替わり、鍵マークが出る |
 | 証明書の更新   | `sudo certbot renew --dry-run`                                               | 更新の予行演習が成功する                |

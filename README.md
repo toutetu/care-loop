@@ -99,7 +99,7 @@ APIの検証は JSON Schema の仕様どおりではありません。
 | データベース   | MySQL / MariaDB（第3正規形まで正規化）            |
 | LLM            | Anthropic Claude API（`anthropic-ai/sdk`）        |
 | 静的解析       | PHPStan level 7（larastan）/ Laravel Pint         |
-| テスト         | PHPUnit 410件                                     |
+| テスト         | PHPUnit 426件                                     |
 
 データベースの正規化方針は、各マイグレーションの `comment()` に根拠を書いています。要介護度を文字列で持たず `care_levels` に切り出した理由、`service_records` に `resident_id` と `service_date` の複合一意制約を置いた理由などです。
 
@@ -151,7 +151,7 @@ npm run types:check
     - 9.3節 データ保護設計（暗号化とブラインドインデックス）
 - [デプロイ手順](docs/02_デプロイ手順.md) — Laravel Cloud への配置、環境変数とその理由
 - [200拠点規模への対応方針](docs/03_スケール対応方針.md) — ピーク負荷の見積もり、コード上の具体的なボトルネックと着手順序（実装は未着手）
-- [データベース設計](docs/04_データベース設計.md) — 21テーブルのER図、各テーブルの役割、設計で決めたこと
+- [データベース設計](docs/04_データベース設計.md) — 29テーブルのER図、各テーブルの役割、設計で決めたこと
 - [デザインガイド](docs/05_デザインガイド.md) — 配色の構造（ブランド色と意味色の2軸）、共通部品、変えてはいけないもの、画面写真の撮り直し方
 - [デプロイ手順（AWS Lightsail）](docs/06_デプロイ手順_AWS.md) — サーバー1台に nginx・PHP 8.4・MySQL・キューワーカーを自分で設定して載せる手順とスクリプト（用意済み。公開デモは現在 Laravel Cloud で運用）
 
