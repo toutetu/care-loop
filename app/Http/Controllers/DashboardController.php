@@ -7,6 +7,7 @@ use App\Models\LlmJob;
 use App\Models\LlmRequest;
 use App\Models\ServiceRecord;
 use App\Models\User;
+use App\Support\MessageInbox;
 use App\Support\NoticeBoard;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
@@ -50,6 +51,10 @@ class DashboardController extends Controller
             // 費用は全員に見せるが、明細（AI処理の実行状況）へ送れるのは
             // 生活相談員以上。押しても403になるリンクを出さないため。
             'canViewLlmJobs' => $user->role->canViewLlmJobs(),
+            // PC には下のバーがなく、お知らせの件数が目に入らない。本人に
+            // 宛てたものだけは、朝礼で開くこの画面の先頭にも出す。
+            'announcements' => NoticeBoard::unconfirmedAnnouncements($user),
+            'directMessages' => (new MessageInbox($user))->unreadDirect(),
             'canViewLlmLogs' => $user->role->canViewLlmLogs(),
         ]);
     }

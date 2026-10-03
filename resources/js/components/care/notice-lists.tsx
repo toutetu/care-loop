@@ -1,10 +1,21 @@
 import { Link } from '@inertiajs/react';
-import { MessageSquareWarning } from 'lucide-react';
+import {
+    ChevronRight,
+    MessageSquareWarning,
+    MessagesSquare,
+} from 'lucide-react';
+import {
+    AnnouncementCard,
+    ConfirmAnnouncementButton,
+} from '@/components/care/announcement-card';
+import type { AnnouncementSummary } from '@/components/care/announcement-card';
 import { SeverityBadge, SourceBadge } from '@/components/care/badges';
 import { EmptyState, Section } from '@/components/care/section';
 import { Badge } from '@/components/ui/badge';
-import { NOTICE_SURFACE } from '@/lib/care-presentation';
+import { COUNT_BADGE, NOTICE_SURFACE } from '@/lib/care-presentation';
 import { cn } from '@/lib/utils';
+import announcementRoutes from '@/routes/announcements';
+import messages from '@/routes/messages';
 import residents from '@/routes/residents';
 import type { RiskSeverity, RiskSource, VerbalContact } from '@/types/care';
 
@@ -110,6 +121,103 @@ export function VerbalContactSection({
                     ))}
                 </ul>
             )}
+        </Section>
+    );
+}
+
+export type DirectMessage = { roomId: number; from: string; unread: number };
+
+/**
+ * あなた宛ての個別の連絡（未読のもの）。
+ *
+ * 無いときは何も出さない。空の枠があると、毎回読み飛ばす場所が1つ増える。
+ */
+export function DirectMessageSection({
+    directMessages,
+}: {
+    directMessages: DirectMessage[];
+}) {
+    if (directMessages.length === 0) {
+        return null;
+    }
+
+    return (
+        <Section title="あなた宛ての連絡">
+            <ul className="divide-y rounded-lg border">
+                {directMessages.map((direct) => (
+                    <li key={direct.roomId}>
+                        <Link
+                            href={messages.show(direct.roomId)}
+                            className="hover:bg-accent focus-visible:ring-ring flex min-h-14 items-center gap-3 px-3 outline-none focus-visible:ring-[3px] focus-visible:ring-inset"
+                        >
+                            <MessagesSquare
+                                className="text-muted-foreground size-5 shrink-0"
+                                aria-hidden
+                            />
+                            <span className="min-w-0 flex-1 font-medium">
+                                {direct.from} さんから
+                            </span>
+                            <span
+                                className={cn(
+                                    'min-w-6 rounded-full px-2 text-center text-xs leading-6 font-bold tabular-nums',
+                                    COUNT_BADGE,
+                                )}
+                            >
+                                {direct.unread}
+                                <span className="sr-only">件の未読</span>
+                            </span>
+                            <ChevronRight
+                                className="text-muted-foreground size-5 shrink-0"
+                                aria-hidden
+                            />
+                        </Link>
+                    </li>
+                ))}
+            </ul>
+        </Section>
+    );
+}
+
+/**
+ * まだ「確認しました」を押していない、管理者からの周知。
+ *
+ * 押せば消える。無いときは何も出さない。
+ */
+export function AnnouncementSection({
+    announcements,
+}: {
+    announcements: AnnouncementSummary[];
+}) {
+    if (announcements.length === 0) {
+        return null;
+    }
+
+    return (
+        <Section
+            title="管理者からの周知"
+            description="読んだら「確認しました」を押してください。押すとここから消えます。"
+            action={
+                <Link
+                    href={announcementRoutes.index()}
+                    className="text-sm underline underline-offset-4"
+                >
+                    周知の一覧
+                </Link>
+            }
+        >
+            <div className="flex flex-col gap-3">
+                {announcements.map((announcement) => (
+                    <AnnouncementCard
+                        key={announcement.id}
+                        announcement={announcement}
+                        footer={
+                            <ConfirmAnnouncementButton
+                                announcementId={announcement.id}
+                            />
+                        }
+                    />
+                ))}
+            </div>
         </Section>
     );
 }

@@ -25,6 +25,7 @@ import {
     SidebarGroupLabel,
     SidebarHeader,
     SidebarMenu,
+    SidebarMenuBadge,
     SidebarMenuButton,
     SidebarMenuItem,
     SidebarMenuSub,
@@ -32,7 +33,8 @@ import {
     SidebarMenuSubItem,
     SidebarSeparator,
 } from '@/components/ui/sidebar';
-import { toUrl } from '@/lib/utils';
+import { COUNT_BADGE } from '@/lib/care-presentation';
+import { cn, toUrl } from '@/lib/utils';
 import announcements from '@/routes/announcements';
 import auditLogs from '@/routes/audit-logs';
 import { dashboard } from '@/routes';
@@ -66,6 +68,8 @@ import type { NavItem } from '@/types';
 /** 子を持てるナビ項目。子は親の直下にぶら下げる。 */
 type SidebarEntry = NavItem & {
     children?: NavItem[];
+    /** 項目の右に出す件数。0 なら出さない。 */
+    count?: number;
 };
 
 type SidebarSection = {
@@ -76,6 +80,8 @@ type SidebarSection = {
 
 type SidebarPageProps = {
     auth: { user: { role?: string } | null };
+    noticeCount: number;
+    messageUnread: number;
 };
 
 export function AppSidebar() {
@@ -121,8 +127,20 @@ export function AppSidebar() {
                 },
                 // スマートフォンでは下のバーにある。PCとタブレットでも
                 // 同じ場所へ行けるよう、ここにも並べる。
-                { title: 'お知らせ', href: notices.index(), icon: Bell },
-                { title: '連絡', href: messages.index(), icon: MessagesSquare },
+                // PC には下のバーがないので、件数はここに出す。数字が付いて
+                // いなければ開かれない（下のバーと同じ考え方）。
+                {
+                    title: 'お知らせ',
+                    href: notices.index(),
+                    icon: Bell,
+                    count: page.props.noticeCount,
+                },
+                {
+                    title: '連絡',
+                    href: messages.index(),
+                    icon: MessagesSquare,
+                    count: page.props.messageUnread,
+                },
                 {
                     title: '周知',
                     href: announcements.index(),
@@ -285,6 +303,23 @@ export function AppSidebar() {
                                         >
                                             {navLink(item)}
                                         </SidebarMenuButton>
+
+                                        {item.count !== undefined &&
+                                            item.count > 0 && (
+                                                <SidebarMenuBadge
+                                                    className={cn(
+                                                        'rounded-full font-bold',
+                                                        COUNT_BADGE,
+                                                    )}
+                                                >
+                                                    {item.count > 99
+                                                        ? '99+'
+                                                        : item.count}
+                                                    <span className="sr-only">
+                                                        件
+                                                    </span>
+                                                </SidebarMenuBadge>
+                                            )}
 
                                         {item.children && (
                                             /* 同じ理由で子の取り代も詰める。
