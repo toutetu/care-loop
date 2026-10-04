@@ -32,3 +32,14 @@ if (config('careloop.is_demo')) {
         ->withoutOverlapping()
         ->runInBackground();
 }
+
+/*
+ * 保存期間を過ぎたご利用者の情報と記録を物理削除する（要件定義 9.3.2節 施策6）。
+ *
+ * デモの予定と違って、本物の事業所でこそ要る処理なので条件をつけない。
+ * 職員が画面を使わない夜中に動かす。
+ */
+Schedule::command('careloop:purge-expired-records')
+    ->dailyAt('03:00')
+    ->withoutOverlapping()
+    ->runInBackground();
