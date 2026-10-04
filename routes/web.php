@@ -20,6 +20,7 @@ use App\Http\Controllers\ServiceRecordController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\StartController;
 use App\Http\Middleware\EnsureMessagingConsent;
+use App\Http\Middleware\RecordResidentAccess;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
@@ -78,13 +79,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
      *
      * create / edit を {resident} より先に置く。あとに置くと
      * residents/create が「create という ID のご利用者」として解釈される。
+     *
+     * ご利用者を1人ずつ開く画面には、閲覧履歴を残す（RecordResidentAccess）。
+     * 一覧は残さない。開くたびに全員分の行ができ、誰を詳しく見たのかが埋もれる。
      */
     Route::get('residents', [ResidentController::class, 'index'])->name('residents.index');
     Route::get('residents/create', [ResidentController::class, 'create'])->name('residents.create');
     Route::post('residents', [ResidentController::class, 'store'])->name('residents.store');
-    Route::get('residents/{resident}/edit', [ResidentController::class, 'edit'])->name('residents.edit');
+    Route::get('residents/{resident}/edit', [ResidentController::class, 'edit'])
+        ->middleware(RecordResidentAccess::class.':edit_resident')->name('residents.edit');
     Route::put('residents/{resident}', [ResidentController::class, 'update'])->name('residents.update');
-    Route::get('residents/{resident}', [ResidentController::class, 'show'])->name('residents.show');
+    Route::get('residents/{resident}', [ResidentController::class, 'show'])
+        ->middleware(RecordResidentAccess::class.':view_resident')->name('residents.show');
 
     // リスク兆候の抽出結果を、根拠を読んだうえで「確認済み」にする（RiskReviewController）
     Route::post('risk-assessments/{riskAssessment}/review', [RiskReviewController::class, 'store'])
@@ -117,7 +123,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // --- サービス提供記録 ---
     Route::get('records', [ServiceRecordController::class, 'index'])->name('records.index');
-    Route::get('records/{serviceRecord}/edit', [ServiceRecordController::class, 'edit'])->name('records.edit');
+    Route::get('records/{serviceRecord}/edit', [ServiceRecordController::class, 'edit'])
+        ->middleware(RecordResidentAccess::class.':view_record')->name('records.edit');
     Route::put('records/{serviceRecord}', [ServiceRecordController::class, 'update'])->name('records.update');
 
     // 音声入力の原文を1件確定する。AIの書き直しとは別の操作にしてある
@@ -127,7 +134,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // 日次の連絡帳（F-16）。送迎時にお渡しする1枚。
     Route::get('records/{serviceRecord}/family-report', [DailyFamilyReportController::class, 'show'])
-        ->name('records.family-report');
+        ->middleware(RecordResidentAccess::class.':print_family_report')->name('records.family-report');
 
     /*
      * AI処理の中止（押し間違いの取り消し）。
