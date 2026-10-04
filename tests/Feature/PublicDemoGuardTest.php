@@ -27,7 +27,7 @@ class PublicDemoGuardTest extends TestCase
 {
     use RefreshDatabase;
 
-    private User $staff;
+    private User $user;
 
     private Resident $resident;
 
@@ -36,9 +36,11 @@ class PublicDemoGuardTest extends TestCase
         parent::setUp();
 
         $facility = Facility::factory()->create();
-        $this->staff = User::factory()->create([
+        // リスク抽出を実行できるのは管理者・生活相談員（要件定義 4.2節）。
+        // 流量制限は、実行できる人が連打したときに効かなければ意味がない。
+        $this->user = User::factory()->create([
             'facility_id' => $facility->id,
-            'role' => UserRole::Staff,
+            'role' => UserRole::Manager,
         ]);
         $this->resident = Resident::factory()->for($facility)->create();
 
@@ -65,10 +67,10 @@ class PublicDemoGuardTest extends TestCase
         $url = route('llm.risk-detection', $this->resident);
 
         for ($i = 0; $i < 3; $i++) {
-            $this->actingAs($this->staff)->post($url)->assertRedirect();
+            $this->actingAs($this->user)->post($url)->assertRedirect();
         }
 
-        $this->actingAs($this->staff)
+        $this->actingAs($this->user)
             ->from(route('residents.show', $this->resident))
             ->post($url)
             ->assertSessionHas('error', fn (string $message) => str_contains($message, 'おいてからお試しください'));
@@ -87,10 +89,10 @@ class PublicDemoGuardTest extends TestCase
 
         // 3回までは通る。4回目が制限に当たる。
         for ($i = 0; $i < 3; $i++) {
-            $this->actingAs($this->staff)->from($from)->post($url);
+            $this->actingAs($this->user)->from($from)->post($url);
         }
 
-        $this->actingAs($this->staff)->from($from)->post($url)
+        $this->actingAs($this->user)->from($from)->post($url)
             ->assertStatus(302)
             ->assertRedirect($from);
     }
@@ -105,7 +107,7 @@ class PublicDemoGuardTest extends TestCase
         $url = route('llm.risk-detection', $this->resident);
 
         for ($i = 0; $i < 5; $i++) {
-            $this->actingAs($this->staff)->post($url);
+            $this->actingAs($this->user)->post($url);
         }
 
         // 通ったのは3回まで
@@ -119,7 +121,7 @@ class PublicDemoGuardTest extends TestCase
         // 読める応答を返すことになる。
         for ($i = 0; $i < 6; $i++) {
             $response = $this->post('/login', [
-                'email' => $this->staff->email,
+                'email' => $this->user->email,
                 'password' => 'wrong-password',
             ]);
         }
@@ -155,7 +157,7 @@ class PublicDemoGuardTest extends TestCase
         config(['careloop.features.password_reset' => false]);
 
         $this->get('/forgot-password')->assertNotFound();
-        $this->post('/forgot-password', ['email' => $this->staff->email])->assertNotFound();
+        $this->post('/forgot-password', ['email' => $this->user->email])->assertNotFound();
     }
 
     public function test_閉じてもログイン自体は使える(): void
@@ -180,13 +182,13 @@ class PublicDemoGuardTest extends TestCase
         );
         $this->get('/passkeys/login/options')->assertNotFound();
 
-        $this->actingAs($this->staff)
+        $this->actingAs($this->user)
             ->withSession(['auth.password_confirmed_at' => time()])
             ->get('/settings/security')
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('canManagePasskeys', false)
             );
-        $this->actingAs($this->staff)->get('/user/passkeys/options')->assertNotFound();
+        $this->actingAs($this->user)->get('/user/passkeys/options')->assertNotFound();
     }
 
     public function test_パスキーを開いていればログイン画面に出す(): void
@@ -277,6 +279,6 @@ class PublicDemoGuardTest extends TestCase
 
         $this->artisan('careloop:reset-demo --force')->assertFailed();
 
-        $this->assertDatabaseHas('users', ['id' => $this->staff->id]);
+        $this->assertDatabaseHas('users', ['id' => $this->user->id]);
     }
 }

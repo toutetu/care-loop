@@ -45,6 +45,8 @@ class LlmScreenTest extends TestCase
 
     private User $admin;
 
+    private User $manager;
+
     private User $staff;
 
     protected function setUp(): void
@@ -58,6 +60,11 @@ class LlmScreenTest extends TestCase
         $this->admin = User::factory()->create([
             'facility_id' => $this->facility->id,
             'role' => UserRole::Admin,
+        ]);
+        // ご利用者に対するAI（リスク抽出・目標進捗要約）を実行する役割
+        $this->manager = User::factory()->create([
+            'facility_id' => $this->facility->id,
+            'role' => UserRole::Manager,
         ]);
         $this->staff = User::factory()->create([
             'facility_id' => $this->facility->id,
@@ -138,7 +145,7 @@ class LlmScreenTest extends TestCase
 
         $resident = Resident::factory()->for($this->facility)->create();
 
-        $this->actingAs($this->staff)
+        $this->actingAs($this->manager)
             ->from(route('residents.show', $resident))
             ->post(route('llm.risk-detection', $resident))
             ->assertRedirect(route('residents.show', $resident))
@@ -147,7 +154,7 @@ class LlmScreenTest extends TestCase
         $job = LlmJob::query()->sole();
 
         $this->assertSame(LlmJobStatus::Queued, $job->status);
-        $this->assertSame($this->staff->id, $job->requested_by);
+        $this->assertSame($this->manager->id, $job->requested_by);
         // 期間は行が持つ。ワーカーは行を読み直して実行する。
         $this->assertTrue($job->period_from?->isSameDay(today()->subMonths(3)) ?? false);
         $this->assertTrue($job->period_to?->isSameDay(today()) ?? false);
@@ -166,12 +173,12 @@ class LlmScreenTest extends TestCase
 
         // 受け付け自体は成功する。失敗はジョブに残り、押した画面の
         // 進捗表示から職員に伝わる（キューが sync なのでその場で動いている）。
-        $this->actingAs($this->staff)
+        $this->actingAs($this->manager)
             ->from(route('residents.show', $resident))
             ->post(route('llm.risk-detection', $resident))
             ->assertRedirect(route('residents.show', $resident));
 
-        $this->actingAs($this->staff)->get(route('residents.show', $resident))
+        $this->actingAs($this->manager)->get(route('residents.show', $resident))
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('llmJobs.riskDetection.status', 'failed')
                 ->where('llmJobs.riskDetection.isActive', false)
@@ -189,25 +196,61 @@ class LlmScreenTest extends TestCase
                 ->andThrow(LlmException::schemaMismatch('必須項目 evidence が欠落しています。'));
         });
 
-        $this->actingAs($this->staff)->post(route('llm.risk-detection', $resident));
+        $this->actingAs($this->manager)->post(route('llm.risk-detection', $resident));
 
         $job = LlmJob::query()->latest('id')->first();
 
         $this->assertSame(LlmJobStatus::Failed, $job->status);
         $this->assertSame('schema_mismatch', $job->error_type);
-        $this->assertSame($this->staff->id, $job->requested_by);
+        $this->assertSame($this->manager->id, $job->requested_by);
     }
 
     public function test_別の事業所のご利用者には実行できない(): void
     {
         $outsider = Resident::factory()->for(Facility::factory()->create())->create();
 
-        $this->actingAs($this->staff)
+        $this->actingAs($this->manager)
             ->post(route('llm.risk-detection', $outsider))
             ->assertForbidden();
 
         // 弾かれた実行でジョブを作らない。費用も発生していない。
         $this->assertSame(0, LlmJob::query()->count());
+    }
+
+    public function test_介護職員はリスク兆候の抽出を実行できない(): void
+    {
+        // モニタリングの材料を作るのは管理者・生活相談員の仕事（要件定義 4.2節）。
+        // 介護職員は結果を読んで「確認済み」にするところまでを担う。
+        $resident = Resident::factory()->for($this->facility)->create();
+
+        $this->actingAs($this->staff)
+            ->post(route('llm.risk-detection', $resident))
+            ->assertForbidden();
+
+        $this->assertSame(0, LlmJob::query()->count());
+    }
+
+    public function test_介護職員は目標進捗の要約を実行できない(): void
+    {
+        $resident = Resident::factory()->for($this->facility)->create();
+
+        $this->actingAs($this->staff)
+            ->post(route('llm.goal-progress', $resident))
+            ->assertForbidden();
+
+        $this->assertSame(0, LlmJob::query()->count());
+    }
+
+    public function test_ご利用者のai実行ボタンは実行できる人にだけ出す(): void
+    {
+        // 押すと403になるボタンは、現場では「アプリが壊れている」と受け取られる
+        $resident = Resident::factory()->for($this->facility)->create();
+
+        $this->actingAs($this->staff)->get(route('residents.show', $resident))
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('canRunAssessment', false));
+
+        $this->actingAs($this->manager)->get(route('residents.show', $resident))
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('canRunAssessment', true));
     }
 
     public function test_確定した原文がなければ実行しない(): void
@@ -262,7 +305,7 @@ class LlmScreenTest extends TestCase
     {
         $resident = Resident::factory()->for($this->facility)->create();
 
-        $this->actingAs($this->staff)
+        $this->actingAs($this->manager)
             ->from(route('residents.show', $resident))
             ->post(route('llm.goal-progress', $resident))
             ->assertSessionHas('error', '有効な通所介護計画書がありません。先に計画書を作成してください。');
@@ -283,7 +326,7 @@ class LlmScreenTest extends TestCase
         $resident = Resident::factory()->for($this->facility)->create();
         $this->queuedJob(LlmFeature::RiskDetection, $resident);
 
-        $this->actingAs($this->staff)
+        $this->actingAs($this->manager)
             ->from(route('residents.show', $resident))
             ->post(route('llm.risk-detection', $resident))
             ->assertRedirect(route('residents.show', $resident))
@@ -300,7 +343,7 @@ class LlmScreenTest extends TestCase
         $resident = Resident::factory()->for($this->facility)->create();
         $this->queuedJob(LlmFeature::GoalProgress, $resident);
 
-        $this->actingAs($this->staff)
+        $this->actingAs($this->manager)
             ->post(route('llm.risk-detection', $resident))
             ->assertSessionHas('success');
 
@@ -314,7 +357,7 @@ class LlmScreenTest extends TestCase
         $resident = Resident::factory()->for($this->facility)->create();
         $this->queuedJob(LlmFeature::RiskDetection, $resident, ['status' => LlmJobStatus::Succeeded]);
 
-        $this->actingAs($this->staff)
+        $this->actingAs($this->manager)
             ->post(route('llm.risk-detection', $resident))
             ->assertSessionHas('success');
 
@@ -332,7 +375,7 @@ class LlmScreenTest extends TestCase
             'created_at' => now()->subSeconds(LlmJob::ABANDON_QUEUED_AFTER_SECONDS + 1),
         ]);
 
-        $this->actingAs($this->staff)
+        $this->actingAs($this->manager)
             ->post(route('llm.risk-detection', $resident))
             ->assertSessionHas('success');
 
@@ -350,7 +393,7 @@ class LlmScreenTest extends TestCase
 
         $resident = Resident::factory()->for($this->facility)->create();
 
-        $this->actingAs($this->staff)
+        $this->actingAs($this->manager)
             ->from(route('residents.show', $resident))
             ->post(route('llm.risk-detection', $resident))
             ->assertRedirect(route('residents.show', $resident))
@@ -553,7 +596,7 @@ class LlmScreenTest extends TestCase
         $resident = Resident::factory()->for($this->facility)->create();
         $job = $this->queuedJob(LlmFeature::GoalProgress, $resident);
 
-        $this->actingAs($this->staff)
+        $this->actingAs($this->manager)
             ->from(route('residents.show', $resident))
             ->post(route('llm.cancel', $job))
             ->assertRedirect(route('residents.show', $resident));
@@ -561,12 +604,25 @@ class LlmScreenTest extends TestCase
         $this->assertSame(LlmJobStatus::Cancelled, $job->refresh()->status);
     }
 
+    public function test_介護職員はご利用者に対するai処理を中止できない(): void
+    {
+        // 実行できる人は中止もできる、とそろえている。実行できない人は中止もできない。
+        $resident = Resident::factory()->for($this->facility)->create();
+        $job = $this->queuedJob(LlmFeature::RiskDetection, $resident);
+
+        $this->actingAs($this->staff)
+            ->post(route('llm.cancel', $job))
+            ->assertForbidden();
+
+        $this->assertSame(LlmJobStatus::Queued, $job->refresh()->status);
+    }
+
     public function test_別の事業所のai処理は中止できない(): void
     {
         $outsider = Resident::factory()->for(Facility::factory()->create())->create();
         $job = $this->queuedJob(LlmFeature::RiskDetection, $outsider);
 
-        $this->actingAs($this->staff)
+        $this->actingAs($this->manager)
             ->post(route('llm.cancel', $job))
             ->assertForbidden();
 
