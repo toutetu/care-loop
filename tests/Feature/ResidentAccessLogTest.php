@@ -10,6 +10,7 @@ use App\Models\ResidentAccessLog;
 use App\Models\ServiceRecord;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
 /**
@@ -18,12 +19,15 @@ use Tests\TestCase;
  * 情報が漏れたときに「誰の情報が見られたか」を特定するための記録。
  * 残すべきときに残らないことと、残さなくてよいときに積み上がって
  * 本当に知りたい行が埋もれることの、両方を確かめる。
+ * 後半は、管理者がその記録を画面で確かめるところ。
  */
 class ResidentAccessLogTest extends TestCase
 {
     use RefreshDatabase;
 
     private Facility $facility;
+
+    private User $admin;
 
     private User $manager;
 
@@ -36,6 +40,10 @@ class ResidentAccessLogTest extends TestCase
         parent::setUp();
 
         $this->facility = Facility::factory()->create();
+        $this->admin = User::factory()->create([
+            'facility_id' => $this->facility->id,
+            'role' => UserRole::Admin,
+        ]);
         $this->manager = User::factory()->create([
             'facility_id' => $this->facility->id,
             'role' => UserRole::Manager,
@@ -160,6 +168,142 @@ class ResidentAccessLogTest extends TestCase
     }
 
     // ---------------------------------------------------------------
+    // 管理者が画面で確かめる
+    // ---------------------------------------------------------------
+
+    public function test_管理者は誰がいつどのご利用者を見たかを画面で確かめられる(): void
+    {
+        $this->accessLog($this->staff, $this->resident, ResidentAccessAction::ViewRecord);
+
+        $this->actingAs($this->admin)->get(route('access-logs.index'))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('access-logs/index')
+                ->has('logs.data', 1)
+                ->where('logs.data.0.viewer', $this->staff->name)
+                ->where('logs.data.0.viewerId', $this->staff->id)
+                ->where('logs.data.0.residentName', "{$this->resident->name} 様")
+                ->where('logs.data.0.residentId', $this->resident->id)
+                // 列名のまま出しても、どの画面のことか分からない
+                ->where('logs.data.0.actionLabel', '記録')
+                ->where('logs.data.0.ipAddress', '127.0.0.1')
+                ->where('filter.resident', null)
+                ->where('filter.user', null)
+            );
+    }
+
+    public function test_管理者のほかは閲覧履歴を開けない(): void
+    {
+        // 誰が誰を見たかは運用を預かる側の情報で、日々の介護業務では開かない
+        $this->actingAs($this->manager)->get(route('access-logs.index'))->assertForbidden();
+        $this->actingAs($this->staff)->get(route('access-logs.index'))->assertForbidden();
+    }
+
+    public function test_未ログインでは開けない(): void
+    {
+        $this->get(route('access-logs.index'))->assertRedirect();
+    }
+
+    public function test_他の事業所のご利用者の閲覧履歴は出ない(): void
+    {
+        $outsider = Resident::factory()->for(Facility::factory()->create())->create();
+        $this->accessLog(null, $outsider, ResidentAccessAction::ViewResident);
+        $this->accessLog($this->staff, $this->resident, ResidentAccessAction::ViewResident);
+
+        $this->actingAs($this->admin)->get(route('access-logs.index'))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('logs.data', 1)
+                ->where('logs.data.0.residentId', $this->resident->id)
+                // 件数も自分の事業所の分だけを数える
+                ->where('logs.total', 1)
+            );
+    }
+
+    public function test_新しい順に並ぶ(): void
+    {
+        $this->travelTo(now()->subHour());
+        $older = $this->accessLog($this->staff, $this->resident, ResidentAccessAction::ViewResident);
+        $this->travelBack();
+        $newer = $this->accessLog($this->manager, $this->resident, ResidentAccessAction::EditResident);
+
+        $this->actingAs($this->admin)->get(route('access-logs.index'))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('logs.data.0.id', $newer->id)
+                ->where('logs.data.1.id', $older->id)
+            );
+    }
+
+    public function test_ご利用者で絞り込める(): void
+    {
+        // 漏えいのあとに最初に問われる「この方の情報を誰が見たか」
+        $other = Resident::factory()->for($this->facility)->create();
+        $this->accessLog($this->staff, $this->resident, ResidentAccessAction::ViewResident);
+        $this->accessLog($this->staff, $other, ResidentAccessAction::ViewResident);
+
+        $this->actingAs($this->admin)->get(route('access-logs.index', ['resident' => $other->id]))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('logs.data', 1)
+                ->where('logs.data.0.residentId', $other->id)
+                ->where('filter.resident.id', $other->id)
+                ->where('filter.resident.name', "{$other->name} 様")
+            );
+    }
+
+    public function test_職員で絞り込める(): void
+    {
+        // 内部の不正を疑うときに問われる「この職員が誰の情報を見たか」
+        $this->accessLog($this->staff, $this->resident, ResidentAccessAction::ViewResident);
+        $this->accessLog($this->manager, $this->resident, ResidentAccessAction::EditResident);
+
+        $this->actingAs($this->admin)->get(route('access-logs.index', ['user' => $this->manager->id]))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('logs.data', 1)
+                ->where('logs.data.0.viewerId', $this->manager->id)
+                ->where('filter.user.id', $this->manager->id)
+                ->where('filter.user.name', $this->manager->name)
+            );
+    }
+
+    public function test_他の事業所のご利用者や職員では絞り込めない(): void
+    {
+        // 絞り込みの値から、他の事業所の方の名前が見えてはいけない
+        $otherFacility = Facility::factory()->create();
+        $outsider = Resident::factory()->for($otherFacility)->create();
+        $outsiderStaff = User::factory()->create(['facility_id' => $otherFacility->id]);
+
+        $this->actingAs($this->admin)
+            ->get(route('access-logs.index', ['resident' => $outsider->id]))
+            ->assertNotFound();
+
+        $this->actingAs($this->admin)
+            ->get(route('access-logs.index', ['user' => $outsiderStaff->id]))
+            ->assertNotFound();
+    }
+
+    public function test_利用終了で論理削除されたご利用者の分も出る(): void
+    {
+        // 保存期間のあいだは、利用を終えた方の情報も調査の対象になる
+        $this->accessLog($this->staff, $this->resident, ResidentAccessAction::ViewResident);
+        $this->resident->delete();
+
+        $this->actingAs($this->admin)->get(route('access-logs.index'))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('logs.data', 1)
+                ->where('logs.data.0.residentName', "{$this->resident->name} 様")
+            );
+    }
+
+    // ---------------------------------------------------------------
+
+    private function accessLog(?User $viewer, Resident $resident, ResidentAccessAction $action): ResidentAccessLog
+    {
+        return ResidentAccessLog::create([
+            'user_id' => $viewer?->id,
+            'resident_id' => $resident->id,
+            'action' => $action,
+            'ip_address' => '127.0.0.1',
+        ]);
+    }
 
     private function record(): ServiceRecord
     {
