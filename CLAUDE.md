@@ -89,3 +89,6 @@ node scripts/contrast.mjs "oklch(0.44 0.09 195)" "oklch(1 0 0)"   # コントラ
 ```
 
 headless ブラウザは Chrome for Testing を使う（初回のみ `npx @puppeteer/browsers install chrome@stable --path ~/.cache/puppeteer`）。Windows の Edge は headless で起動しない。
+
+- 画面写真は、アプリ内のブラウザペインではなく `capture-screenshots.mjs` で撮る。ペインは 1280px を指定しても縮小され、文字が読めない。
+- puppeteer でログインするときは、ページ遷移ではなく、POST `/login` の応答と URL の変化を待つ。Inertia は画面を差し替えて移るので、遷移を待つと送信中に打ち切られる（理由はスクリプトのコメント）。
