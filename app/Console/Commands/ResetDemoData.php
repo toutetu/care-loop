@@ -38,6 +38,8 @@ class ResetDemoData extends Command
         // 編集履歴も消す。残したままにすると、採番し直されたIDを指して
         // 別のご利用者の履歴として表示されてしまう。
         'audit_logs',
+        // 閲覧履歴も同じ。残すと、別のご利用者を見た記録として表示されてしまう。
+        'resident_access_logs',
         // 連絡は職員にぶら下がる。users は1から採番し直されるので、
         // 残すと別の職員の発言として表示されてしまう。
         'message_access_logs',
