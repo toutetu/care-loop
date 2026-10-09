@@ -35,7 +35,13 @@ enum UserRole: string
         return $this !== self::Staff;
     }
 
-    /** 目標進捗要約・リスク抽出を実行できるか。 */
+    /**
+     * 目標進捗要約・リスク抽出を実行できるか。
+     *
+     * どちらもモニタリング（計画の振り返り）の材料を作る処理で、それを読んで
+     * 計画を見直すのは管理者・生活相談員の仕事である（要件定義 4.2節）。
+     * 介護職員は、出た結果の根拠を読んで「確認済み」にするところまでを担う。
+     */
     public function canRunAssessment(): bool
     {
         return $this !== self::Staff;

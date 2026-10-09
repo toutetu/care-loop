@@ -62,7 +62,7 @@ type ServiceRecordRow = {
     confirmed: boolean;
     hasAiDraft: boolean;
     excerpt: string;
-    /** 記録を編集できるか。一般職員は自分が記録したものだけ。 */
+    /** 記録を編集できるか。同じ事業所の職員なら誰でも（ServiceRecordPolicy）。 */
     canEdit: boolean;
 };
 
@@ -88,6 +88,8 @@ type Props = {
     };
     /** ご利用者情報を編集できるか。生活相談員以上（ResidentPolicy）。 */
     canEdit: boolean;
+    /** リスク抽出・進捗要約を実行・中止できるか。生活相談員以上（ResidentPolicy::runLlm）。 */
+    canRunAssessment: boolean;
 };
 
 export default function ResidentShow({
@@ -101,6 +103,7 @@ export default function ResidentShow({
     verbalContacts,
     llmJobs,
     canEdit,
+    canRunAssessment,
 }: Props) {
     const latestLoss = weights.at(-1)?.lossRate ?? null;
 
@@ -247,44 +250,48 @@ export default function ResidentShow({
                             : 'まだ抽出していません。'
                     }
                     action={
-                        <Form
-                            {...LlmActionController.detectRisks.form(
-                                resident.id,
-                            )}
-                            options={{ preserveScroll: true }}
-                        >
-                            {({ processing }) => (
-                                // 受け付けたあともワーカーが動いているあいだは押させない。
-                                // 押した回数だけ積まれ、その数だけ費用がかかる。
-                                <Button
-                                    type="submit"
-                                    size="sm"
-                                    pending={processing || detecting}
-                                >
-                                    {!processing && !detecting && (
-                                        <Sparkles
-                                            className="size-4"
-                                            aria-hidden
-                                        />
-                                    )}
-                                    {processing || detecting
-                                        ? '抽出しています…'
-                                        : 'リスク兆候を抽出'}
-                                </Button>
-                            )}
-                        </Form>
+                        canRunAssessment && (
+                            <Form
+                                {...LlmActionController.detectRisks.form(
+                                    resident.id,
+                                )}
+                                options={{ preserveScroll: true }}
+                            >
+                                {({ processing }) => (
+                                    // 受け付けたあともワーカーが動いているあいだは押させない。
+                                    // 押した回数だけ積まれ、その数だけ費用がかかる。
+                                    <Button
+                                        type="submit"
+                                        size="sm"
+                                        pending={processing || detecting}
+                                    >
+                                        {!processing && !detecting && (
+                                            <Sparkles
+                                                className="size-4"
+                                                aria-hidden
+                                            />
+                                        )}
+                                        {processing || detecting
+                                            ? '抽出しています…'
+                                            : 'リスク兆候を抽出'}
+                                    </Button>
+                                )}
+                            </Form>
+                        )
                     }
                 >
-                    {/* この画面を開ける職員は、誰でもAIを実行できる
-                        （ResidentPolicy::runLlm）。中止も同じ範囲にそろえる。 */}
+                    {/* 実行できる職員だけが中止もできる（ResidentPolicy::runLlm）。 */}
                     <LlmJobNotice
                         job={llmJobs.riskDetection}
-                        cancellable
+                        cancellable={canRunAssessment}
                         className="mb-3"
                     />
                     {riskAssessment === null ? (
                         <EmptyState>
-                            上のボタンから抽出できます。数値の判定はルールベースで算出し、
+                            {canRunAssessment
+                                ? '上のボタンから抽出できます。'
+                                : '抽出は管理者・生活相談員が行います。'}
+                            数値の判定はルールベースで算出し、
                             記述からしか分からない変化のみAIが抽出します。
                         </EmptyState>
                     ) : riskAssessment.findings.length === 0 ? (
@@ -418,45 +425,47 @@ export default function ResidentShow({
                             : 'まだ作成していません。'
                     }
                     action={
-                        <Form
-                            {...LlmActionController.goalProgress.form(
-                                resident.id,
-                            )}
-                            options={{ preserveScroll: true }}
-                        >
-                            {({ processing }) => (
-                                <Button
-                                    type="submit"
-                                    size="sm"
-                                    pending={processing || summarizing}
-                                    disabled={
-                                        processing ||
-                                        summarizing ||
-                                        carePlan === null
-                                    }
-                                    title={
-                                        carePlan === null
-                                            ? '有効な通所介護計画書がありません'
-                                            : undefined
-                                    }
-                                >
-                                    {!processing && !summarizing && (
-                                        <Sparkles
-                                            className="size-4"
-                                            aria-hidden
-                                        />
-                                    )}
-                                    {processing || summarizing
-                                        ? '要約しています…'
-                                        : '進捗を要約'}
-                                </Button>
-                            )}
-                        </Form>
+                        canRunAssessment && (
+                            <Form
+                                {...LlmActionController.goalProgress.form(
+                                    resident.id,
+                                )}
+                                options={{ preserveScroll: true }}
+                            >
+                                {({ processing }) => (
+                                    <Button
+                                        type="submit"
+                                        size="sm"
+                                        pending={processing || summarizing}
+                                        disabled={
+                                            processing ||
+                                            summarizing ||
+                                            carePlan === null
+                                        }
+                                        title={
+                                            carePlan === null
+                                                ? '有効な通所介護計画書がありません'
+                                                : undefined
+                                        }
+                                    >
+                                        {!processing && !summarizing && (
+                                            <Sparkles
+                                                className="size-4"
+                                                aria-hidden
+                                            />
+                                        )}
+                                        {processing || summarizing
+                                            ? '要約しています…'
+                                            : '進捗を要約'}
+                                    </Button>
+                                )}
+                            </Form>
+                        )
                     }
                 >
                     <LlmJobNotice
                         job={llmJobs.goalProgress}
-                        cancellable
+                        cancellable={canRunAssessment}
                         className="mb-3"
                     />
                     {goalProgress === null ? (

@@ -185,6 +185,8 @@ class ResidentController extends Controller
 
         return Inertia::render('residents/show', [
             'canEdit' => $user->can('update', $resident),
+            // 押すと403になるボタンは、現場では「アプリが壊れている」と受け取られる
+            'canRunAssessment' => $user->can('runLlm', $resident),
             'resident' => [
                 'id' => $resident->id,
                 'name' => $resident->name,

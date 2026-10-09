@@ -43,15 +43,19 @@ class ResidentPolicy
     }
 
     /**
-     * AI機能の実行。
+     * ご利用者に対するAI機能（リスク兆候の抽出・目標進捗の要約）の実行。
      *
      * 閲覧できる方に対してのみ実行を許す。実行のたびに費用が発生するため、
      * 誰がどのご利用者に対して呼び出したのかを追跡できる状態にしておく
      * （llm_jobs.requested_by）。
+     *
+     * 実行できるのは管理者・生活相談員に限る（UserRole::canRunAssessment）。
+     * 記録に対する音声の書き分けは、記録を書ける職員なら誰でも実行できる
+     * （ServiceRecordPolicy::update）。
      */
     public function runLlm(User $user, Resident $resident): bool
     {
-        return $this->sameFacility($user, $resident);
+        return $this->sameFacility($user, $resident) && $user->role->canRunAssessment();
     }
 
     private function sameFacility(User $user, Resident $resident): bool
