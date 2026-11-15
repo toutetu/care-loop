@@ -135,6 +135,6 @@ return [
     |
     */
 
-    'prompt_version' => '2026-09-11.1',
+    'prompt_version' => '2026-11-15.1',
 
 ];

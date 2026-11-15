@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\BathingType;
 use App\Enums\NoteInputMethod;
 use App\Llm\Clients\FakeClient;
 use App\Llm\LlmGateway;
@@ -111,6 +112,61 @@ class TransformVoiceNoteTest extends TestCase
 
         $this->assertStringContainsString('88歳', $sent);
         $this->assertStringNotContainsString($record->resident->birth_date->format('Y-m-d'), $sent);
+    }
+
+    // ---------------------------------------------------------------
+    // 職員が入力済みの値
+    // ---------------------------------------------------------------
+
+    public function test_職員が入力した食事と入浴を送信本文に含める(): void
+    {
+        // 渡さないと、入浴が「記録なし」に見えて申し送りに確認を求めたり、
+        // 入力済みの摂取割合と食い違う量を文章に書いたりする
+        $record = $this->makeRecord(residentName: '佐藤 ハナ', rawNote: 'お昼はよく食べてた');
+        $record->mealRecords()->create([
+            'recorded_by' => $record->recorded_by,
+            'meal_type' => 'lunch',
+            'staple_rate' => 100,
+            'side_rate' => 80,
+        ]);
+        $record->bathingRecords()->create([
+            'recorded_by' => $record->recorded_by,
+            'bathed_at' => $record->service_date->copy()->setTime(11, 0),
+            'bathing_type' => BathingType::Bath,
+        ]);
+
+        $this->useCase->handle($record);
+
+        $sent = (string) $this->fake->lastRequest()?->userMessage;
+
+        $this->assertStringContainsString('- 昼食（入力済み）: 主食 100% / 副食 80%', $sent);
+        $this->assertStringContainsString('- 入浴（入力済み）: 入浴 11:00', $sent);
+    }
+
+    public function test_aiが原文から読み取って入れた食事と入浴は送らない(): void
+    {
+        // 前回の書き直しでAIが入れた値を「入力済み」として渡すと、
+        // AIは自分の推測を職員の記録として読み直し、文章に事実として書く
+        $record = $this->makeRecord(residentName: '佐藤 ハナ', rawNote: 'お昼はよく食べてた');
+        $record->mealRecords()->create([
+            'recorded_by' => null,
+            'meal_type' => 'lunch',
+            'staple_rate' => 80,
+            'side_rate' => 80,
+        ]);
+        $record->bathingRecords()->create([
+            'recorded_by' => null,
+            'bathed_at' => null,
+            'bathing_type' => BathingType::Bath,
+            'note' => 'AIが原文から読み取りました。ご確認ください。',
+        ]);
+
+        $this->useCase->handle($record);
+
+        $sent = (string) $this->fake->lastRequest()?->userMessage;
+
+        $this->assertStringNotContainsString('昼食（入力済み）', $sent);
+        $this->assertStringNotContainsString('入浴（入力済み）', $sent);
     }
 
     public function test_応答のプレースホルダは実名へ復元される(): void

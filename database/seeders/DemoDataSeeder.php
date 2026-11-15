@@ -6,6 +6,7 @@ use App\Enums\BathingType;
 use App\Enums\LlmFeature;
 use App\Enums\LlmJobStatus;
 use App\Enums\MessageRoomKind;
+use App\Enums\NoteInputMethod;
 use App\Enums\ProgressStatus;
 use App\Enums\RiskCategory;
 use App\Enums\RiskSeverity;
@@ -49,6 +50,7 @@ use Illuminate\Support\Carbon;
  *   佐藤 ハナ   … 体重3.5%減少 ＋ 水分の連続未達 ＋「ふらつき」記述の増加
  *   田中 ヨシ子 … 直近3ヶ月で転倒のヒヤリハット3件
  *   中村 みつ   … 食事摂取量の低下 ＋ 微熱 37.4℃
+ *   伊藤 キヨ   … 昼食後の音声入力と、そこからAIが書き分けた3つの文章
  *
  * 中村 みつ の 37.4℃ は、しきい値（37.5℃）をあえて下回らせている。
  * ルールベースでは拾われないが、記録には「37.4℃。自覚症状はないが」と
@@ -118,6 +120,31 @@ class DemoDataSeeder extends Seeder
     ];
 
     /**
+     * 伊藤 キヨ の音声入力の例。原文と、F-LLM-05 が書き分けた3つの文章。
+     *
+     * 3つの文章は 2026-11-15 に claude-sonnet-5（prompt_version 2026-11-15.1）が
+     * 出力したものを、そのまま写している。文章に出てくるバイタル・水分の値は、
+     * AIへ「入力済み」として渡した値なので、createVoiceExample() で同じ値に揃える。
+     *
+     * @var array{note: string, record: string, family: string, handover: string}
+     */
+    private const VOICE_EXAMPLE = [
+        'note' => 'お昼ご飯はよく食べてた。デザートのゼリーも全部。そのあと、談話室で新聞を読んでた。とくになし。',
+        'record' => "09:45 バイタル測定：体温36.1℃、血圧131/73mmHg、SpO2 97%。\n"
+            ."昼食：主食100%、副食100%摂取。デザートのゼリーも全量摂取。\n"
+            ."水分摂取量：1300ml。\n"
+            ."11:00 入浴実施。\n"
+            ."昼食後、談話室にて新聞を閲覧して過ごす。\n"
+            .'特記事項なし。',
+        'family' => "本日は9時45分のバイタル測定で、体温36.1℃、血圧131/73、酸素飽和度97％と、いずれも安定した値でした。\n"
+            ."昼食は主食・副食ともに全量召し上がり、デザートのゼリーも残さず召し上がりました。水分も1300ml摂取されています。\n"
+            ."11時に入浴をされました。\n"
+            ."昼食後は談話室で新聞を読んでお過ごしになりました。\n"
+            .'本日は特に変わった様子はございませんでした。',
+        'handover' => '特記事項なし。次回訪問時もバイタル・食事摂取量・水分量を通常通り確認してください。本日入浴済み、次回の入浴予定を確認してください。',
+    ];
+
+    /**
      * ご利用者の一覧。
      * [キー, 氏名, カナ, 年齢, 要介護度コード, 利用曜日(ISO), 既往歴]
      *
@@ -170,6 +197,7 @@ class DemoDataSeeder extends Seeder
             $this->createWeights($resident, $key);
         }
 
+        $this->createVoiceExample($residents['ito'], $staff['staff']);
         $this->createIncidents($residents['tanaka'], $staff['staff']);
         $this->createVerbalContactTasks($residents);
         $this->createRiskAssessments($residents, $staff, $from, $to);
@@ -345,6 +373,69 @@ class DemoDataSeeder extends Seeder
             $this->createVital($record, $key, $fromEnd, $index, $seed);
             $this->createMeal($record, $key, $fromEnd, $index, $seed);
         }
+    }
+
+    /**
+     * 伊藤 キヨ の直近の記録に、昼食後の音声入力を入れる。
+     *
+     * 【なぜ固定で入れるか】
+     * 紹介資料には「職員がスマホに話した一言」と、この記録の画面写真を
+     * 載せている。デモを作り直しても同じ原文と3つの文章が開けないと、
+     * 資料と実物が食い違う。
+     *
+     * 【当日ではなく前回の利用日に入れる】
+     * 昼食後の話なので時刻は 13:30。当日に入れると、朝に作り直したとき
+     * まだ来ていない時刻の記録になる。
+     *
+     * 3つの文章は、この原文を F-LLM-05 に通した実際の出力を写したもの。
+     * 手で整えた文章を置くと、AIの出力として見せる意味がなくなる。
+     */
+    private function createVoiceExample(Resident $resident, User $staff): void
+    {
+        $record = ServiceRecord::query()
+            ->where('resident_id', $resident->id)
+            ->whereDate('service_date', '<', Carbon::today())
+            ->orderByDesc('service_date')
+            ->first();
+
+        if ($record === null) {
+            return;
+        }
+
+        $note = $record->notes()->create([
+            'recorded_by' => $staff->id,
+            'body' => self::VOICE_EXAMPLE['note'],
+            'input_method' => NoteInputMethod::Voice,
+        ]);
+        $spokenAt = $record->service_date->copy()->setTime(13, 30);
+        $note->forceFill(['created_at' => $spokenAt, 'updated_at' => $spokenAt])->save();
+
+        // 文章に出てくる値と、入力済みの値を揃える。ほかの日の値は作り直す
+        // 日付で変わるため、固定しないと文章とバイタル欄が食い違う
+        $record->forceFill([
+            'record_text' => self::VOICE_EXAMPLE['record'],
+            'family_text' => self::VOICE_EXAMPLE['family'],
+            'handover_note' => self::VOICE_EXAMPLE['handover'],
+            'total_water_ml' => 1300,
+        ])->save();
+
+        $record->vitalSigns()->update([
+            'measured_at' => $record->service_date->copy()->setTime(9, 45),
+            'temperature' => 36.1,
+            'systolic_bp' => 131,
+            'diastolic_bp' => 73,
+            'spo2' => 97,
+        ]);
+
+        // 「よく食べてた」「全部」と話した日の摂取量が半分では、原文と食い違う
+        $record->mealRecords()->update(['staple_rate' => 100, 'side_rate' => 100, 'recorded_by' => $staff->id]);
+
+        // 「とくになし」と話した日に入浴も清拭もなしでは、AIがその理由を
+        // ご家族へ説明するよう求め、何もなかった日の例にならない
+        $record->bathingRecords()->update([
+            'bathing_type' => BathingType::Bath,
+            'bathed_at' => $record->service_date->copy()->setTime(11, 0),
+        ]);
     }
 
     /**
