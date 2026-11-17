@@ -153,6 +153,32 @@ final class TransformVoiceNote
             $lines[] = sprintf('- 水分摂取量（入力済み）: %dml', $record->total_water_ml);
         }
 
+        /*
+         * 食事と入浴は、職員が入力したものだけを渡す。
+         *
+         * 渡さないと、AIからは入浴が「記録なし」に見えて申し送りで確認を求めたり、
+         * 入力済みの摂取割合と食い違う量を書いたりする。
+         * recorded_by が空の行は、前回の書き直しでAIが原文から読み取って入れた値
+         * （applyDetectedItems）。それを「入力済み」として渡すと、AIは自分の推測を
+         * 職員の記録として読み直し、文章に事実として書いてしまう。
+         */
+        foreach ($record->mealRecords->whereNotNull('recorded_by') as $meal) {
+            $lines[] = sprintf(
+                '- %s（入力済み）: 主食 %s / 副食 %s',
+                $meal->meal_type === 'lunch' ? '昼食' : 'おやつ',
+                $meal->staple_rate !== null ? "{$meal->staple_rate}%" : '未入力',
+                $meal->side_rate !== null ? "{$meal->side_rate}%" : '未入力',
+            );
+        }
+
+        foreach ($record->bathingRecords->whereNotNull('recorded_by') as $bathing) {
+            $lines[] = trim(sprintf(
+                '- 入浴（入力済み）: %s %s',
+                $bathing->bathing_type->label(),
+                $bathing->bathed_at?->format('H:i') ?? '',
+            ));
+        }
+
         $lines[] = '';
         $lines[] = '# 職員が音声入力した原文';
         $lines[] = (string) $masker->mask($rawNote);

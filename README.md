@@ -129,6 +129,8 @@ php artisan serve
 
 `ANTHROPIC_API_KEY` を設定しなくても動きます。空の場合は `FakeClient` が固定のJSONを返すため、課金なしでアプリ全体の動作を確認できます。
 
+> **作者の手元の API キーは、発行から30日で期限が切れます**（2026-11-15 発行、2026-12-15 ごろ失効）。切れたら Anthropic Console の Settings → API Keys で新しいキーを発行し、`.env` の `ANTHROPIC_API_KEY=` の右側を差し替えます。キーは、クレジット（前払いの利用残高）を入れた組織で発行します。別の組織のキーでは、残高不足の 400 が返ります。
+
 ログイン情報は `admin@example.com` / `manager@example.com` / `staff@example.com`、パスワードはいずれも `password` です。
 
 ### 品質チェック
